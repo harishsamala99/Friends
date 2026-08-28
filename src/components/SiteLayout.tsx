@@ -42,7 +42,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
+        <div className="mx-auto flex min-h-16 max-w-6xl items-center gap-3 px-4 py-2 sm:gap-4">
           <Link to="/" className="flex items-center gap-2">
             <span className="grid size-9 place-items-center rounded-sm bg-primary text-primary-foreground">
               <Shield className="size-5" strokeWidth={2.5} />
@@ -64,7 +64,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-1 md:ml-0">
+          <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0">
             <ThemeToggle />
             <Button
               variant="ghost"

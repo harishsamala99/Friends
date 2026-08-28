@@ -19,7 +19,12 @@ export const Route = createFileRoute("/standings")({
 });
 
 function StandingsPage() {
-  const standings = useQuery({ queryKey: ["standings"], queryFn: () => fetchStandings() });
+  const standings = useQuery({
+    queryKey: ["standings"],
+    queryFn: () => fetchStandings(),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
 
   return (
     <SiteLayout>

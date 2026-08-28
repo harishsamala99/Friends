@@ -319,13 +319,25 @@ export async function deletePlayer(id: string) {
   if (error) throw error;
 }
 
+export async function deletePlayerGoals(playerId: string) {
+  const { error } = await db.from("match_events").delete().eq("player_id", playerId).eq("event_type", "goal");
+  if (error) throw error;
+}
+
 export async function insertFixtures(rows: Partial<Fixture>[]) {
   const { error } = await db.from("fixtures").insert(rows);
   if (error) throw error;
 }
 
 export async function updateFixture(id: string, patch: Partial<Fixture>) {
-  const { error } = await db.from("fixtures").update(patch).eq("id", id);
+  const nextPatch =
+    patch.home_score !== undefined || patch.away_score !== undefined
+      ? {
+          ...patch,
+          status: patch.home_score != null && patch.away_score != null ? "Full Time" : "Scheduled",
+        }
+      : patch;
+  const { error } = await db.from("fixtures").update(nextPatch).eq("id", id);
   if (error) throw error;
 }
 

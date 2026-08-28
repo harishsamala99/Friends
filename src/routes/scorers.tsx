@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { fetchTopScorers } from "@/lib/football";
+import { deletePlayerGoals } from "@/lib/football";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/scorers")({
   head: () => ({
@@ -19,7 +22,15 @@ export const Route = createFileRoute("/scorers")({
 });
 
 function ScorersPage() {
+  const queryClient = useQueryClient();
   const scorers = useQuery({ queryKey: ["scorers"], queryFn: () => fetchTopScorers() });
+  const removeGoals = useMutation({
+    mutationFn: deletePlayerGoals,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["scorers"] });
+      void queryClient.invalidateQueries({ queryKey: ["standings"] });
+    },
+  });
 
   return (
     <SiteLayout>
@@ -40,6 +51,7 @@ function ScorersPage() {
                   <th className="p-3 text-center font-medium">Apps</th>
                   <th className="p-3 text-center font-medium">Assists</th>
                   <th className="p-3 text-center font-medium">Goals</th>
+                  <th className="p-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -51,6 +63,22 @@ function ScorersPage() {
                     <td className="p-3 text-center tabular-nums">{s.matches}</td>
                     <td className="p-3 text-center tabular-nums">{s.assists}</td>
                     <td className="p-3 text-center font-semibold tabular-nums">{s.goals}</td>
+                    <td className="p-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Delete scorer goals"
+                        aria-label={`Delete ${s.player_name} from top scorers`}
+                        disabled={removeGoals.isPending}
+                        onClick={() => {
+                          if (window.confirm(`Remove all recorded goals for ${s.player_name}?`)) {
+                            removeGoals.mutate(s.player_id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

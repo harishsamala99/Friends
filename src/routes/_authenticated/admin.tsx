@@ -21,7 +21,6 @@ import {
   fetchTeams,
   insertTeams,
   insertFixtures,
-  updateFixture,
   upsertPlayer,
 } from "@/lib/football";
 
@@ -65,8 +64,8 @@ function AdminPage() {
           </Button>
         </div>
 
-        <Tabs defaultValue="competition">
-          <TabsList className="flex w-full flex-wrap">
+        <Tabs defaultValue="teams">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="teams">Teams</TabsTrigger>
             <TabsTrigger value="players">Players</TabsTrigger>
             <TabsTrigger value="fixtures">Fixtures</TabsTrigger>
@@ -116,7 +115,7 @@ function AdminPage() {
           <TabsContent value="players" className="mt-6 space-y-6">
             <PlayerForm teams={teams.data ?? []} onSaved={invalidate} />
             {(players.data ?? []).length === 0 ? (
-              <EmptyState message="No players yet." />
+              <EmptyState message="Add players here, then record their goals under Fixtures. Their names will appear in Top Scorers." />
             ) : (
               <Card>
                 <CardContent className="p-0">
@@ -170,7 +169,13 @@ function AdminPage() {
                     const home = (teams.data ?? []).find((t) => t.id === f.home_team_id);
                     const away = (teams.data ?? []).find((t) => t.id === f.away_team_id);
                     return (
-                      <FixtureRow key={f.id} fixture={f} homeName={home?.name} awayName={away?.name} onSaved={invalidate} />
+                      <FixtureRow
+                        key={f.id}
+                        fixture={f}
+                        homeName={home?.name}
+                        awayName={away?.name}
+                        onSaved={invalidate}
+                      />
                     );
                   })}
                 </CardContent>
@@ -194,42 +199,23 @@ function FixtureRow({
   awayName?: string;
   onSaved: () => void;
 }) {
-  const [homeScore, setHomeScore] = useState(fixture.home_score?.toString() ?? "");
-  const [awayScore, setAwayScore] = useState(fixture.away_score?.toString() ?? "");
-  const [saving, setSaving] = useState(false);
-
-  async function saveScore() {
-    setSaving(true);
-    try {
-      const hasScore = homeScore !== "" && awayScore !== "";
-      await updateFixture(fixture.id, {
-        home_score: homeScore === "" ? null : Number(homeScore),
-        away_score: awayScore === "" ? null : Number(awayScore),
-        status: hasScore ? "Full Time" : "Scheduled",
-      });
-      toast.success("Match score saved");
-      onSaved();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save match score");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border/50 p-3 last:border-0">
-      <span className="w-14 text-xs text-muted-foreground">MD {fixture.matchday}</span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">
-        {homeName} vs {awayName}
+    <div className="flex flex-wrap items-center gap-3 border-b border-border/50 p-3 last:border-0">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">MD {fixture.matchday}</span>
+        <span className="min-w-0 truncate text-sm font-medium">
+          {homeName} vs {awayName}
+        </span>
+      </div>
+      <span className="rounded-md bg-secondary px-3 py-1 text-sm font-semibold tabular-nums">
+        {fixture.home_score ?? "-"} - {fixture.away_score ?? "-"}
       </span>
-      <Input type="number" min="0" className="w-16" aria-label="Home score" value={homeScore} onChange={(e) => setHomeScore(e.target.value)} />
-      <Input type="number" min="0" className="w-16" aria-label="Away score" value={awayScore} onChange={(e) => setAwayScore(e.target.value)} />
-      <Button onClick={saveScore} disabled={saving}>
-        {saving ? "Saving…" : "Save score"}
-      </Button>
+      <span className="text-xs text-muted-foreground">Open the match to edit its score</span>
       <Button
+        className="justify-self-end sm:ml-auto"
         variant="ghost"
         size="icon"
+        title="Delete fixture"
         aria-label="Delete fixture"
         onClick={async () => {
           try {
@@ -363,7 +349,7 @@ function PlayerForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add a player</CardTitle>
+        <CardTitle>Add a player for Top Scorers</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-4">
         <Field id="p-name" label="Name">

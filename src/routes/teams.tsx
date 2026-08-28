@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/teams")({
 });
 
 function TeamsPage() {
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
   const players = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
 
@@ -39,7 +41,20 @@ function TeamsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(teams.data ?? []).map((t) => (
-              <Card key={t.id} className="overflow-hidden">
+              <Card
+                key={t.id}
+                className={`cursor-pointer overflow-hidden transition-shadow hover:shadow-elevated ${selectedTeamId === t.id ? "ring-2 ring-primary" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-expanded={selectedTeamId === t.id}
+                onClick={() => setSelectedTeamId(selectedTeamId === t.id ? null : t.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setSelectedTeamId(selectedTeamId === t.id ? null : t.id);
+                  }
+                }}
+              >
                 <div
                   className="h-2 w-full"
                   style={{ backgroundColor: t.crest_color ?? "var(--primary)" }}
@@ -64,6 +79,44 @@ function TeamsPage() {
             ))}
           </div>
         )}
+        {selectedTeamId && (() => {
+          const selectedTeam = (teams.data ?? []).find((team) => team.id === selectedTeamId);
+          const squad = (players.data ?? []).filter((player) => player.team_id === selectedTeamId);
+          if (!selectedTeam) return null;
+          return (
+            <section className="mt-8" aria-label={`${selectedTeam.name} squad`}>
+              <div className="mb-4 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-primary">Squad</p>
+                  <h2 className="font-display text-3xl font-bold">{selectedTeam.name}</h2>
+                </div>
+                <span className="text-sm text-muted-foreground">{squad.length} players</span>
+              </div>
+              {squad.length === 0 ? (
+                <EmptyState message="No players have been added to this squad yet." />
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {squad.map((player) => (
+                    <Card key={player.id}>
+                      <CardContent className="flex items-center gap-3 p-4">
+                        <span className="grid size-10 shrink-0 place-items-center rounded-sm bg-secondary font-display text-lg font-bold tabular-nums">
+                          {player.jersey_number ?? "-"}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{player.name}</p>
+                          <p className="truncate text-sm text-muted-foreground">
+                            {player.position}
+                            {player.nationality ? ` · ${player.nationality}` : ""}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </section>
+          );
+        })()}
         <p className="mt-8 text-center text-sm text-muted-foreground">
           Manage teams in the{" "}
           <Link to="/admin" className="font-medium text-primary underline-offset-4 hover:underline">
