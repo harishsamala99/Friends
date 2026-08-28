@@ -1,0 +1,184 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Matchday bulletin design system.
+ * Ink, paper and coral create a warm editorial sports desk.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-pitch: var(--pitch);
+  --color-pitch-foreground: var(--pitch-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --shadow-card: 0 1px 2px oklch(0.2 0.03 30 / 0.06), 0 8px 24px oklch(0.2 0.03 30 / 0.08);
+  --shadow-elevated: 0 12px 40px oklch(0.2 0.03 30 / 0.18);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.965 0.012 75);
+  --foreground: oklch(0.2 0.025 30);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.19 0.03 175);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.19 0.03 175);
+  --primary: oklch(0.52 0.17 28);
+  --primary-foreground: oklch(0.99 0.006 75);
+  --secondary: oklch(0.91 0.025 75);
+  --secondary-foreground: oklch(0.28 0.04 30);
+  --muted: oklch(0.93 0.016 75);
+  --muted-foreground: oklch(0.5 0.025 35);
+  --accent: oklch(0.78 0.12 88);
+  --accent-foreground: oklch(0.23 0.04 30);
+  --destructive: oklch(0.55 0.21 25);
+  --destructive-foreground: oklch(0.985 0.005 150);
+  --success: oklch(0.6 0.15 150);
+  --warning: oklch(0.78 0.16 80);
+  --pitch: oklch(0.25 0.035 30);
+  --pitch-foreground: oklch(0.97 0.012 75);
+  --border: oklch(0.86 0.018 65);
+  --input: oklch(0.86 0.018 65);
+  --ring: oklch(0.52 0.17 28);
+  --chart-1: oklch(0.45 0.13 160);
+  --chart-2: oklch(0.78 0.17 135);
+  --chart-3: oklch(0.55 0.11 235);
+  --chart-4: oklch(0.72 0.15 70);
+  --chart-5: oklch(0.55 0.18 15);
+  --sidebar: oklch(0.24 0.05 172);
+  --sidebar-foreground: oklch(0.95 0.01 150);
+  --sidebar-primary: oklch(0.8 0.18 135);
+  --sidebar-primary-foreground: oklch(0.2 0.05 165);
+  --sidebar-accent: oklch(0.31 0.06 172);
+  --sidebar-accent-foreground: oklch(0.96 0.01 150);
+  --sidebar-border: oklch(0.34 0.05 172);
+  --sidebar-ring: oklch(0.8 0.18 135);
+}
+
+.dark {
+  --background: oklch(0.17 0.03 178);
+  --foreground: oklch(0.96 0.008 150);
+  --card: oklch(0.22 0.035 176);
+  --card-foreground: oklch(0.96 0.008 150);
+  --popover: oklch(0.22 0.035 176);
+  --popover-foreground: oklch(0.96 0.008 150);
+  --primary: oklch(0.72 0.16 148);
+  --primary-foreground: oklch(0.17 0.04 170);
+  --secondary: oklch(0.27 0.04 176);
+  --secondary-foreground: oklch(0.95 0.01 150);
+  --muted: oklch(0.26 0.03 176);
+  --muted-foreground: oklch(0.72 0.02 160);
+  --accent: oklch(0.82 0.19 133);
+  --accent-foreground: oklch(0.19 0.05 165);
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.98 0.005 150);
+  --success: oklch(0.72 0.16 150);
+  --warning: oklch(0.8 0.16 80);
+  --pitch: oklch(0.24 0.05 172);
+  --pitch-foreground: oklch(0.96 0.01 150);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.72 0.16 148);
+  --chart-1: oklch(0.72 0.16 148);
+  --chart-2: oklch(0.82 0.19 133);
+  --chart-3: oklch(0.68 0.12 235);
+  --chart-4: oklch(0.78 0.15 70);
+  --chart-5: oklch(0.65 0.19 15);
+  --sidebar: oklch(0.2 0.04 176);
+  --sidebar-foreground: oklch(0.95 0.01 150);
+  --sidebar-primary: oklch(0.82 0.19 133);
+  --sidebar-primary-foreground: oklch(0.19 0.05 165);
+  --sidebar-accent: oklch(0.27 0.04 176);
+  --sidebar-accent-foreground: oklch(0.96 0.01 150);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.82 0.19 133);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+}
+
+@utility pitch-gradient {
+  background-image: linear-gradient(135deg, var(--pitch) 0%, oklch(0.32 0.09 158) 55%, oklch(0.38 0.12 150) 100%);
+}
+
+@utility stat-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+@utility card-surface {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.matchday-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--primary) 8%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--primary) 8%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
