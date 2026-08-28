@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Menu, Moon, Shield, Sun } from "lucide-react";
+import { Menu, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NAV = [
@@ -44,9 +44,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex min-h-16 max-w-6xl items-center gap-3 px-4 py-2 sm:gap-4">
           <Link to="/" className="flex items-center gap-2">
-            <span className="grid size-9 place-items-center rounded-sm bg-primary text-primary-foreground">
-              <Shield className="size-5" strokeWidth={2.5} />
-            </span>
+            <img src="/friendsleague.jpeg" alt="FRIENDS LEAGUE logo" className="size-9 rounded-sm object-cover" />
             <span className="hidden font-display text-lg font-bold uppercase tracking-wide sm:block">
               FRIENDS LEAGUE
             </span>

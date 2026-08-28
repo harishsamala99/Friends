@@ -85,9 +85,7 @@ function AdminPage() {
                       <TeamBadge team={t} size={32} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{t.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {t.city ?? "—"} · {t.stadium ?? "—"}
-                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{t.city ?? "—"}</p>
                       </div>
                       <Button
                         variant="ghost"
@@ -243,20 +241,25 @@ function Field({ id, label, children }: { id: string; label: string; children: R
 }
 
 function TeamForm({ competitionId, onSaved }: { competitionId: string | null; onSaved: () => void }) {
-  const [teams, setTeams] = useState([{ name: "", color: "#e4573d" }]);
+  const [teams, setTeams] = useState([{ name: "", color: "#e4573d", manager: "" }]);
 
   const save = useMutation({
     mutationFn: async () => {
       const rows = teams
         .map((team) => ({ ...team, name: team.name.trim() }))
         .filter((team) => team.name.length > 0)
-        .map((team) => ({ competition_id: competitionId, name: team.name, crest_color: team.color }));
+        .map((team) => ({
+          competition_id: competitionId,
+          name: team.name,
+          crest_color: team.color,
+          manager: team.manager.trim() || null,
+        }));
       if (!rows.length) throw new Error("Enter at least one team name.");
       return insertTeams(rows);
     },
     onSuccess: () => {
       toast.success("Teams saved");
-      setTeams([{ name: "", color: "#e4573d" }]);
+      setTeams([{ name: "", color: "#e4573d", manager: "" }]);
       onSaved();
     },
     onError: (e: Error) => toast.error(`Could not save teams: ${e.message}`),
@@ -268,19 +271,28 @@ function TeamForm({ competitionId, onSaved }: { competitionId: string | null; on
         <CardTitle>Add your teams</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-[1fr_auto_auto] gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <span>Team name</span>
+          <span>Manager</span>
           <span>Color</span>
           <span className="sr-only">Remove</span>
         </div>
         {teams.map((team, index) => (
-          <div key={index} className="grid grid-cols-[1fr_auto_auto] items-center gap-3">
+          <div key={index} className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-3">
             <Input
               aria-label={`Team ${index + 1} name`}
               placeholder={`Team ${index + 1}`}
               value={team.name}
               onChange={(e) =>
                 setTeams((current) => current.map((item, i) => (i === index ? { ...item, name: e.target.value } : item)))
+              }
+            />
+            <Input
+              aria-label={`Team ${index + 1} manager`}
+              placeholder="Manager name"
+              value={team.manager}
+              onChange={(e) =>
+                setTeams((current) => current.map((item, i) => (i === index ? { ...item, manager: e.target.value } : item)))
               }
             />
             <Input
@@ -305,7 +317,7 @@ function TeamForm({ competitionId, onSaved }: { competitionId: string | null; on
           </div>
         ))}
         <div className="flex flex-wrap gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={() => setTeams((current) => [...current, { name: "", color: "#e4573d" }])}>
+          <Button type="button" variant="outline" onClick={() => setTeams((current) => [...current, { name: "", color: "#e4573d", manager: "" }])}>
             Add another team
           </Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending}>

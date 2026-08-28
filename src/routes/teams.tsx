@@ -10,7 +10,7 @@ export const Route = createFileRoute("/teams")({
   head: () => ({
     meta: [
       { title: "Teams — FRIENDS LEAGUE" },
-      { name: "description", content: "All clubs in the competition with squads, stadiums and managers." },
+      { name: "description", content: "All clubs in the competition with squads and managers." },
       { property: "og:title", content: "Teams — FRIENDS LEAGUE" },
       { property: "og:description", content: "All clubs in the competition with squads and details." },
       { property: "og:type", content: "website" },
@@ -63,10 +63,6 @@ function TeamsPage() {
                   <TeamBadge team={t} size={48} />
                   <div className="min-w-0">
                     <h2 className="truncate font-display text-xl font-bold">{t.name}</h2>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {t.stadium ?? "Stadium TBD"}
-                      {t.city ? ` · ${t.city}` : ""}
-                    </p>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {t.manager ? `Manager: ${t.manager}` : "Manager TBD"}
                     </p>
