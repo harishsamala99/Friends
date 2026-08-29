@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CodeOfConductRouteImport } from './routes/code-of-conduct'
 import { Route as FixturesRouteImport } from './routes/fixtures'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as ScorersRouteImport } from './routes/scorers'
@@ -32,6 +33,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CodeOfConductRoute = CodeOfConductRouteImport.update({
+  id: '/code-of-conduct',
+  path: '/code-of-conduct',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FixturesRoute = FixturesRouteImport.update({
@@ -73,6 +79,7 @@ const MatchFixtureIdRoute = MatchFixtureIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/code-of-conduct': typeof CodeOfConductRoute
   '/fixtures': typeof FixturesRoute
   '/results': typeof ResultsRoute
   '/scorers': typeof ScorersRoute
@@ -84,6 +91,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/code-of-conduct': typeof CodeOfConductRoute
   '/fixtures': typeof FixturesRoute
   '/results': typeof ResultsRoute
   '/scorers': typeof ScorersRoute
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/code-of-conduct': typeof CodeOfConductRoute
   '/fixtures': typeof FixturesRoute
   '/results': typeof ResultsRoute
   '/scorers': typeof ScorersRoute
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/code-of-conduct'
     | '/fixtures'
     | '/results'
     | '/scorers'
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/code-of-conduct'
     | '/fixtures'
     | '/results'
     | '/scorers'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/code-of-conduct'
     | '/fixtures'
     | '/results'
     | '/scorers'
@@ -146,6 +158,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  CodeOfConductRoute: typeof CodeOfConductRoute
   FixturesRoute: typeof FixturesRoute
   ResultsRoute: typeof ResultsRoute
   ScorersRoute: typeof ScorersRoute
@@ -175,6 +188,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/code-of-conduct': {
+      id: '/code-of-conduct'
+      path: '/code-of-conduct'
+      fullPath: '/code-of-conduct'
+      preLoaderRoute: typeof CodeOfConductRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fixtures': {
@@ -244,6 +264,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  CodeOfConductRoute: CodeOfConductRoute,
   FixturesRoute: FixturesRoute,
   ResultsRoute: ResultsRoute,
   ScorersRoute: ScorersRoute,

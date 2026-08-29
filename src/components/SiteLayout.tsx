@@ -10,6 +10,7 @@ const NAV = [
   { to: "/standings", label: "Standings" },
   { to: "/scorers", label: "Top Scorers" },
   { to: "/teams", label: "Teams" },
+  { to: "/code-of-conduct", label: "Code of Conduct" },
 ] as const;
 
 function ThemeToggle() {

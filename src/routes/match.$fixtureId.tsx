@@ -89,7 +89,10 @@ function MatchPage() {
           <div className="mx-auto max-w-3xl px-4 py-10">
             <MatchEditor
               fixture={f}
+              homeTeamId={f.home_team_id}
+              awayTeamId={f.away_team_id}
               players={(players.data ?? []).filter((p) => p.team_id === f.home_team_id || p.team_id === f.away_team_id)}
+              events={events.data ?? []}
               onSaved={() => {
                 void fixture.refetch();
                 void events.refetch();
@@ -131,19 +134,54 @@ function MatchPage() {
 
 function MatchEditor({
   fixture,
+  homeTeamId,
+  awayTeamId,
   players,
+  events,
   onSaved,
 }: {
   fixture: { id: string; home_score: number | null; away_score: number | null };
+  homeTeamId: string;
+  awayTeamId: string;
   players: { id: string; name: string; team_id: string | null }[];
+  events: { id: string; player_id: string | null; team_id: string | null; event_type: string }[];
   onSaved: () => void;
 }) {
   const [homeScore, setHomeScore] = useState(fixture.home_score?.toString() ?? "");
   const [awayScore, setAwayScore] = useState(fixture.away_score?.toString() ?? "");
-  const [scorerId, setScorerId] = useState("");
-  const [goals, setGoals] = useState("1");
+  const [homePlayerId, setHomePlayerId] = useState("");
+  const [awayPlayerId, setAwayPlayerId] = useState("");
+  const [homeGoals, setHomeGoals] = useState("1");
+  const [awayGoals, setAwayGoals] = useState("1");
   const [savingScore, setSavingScore] = useState(false);
-  const [savingScorer, setSavingScorer] = useState(false);
+  const [savingHomeScorer, setSavingHomeScorer] = useState(false);
+  const [savingAwayScorer, setSavingAwayScorer] = useState(false);
+
+  // Filter players by team
+  const homeTeamPlayers = players.filter((p) => p.team_id === homeTeamId);
+  const awayTeamPlayers = players.filter((p) => p.team_id === awayTeamId);
+
+  // Aggregate goals by player and team from events
+  const goalsByPlayerAndTeam = events
+    .filter((e) => e.event_type === "goal" && e.player_id)
+    .reduce(
+      (acc, event) => {
+        const key = `${event.player_id}-${event.team_id}`;
+        acc[key] = (acc[key] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+  // Group scorers by team
+  const homeScorers = homeTeamPlayers.filter((p) => {
+    const key = `${p.id}-${homeTeamId}`;
+    return goalsByPlayerAndTeam[key];
+  });
+  const awayScorers = awayTeamPlayers.filter((p) => {
+    const key = `${p.id}-${awayTeamId}`;
+    return goalsByPlayerAndTeam[key];
+  });
 
   async function saveScore() {
     if (homeScore === "" || awayScore === "") {
@@ -166,32 +204,65 @@ function MatchEditor({
     }
   }
 
-  async function saveScorer() {
-    const scorer = players.find((player) => player.id === scorerId);
-    const count = Math.max(1, Math.min(20, Number(goals) || 1));
-    if (!scorer) return toast.error("Choose a goal scorer");
-    setSavingScorer(true);
+  async function saveHomeScorer(): Promise<void> {
+    const scorer = homeTeamPlayers.find((player) => player.id === homePlayerId);
+    const count = Math.max(1, Math.min(20, Number(homeGoals) || 1));
+    if (!scorer) {
+      toast.error("Select a home team player");
+      return;
+    }
+    setSavingHomeScorer(true);
     try {
       await Promise.all(
         Array.from({ length: count }, (_, index) =>
-          addEvent({ fixture_id: fixture.id, team_id: scorer.team_id, player_id: scorer.id, minute: index + 1, event_type: "goal" }),
+          addEvent({
+            fixture_id: fixture.id,
+            team_id: scorer.team_id,
+            player_id: scorer.id,
+            minute: index + 1,
+            event_type: "goal",
+          }),
         ),
       );
-      if (homeScore !== "" && awayScore !== "") {
-        await updateFixture(fixture.id, {
-          home_score: Number(homeScore),
-          away_score: Number(awayScore),
-          status: "Full Time",
-        });
-      }
       toast.success(`${scorer.name} added to the score sheet`);
-      setScorerId("");
-      setGoals("1");
+      setHomePlayerId("");
+      setHomeGoals("1");
       onSaved();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save goal scorer");
     } finally {
-      setSavingScorer(false);
+      setSavingHomeScorer(false);
+    }
+  }
+
+  async function saveAwayScorer(): Promise<void> {
+    const scorer = awayTeamPlayers.find((player) => player.id === awayPlayerId);
+    const count = Math.max(1, Math.min(20, Number(awayGoals) || 1));
+    if (!scorer) {
+      toast.error("Select an away team player");
+      return;
+    }
+    setSavingAwayScorer(true);
+    try {
+      await Promise.all(
+        Array.from({ length: count }, (_, index) =>
+          addEvent({
+            fixture_id: fixture.id,
+            team_id: scorer.team_id,
+            player_id: scorer.id,
+            minute: index + 1,
+            event_type: "goal",
+          }),
+        ),
+      );
+      toast.success(`${scorer.name} added to the score sheet`);
+      setAwayPlayerId("");
+      setAwayGoals("1");
+      onSaved();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save goal scorer");
+    } finally {
+      setSavingAwayScorer(false);
     }
   }
 
@@ -201,6 +272,7 @@ function MatchEditor({
         <CardTitle>Match editor</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* Score Input Section */}
         <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-end">
           <label className="space-y-2 text-sm font-medium">
             Home score
@@ -215,25 +287,150 @@ function MatchEditor({
             {savingScore ? "Saving…" : "Save score"}
           </Button>
         </div>
-        <div className="flex flex-wrap items-end gap-3 border-t border-border/60 pt-4">
-          <label className="min-w-52 space-y-2 text-sm font-medium">
-            Goal scorer
-            <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={scorerId} onChange={(event) => setScorerId(event.target.value)}>
-              <option value="">Select player</option>
-              {players.map((player) => (
-                <option key={player.id} value={player.id}>{player.name}</option>
-              ))}
-            </select>
-          </label>
-          <label className="w-24 space-y-2 text-sm font-medium">
-            Goals
-            <Input type="number" min="1" max="20" value={goals} onChange={(event) => setGoals(event.target.value)} />
-          </label>
-          <Button variant="outline" onClick={saveScorer} disabled={savingScorer || players.length === 0}>
-            {savingScorer ? "Saving…" : "Add goals"}
-          </Button>
-          {players.length === 0 && <span className="text-sm text-muted-foreground">Add players to either team first.</span>}
+
+        {/* Two-sided Goal Scorer Widget */}
+        <div className="border-t border-border/60 pt-4">
+          <h3 className="mb-4 text-sm font-semibold">Add Goal Scorers</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Home Team Section */}
+            <div className="space-y-3 rounded-lg border border-border/40 p-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Home Team</h4>
+              <label className="space-y-2 text-sm font-medium">
+                Player
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  value={homePlayerId}
+                  onChange={(event) => setHomePlayerId(event.target.value)}
+                  disabled={homeTeamPlayers.length === 0}
+                >
+                  <option value="">Select home player</option>
+                  {homeTeamPlayers.map((player) => (
+                    <option key={player.id} value={player.id}>
+                      {player.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {homeTeamPlayers.length === 0 && (
+                <span className="text-xs text-muted-foreground">No players available for home team</span>
+              )}
+              {homeTeamPlayers.length > 0 && (
+                <>
+                  <label className="space-y-2 text-sm font-medium">
+                    Goals
+                    <Input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={homeGoals}
+                      onChange={(event) => setHomeGoals(event.target.value)}
+                    />
+                  </label>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={saveHomeScorer}
+                    disabled={savingHomeScorer || !homePlayerId}
+                  >
+                    {savingHomeScorer ? "Adding…" : "Add Goal"}
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {/* Away Team Section */}
+            <div className="space-y-3 rounded-lg border border-border/40 p-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Away Team</h4>
+              <label className="space-y-2 text-sm font-medium">
+                Player
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  value={awayPlayerId}
+                  onChange={(event) => setAwayPlayerId(event.target.value)}
+                  disabled={awayTeamPlayers.length === 0}
+                >
+                  <option value="">Select away player</option>
+                  {awayTeamPlayers.map((player) => (
+                    <option key={player.id} value={player.id}>
+                      {player.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {awayTeamPlayers.length === 0 && (
+                <span className="text-xs text-muted-foreground">No players available for away team</span>
+              )}
+              {awayTeamPlayers.length > 0 && (
+                <>
+                  <label className="space-y-2 text-sm font-medium">
+                    Goals
+                    <Input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={awayGoals}
+                      onChange={(event) => setAwayGoals(event.target.value)}
+                    />
+                  </label>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={saveAwayScorer}
+                    disabled={savingAwayScorer || !awayPlayerId}
+                  >
+                    {savingAwayScorer ? "Adding…" : "Add Goal"}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Scorecard Display */}
+        {(homeScorers.length > 0 || awayScorers.length > 0) && (
+          <div className="border-t border-border/60 pt-4">
+            <h3 className="mb-3 text-sm font-semibold">Goal Scorers</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {/* Home Team Scorers */}
+              {homeScorers.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Home Team</h4>
+                  <div className="space-y-1">
+                    {homeScorers.map((player) => {
+                      const key = `${player.id}-${homeTeamId}`;
+                      const goalCount = goalsByPlayerAndTeam[key];
+                      return (
+                        <div key={player.id} className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm">
+                          <span className="font-medium">{player.name}</span>
+                          <span className="font-semibold tabular-nums text-foreground">{goalCount} goal{goalCount !== 1 ? "s" : ""}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Away Team Scorers */}
+              {awayScorers.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Away Team</h4>
+                  <div className="space-y-1">
+                    {awayScorers.map((player) => {
+                      const key = `${player.id}-${awayTeamId}`;
+                      const goalCount = goalsByPlayerAndTeam[key];
+                      return (
+                        <div key={player.id} className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm">
+                          <span className="font-medium">{player.name}</span>
+                          <span className="font-semibold tabular-nums text-foreground">{goalCount} goal{goalCount !== 1 ? "s" : ""}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
