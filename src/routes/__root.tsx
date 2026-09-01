@@ -77,14 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Friends League" },
+      { name: "description", content: "Friends League - Track fixtures, results, and standings" },
+      { name: "author", content: "Friends League" },
+      { property: "og:title", content: "Friends League" },
+      { property: "og:description", content: "Track fixtures, results, scorers, and standings" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@FriendsLeague" },
     ],
     links: [
       {

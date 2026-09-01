@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Menu, Moon, Sun } from "lucide-react";
+import { Menu, Moon, Sun, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NAV = [
@@ -9,6 +9,7 @@ const NAV = [
   { to: "/results", label: "Results" },
   { to: "/standings", label: "Standings" },
   { to: "/scorers", label: "Top Scorers" },
+  { to: "/saves", label: "Top Saves" },
   { to: "/teams", label: "Teams" },
   { to: "/code-of-conduct", label: "Code of Conduct" },
 ] as const;
@@ -64,6 +65,17 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-1 md:ml-0">
+            <Link to="/final">
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-2 hidden sm:flex"
+                aria-label="Create Final Match"
+              >
+                <Zap className="size-4" />
+                Create Final
+              </Button>
+            </Link>
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -88,6 +100,16 @@ export function SiteLayout({ children }: { children: ReactNode }) {
                 {n.label}
               </Link>
             ))}
+            <Link
+              to="/final"
+              onClick={() => setOpen(false)}
+              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <div className="flex items-center gap-2">
+                <Zap className="size-4" />
+                Create Final
+              </div>
+            </Link>
           </nav>
         )}
       </header>

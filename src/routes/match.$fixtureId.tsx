@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/SiteLayout";
-import { TeamBadge, ListSkeleton, EmptyState, formatKickoff } from "@/components/football-ui";
+import { TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,8 +80,7 @@ function MatchPage() {
                 </div>
               </div>
               <p className="mt-6 text-sm opacity-80">
-                Matchday {f.matchday} · {formatKickoff(f.kickoff)}
-                {f.venue ? ` · ${f.venue}` : ""}
+                Matchday {f.matchday}
               </p>
             </div>
           </section>
@@ -153,17 +152,39 @@ function MatchEditor({
   const [awayPlayerId, setAwayPlayerId] = useState("");
   const [homeGoals, setHomeGoals] = useState("1");
   const [awayGoals, setAwayGoals] = useState("1");
+  const [homeGKId, setHomeGKId] = useState("");
+  const [awayGKId, setAwayGKId] = useState("");
+  const [homeSaves, setHomeSaves] = useState("1");
+  const [awaySaves, setAwaySaves] = useState("1");
   const [savingScore, setSavingScore] = useState(false);
   const [savingHomeScorer, setSavingHomeScorer] = useState(false);
   const [savingAwayScorer, setSavingAwayScorer] = useState(false);
+  const [savingHomeGK, setSavingHomeGK] = useState(false);
+  const [savingAwayGK, setSavingAwayGK] = useState(false);
 
   // Filter players by team
   const homeTeamPlayers = players.filter((p) => p.team_id === homeTeamId);
   const awayTeamPlayers = players.filter((p) => p.team_id === awayTeamId);
 
+  // Filter goalkeepers
+  const homeGKs = homeTeamPlayers.filter((p) => p.position?.toLowerCase().includes("goalkeeper"));
+  const awayGKs = awayTeamPlayers.filter((p) => p.position?.toLowerCase().includes("goalkeeper"));
+
   // Aggregate goals by player and team from events
   const goalsByPlayerAndTeam = events
     .filter((e) => e.event_type === "goal" && e.player_id)
+    .reduce(
+      (acc, event) => {
+        const key = `${event.player_id}-${event.team_id}`;
+        acc[key] = (acc[key] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+  // Aggregate saves by goalkeeper
+  const savesByPlayerAndTeam = events
+    .filter((e) => e.event_type === "save" && e.player_id)
     .reduce(
       (acc, event) => {
         const key = `${event.player_id}-${event.team_id}`;
@@ -181,6 +202,16 @@ function MatchEditor({
   const awayScorers = awayTeamPlayers.filter((p) => {
     const key = `${p.id}-${awayTeamId}`;
     return goalsByPlayerAndTeam[key];
+  });
+
+  // Group GK saves by team
+  const homeGKSaves = homeGKs.filter((p) => {
+    const key = `${p.id}-${homeTeamId}`;
+    return savesByPlayerAndTeam[key];
+  });
+  const awayGKSaves = awayGKs.filter((p) => {
+    const key = `${p.id}-${awayTeamId}`;
+    return savesByPlayerAndTeam[key];
   });
 
   async function saveScore() {
@@ -263,6 +294,68 @@ function MatchEditor({
       toast.error(error instanceof Error ? error.message : "Could not save goal scorer");
     } finally {
       setSavingAwayScorer(false);
+    }
+  }
+
+  async function saveHomeGK(): Promise<void> {
+    const gk = homeGKs.find((player) => player.id === homeGKId);
+    const count = Math.max(1, Math.min(30, Number(homeSaves) || 1));
+    if (!gk) {
+      toast.error("Select a home team goalkeeper");
+      return;
+    }
+    setSavingHomeGK(true);
+    try {
+      await Promise.all(
+        Array.from({ length: count }, (_, index) =>
+          addEvent({
+            fixture_id: fixture.id,
+            team_id: gk.team_id,
+            player_id: gk.id,
+            minute: index + 1,
+            event_type: "save",
+          }),
+        ),
+      );
+      toast.success(`${gk.name} saves recorded`);
+      setHomeGKId("");
+      setHomeSaves("1");
+      onSaved();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save goalkeeper saves");
+    } finally {
+      setSavingHomeGK(false);
+    }
+  }
+
+  async function saveAwayGK(): Promise<void> {
+    const gk = awayGKs.find((player) => player.id === awayGKId);
+    const count = Math.max(1, Math.min(30, Number(awaySaves) || 1));
+    if (!gk) {
+      toast.error("Select an away team goalkeeper");
+      return;
+    }
+    setSavingAwayGK(true);
+    try {
+      await Promise.all(
+        Array.from({ length: count }, (_, index) =>
+          addEvent({
+            fixture_id: fixture.id,
+            team_id: gk.team_id,
+            player_id: gk.id,
+            minute: index + 1,
+            event_type: "save",
+          }),
+        ),
+      );
+      toast.success(`${gk.name} saves recorded`);
+      setAwayGKId("");
+      setAwaySaves("1");
+      onSaved();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save goalkeeper saves");
+    } finally {
+      setSavingAwayGK(false);
     }
   }
 
@@ -386,6 +479,104 @@ function MatchEditor({
           </div>
         </div>
 
+        {/* Two-sided Goalkeeper Saves Widget */}
+        <div className="border-t border-border/60 pt-4">
+          <h3 className="mb-4 text-sm font-semibold">Add Goalkeeper Saves</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {/* Home Team Section */}
+            <div className="space-y-3 rounded-lg border border-border/40 p-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Home Team Goalkeeper</h4>
+              <label className="space-y-2 text-sm font-medium">
+                Goalkeeper
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  value={homeGKId}
+                  onChange={(event) => setHomeGKId(event.target.value)}
+                  disabled={homeGKs.length === 0}
+                >
+                  <option value="">Select home goalkeeper</option>
+                  {homeGKs.map((gk) => (
+                    <option key={gk.id} value={gk.id}>
+                      {gk.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {homeGKs.length === 0 && (
+                <span className="text-xs text-muted-foreground">No goalkeepers available for home team</span>
+              )}
+              {homeGKs.length > 0 && (
+                <>
+                  <label className="space-y-2 text-sm font-medium">
+                    Saves
+                    <Input
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={homeSaves}
+                      onChange={(event) => setHomeSaves(event.target.value)}
+                    />
+                  </label>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={saveHomeGK}
+                    disabled={savingHomeGK || !homeGKId}
+                  >
+                    {savingHomeGK ? "Recording…" : "Record Saves"}
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {/* Away Team Section */}
+            <div className="space-y-3 rounded-lg border border-border/40 p-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Away Team Goalkeeper</h4>
+              <label className="space-y-2 text-sm font-medium">
+                Goalkeeper
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  value={awayGKId}
+                  onChange={(event) => setAwayGKId(event.target.value)}
+                  disabled={awayGKs.length === 0}
+                >
+                  <option value="">Select away goalkeeper</option>
+                  {awayGKs.map((gk) => (
+                    <option key={gk.id} value={gk.id}>
+                      {gk.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {awayGKs.length === 0 && (
+                <span className="text-xs text-muted-foreground">No goalkeepers available for away team</span>
+              )}
+              {awayGKs.length > 0 && (
+                <>
+                  <label className="space-y-2 text-sm font-medium">
+                    Saves
+                    <Input
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={awaySaves}
+                      onChange={(event) => setAwaySaves(event.target.value)}
+                    />
+                  </label>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={saveAwayGK}
+                    disabled={savingAwayGK || !awayGKId}
+                  >
+                    {savingAwayGK ? "Recording…" : "Record Saves"}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Scorecard Display */}
         {(homeScorers.length > 0 || awayScorers.length > 0) && (
           <div className="border-t border-border/60 pt-4">
@@ -422,6 +613,52 @@ function MatchEditor({
                         <div key={player.id} className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm">
                           <span className="font-medium">{player.name}</span>
                           <span className="font-semibold tabular-nums text-foreground">{goalCount} goal{goalCount !== 1 ? "s" : ""}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Goalkeeper Saves Display */}
+        {(homeGKSaves.length > 0 || awayGKSaves.length > 0) && (
+          <div className="border-t border-border/60 pt-4">
+            <h3 className="mb-3 text-sm font-semibold">Goalkeeper Saves</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {/* Home Team Saves */}
+              {homeGKSaves.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Home Team</h4>
+                  <div className="space-y-1">
+                    {homeGKSaves.map((gk) => {
+                      const key = `${gk.id}-${homeTeamId}`;
+                      const saveCount = savesByPlayerAndTeam[key];
+                      return (
+                        <div key={gk.id} className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm">
+                          <span className="font-medium">{gk.name}</span>
+                          <span className="font-semibold tabular-nums text-foreground">{saveCount} save{saveCount !== 1 ? "s" : ""}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Away Team Saves */}
+              {awayGKSaves.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Away Team</h4>
+                  <div className="space-y-1">
+                    {awayGKSaves.map((gk) => {
+                      const key = `${gk.id}-${awayTeamId}`;
+                      const saveCount = savesByPlayerAndTeam[key];
+                      return (
+                        <div key={gk.id} className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm">
+                          <span className="font-medium">{gk.name}</span>
+                          <span className="font-semibold tabular-nums text-foreground">{saveCount} save{saveCount !== 1 ? "s" : ""}</span>
                         </div>
                       );
                     })}

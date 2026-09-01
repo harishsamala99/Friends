@@ -113,6 +113,42 @@ export type PlayerStatRow = ScorerRow & {
   red_cards: number;
 };
 
+export type SavesRow = {
+  player_id: string;
+  player_name: string;
+  position: string;
+  photo_url: string | null;
+  jersey_number: number | null;
+  team_id: string;
+  team_name: string;
+  short_name: string | null;
+  crest_color: string | null;
+  competition_id: string | null;
+  saves: number;
+  clean_sheets: number;
+  matches: number;
+};
+
+export type Tournament = {
+  id: string;
+  type: string;
+  date: string;
+  home_team: string;
+  away_team: string;
+  home_score: number;
+  away_score: number;
+  winner: string;
+  manager: string | null;
+  participants: number | null;
+  top_scorer_name: string | null;
+  top_scorer_goals: number | null;
+  top_assister_name: string | null;
+  top_assister_assists: number | null;
+  top_saver_name: string | null;
+  top_saver_saves: number | null;
+  created_at: string;
+};
+
 export const MATCH_STATUSES = [
   "Scheduled",
   "Live",
@@ -137,6 +173,7 @@ export const COMPETITION_FORMATS = [
 export const EVENT_TYPES = [
   { value: "goal", label: "Goal", icon: "⚽" },
   { value: "own_goal", label: "Own Goal", icon: "🥅" },
+  { value: "save", label: "Save", icon: "🧤" },
   { value: "missed_penalty", label: "Missed Penalty", icon: "❌" },
   { value: "yellow_card", label: "Yellow Card", icon: "🟨" },
   { value: "red_card", label: "Red Card", icon: "🟥" },
@@ -219,6 +256,16 @@ export async function fetchTopScorers(competitionId?: string): Promise<ScorerRow
   return ((data ?? []) as ScorerRow[])
     .filter((r) => r.goals > 0)
     .sort((a, b) => b.goals - a.goals || b.assists - a.assists || a.matches - b.matches);
+}
+
+export async function fetchTopSaves(competitionId?: string): Promise<SavesRow[]> {
+  let q = db.from("top_saves").select("*");
+  if (competitionId) q = q.eq("competition_id", competitionId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return ((data ?? []) as SavesRow[])
+    .filter((r) => r.saves > 0)
+    .sort((a, b) => b.saves - a.saves || b.clean_sheets - a.clean_sheets || a.matches - b.matches);
 }
 
 export async function fetchPlayerStats(competitionId?: string): Promise<PlayerStatRow[]> {
@@ -324,6 +371,11 @@ export async function deletePlayerGoals(playerId: string) {
   if (error) throw error;
 }
 
+export async function deletePlayerSaves(playerId: string) {
+  const { error } = await db.from("match_events").delete().eq("player_id", playerId).eq("event_type", "save");
+  if (error) throw error;
+}
+
 export async function insertFixtures(rows: Partial<Fixture>[]) {
   const { error } = await db.from("fixtures").insert(rows);
   if (error) throw error;
@@ -353,5 +405,60 @@ export async function addEvent(row: Partial<MatchEvent>) {
 
 export async function deleteEvent(id: string) {
   const { error } = await db.from("match_events").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* Tournament management */
+
+export async function fetchTournaments(): Promise<Tournament[]> {
+  const { data, error } = await db
+    .from("tournaments")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Tournament[];
+}
+
+export async function fetchLatestTournament(): Promise<Tournament | null> {
+  const { data, error } = await db
+    .from("tournaments")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Tournament) || null;
+}
+
+export async function saveTournament(tournament: Omit<Tournament, "id" | "created_at">) {
+  const { data, error } = await db
+    .from("tournaments")
+    .insert([
+      {
+        type: tournament.type,
+        date: tournament.date,
+        home_team: tournament.home_team,
+        away_team: tournament.away_team,
+        home_score: tournament.home_score,
+        away_score: tournament.away_score,
+        winner: tournament.winner,
+        manager: tournament.manager,
+        participants: tournament.participants,
+        top_scorer_name: tournament.top_scorer_name,
+        top_scorer_goals: tournament.top_scorer_goals,
+        top_assister_name: tournament.top_assister_name,
+        top_assister_assists: tournament.top_assister_assists,
+        top_saver_name: tournament.top_saver_name,
+        top_saver_saves: tournament.top_saver_saves,
+      },
+    ])
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Tournament;
+}
+
+export async function deleteTournament(id: string) {
+  const { error } = await db.from("tournaments").delete().eq("id", id);
   if (error) throw error;
 }

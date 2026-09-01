@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { SiteLayout } from "@/components/SiteLayout";
-import { PageHeader, TeamBadge, ListSkeleton, EmptyState, formatKickoff } from "@/components/football-ui";
+import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchFixtures, fetchTeams, type Team } from "@/lib/football";
 
@@ -56,10 +56,7 @@ function FixturesPage() {
                             {home && <TeamBadge team={home} size={30} />}
                             <span className="truncate font-medium">{home?.name}</span>
                           </div>
-                          <div className="shrink-0 text-center text-xs text-muted-foreground">
-                            <div>{formatKickoff(f.kickoff)}</div>
-                            {f.venue && <div className="truncate">{f.venue}</div>}
-                          </div>
+
                           <div className="flex flex-1 items-center justify-end gap-2">
                             <span className="truncate font-medium">{away?.name}</span>
                             {away && <TeamBadge team={away} size={30} />}

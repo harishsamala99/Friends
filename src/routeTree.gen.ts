@@ -13,8 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CodeOfConductRouteImport } from './routes/code-of-conduct'
+import { Route as FinalRouteImport } from './routes/final'
 import { Route as FixturesRouteImport } from './routes/fixtures'
 import { Route as ResultsRouteImport } from './routes/results'
+import { Route as SavesRouteImport } from './routes/saves'
+import { Route as ScorecardRouteImport } from './routes/scorecard'
 import { Route as ScorersRouteImport } from './routes/scorers'
 import { Route as StandingsRouteImport } from './routes/standings'
 import { Route as TeamsRouteImport } from './routes/teams'
@@ -40,6 +43,11 @@ const CodeOfConductRoute = CodeOfConductRouteImport.update({
   path: '/code-of-conduct',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FinalRoute = FinalRouteImport.update({
+  id: '/final',
+  path: '/final',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FixturesRoute = FixturesRouteImport.update({
   id: '/fixtures',
   path: '/fixtures',
@@ -48,6 +56,16 @@ const FixturesRoute = FixturesRouteImport.update({
 const ResultsRoute = ResultsRouteImport.update({
   id: '/results',
   path: '/results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SavesRoute = SavesRouteImport.update({
+  id: '/saves',
+  path: '/saves',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScorecardRoute = ScorecardRouteImport.update({
+  id: '/scorecard',
+  path: '/scorecard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScorersRoute = ScorersRouteImport.update({
@@ -80,8 +98,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/code-of-conduct': typeof CodeOfConductRoute
+  '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
   '/results': typeof ResultsRoute
+  '/saves': typeof SavesRoute
+  '/scorecard': typeof ScorecardRoute
   '/scorers': typeof ScorersRoute
   '/standings': typeof StandingsRoute
   '/teams': typeof TeamsRoute
@@ -92,8 +113,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/code-of-conduct': typeof CodeOfConductRoute
+  '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
   '/results': typeof ResultsRoute
+  '/saves': typeof SavesRoute
+  '/scorecard': typeof ScorecardRoute
   '/scorers': typeof ScorersRoute
   '/standings': typeof StandingsRoute
   '/teams': typeof TeamsRoute
@@ -106,8 +130,11 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/code-of-conduct': typeof CodeOfConductRoute
+  '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
   '/results': typeof ResultsRoute
+  '/saves': typeof SavesRoute
+  '/scorecard': typeof ScorecardRoute
   '/scorers': typeof ScorersRoute
   '/standings': typeof StandingsRoute
   '/teams': typeof TeamsRoute
@@ -120,8 +147,11 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/code-of-conduct'
+    | '/final'
     | '/fixtures'
     | '/results'
+    | '/saves'
+    | '/scorecard'
     | '/scorers'
     | '/standings'
     | '/teams'
@@ -132,8 +162,11 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/code-of-conduct'
+    | '/final'
     | '/fixtures'
     | '/results'
+    | '/saves'
+    | '/scorecard'
     | '/scorers'
     | '/standings'
     | '/teams'
@@ -145,8 +178,11 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/code-of-conduct'
+    | '/final'
     | '/fixtures'
     | '/results'
+    | '/saves'
+    | '/scorecard'
     | '/scorers'
     | '/standings'
     | '/teams'
@@ -159,8 +195,11 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   CodeOfConductRoute: typeof CodeOfConductRoute
+  FinalRoute: typeof FinalRoute
   FixturesRoute: typeof FixturesRoute
   ResultsRoute: typeof ResultsRoute
+  SavesRoute: typeof SavesRoute
+  ScorecardRoute: typeof ScorecardRoute
   ScorersRoute: typeof ScorersRoute
   StandingsRoute: typeof StandingsRoute
   TeamsRoute: typeof TeamsRoute
@@ -197,6 +236,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CodeOfConductRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/final': {
+      id: '/final'
+      path: '/final'
+      fullPath: '/final'
+      preLoaderRoute: typeof FinalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/fixtures': {
       id: '/fixtures'
       path: '/fixtures'
@@ -209,6 +255,20 @@ declare module '@tanstack/react-router' {
       path: '/results'
       fullPath: '/results'
       preLoaderRoute: typeof ResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/saves': {
+      id: '/saves'
+      path: '/saves'
+      fullPath: '/saves'
+      preLoaderRoute: typeof SavesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scorecard': {
+      id: '/scorecard'
+      path: '/scorecard'
+      fullPath: '/scorecard'
+      preLoaderRoute: typeof ScorecardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scorers': {
@@ -265,8 +325,11 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   CodeOfConductRoute: CodeOfConductRoute,
+  FinalRoute: FinalRoute,
   FixturesRoute: FixturesRoute,
   ResultsRoute: ResultsRoute,
+  SavesRoute: SavesRoute,
+  ScorecardRoute: ScorecardRoute,
   ScorersRoute: ScorersRoute,
   StandingsRoute: StandingsRoute,
   TeamsRoute: TeamsRoute,
