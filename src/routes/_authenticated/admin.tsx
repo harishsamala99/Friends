@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import {
   POSITIONS,
   deleteFixture,
@@ -117,36 +118,55 @@ function AdminPage() {
             ) : (
               <Card>
                 <CardContent className="p-0">
-                  {(players.data ?? []).map((p) => (
-                    <div key={p.id} className="flex items-center gap-3 border-b border-border/50 p-3 last:border-0">
-                      <span className="w-8 text-center text-sm text-muted-foreground tabular-nums">
-                        {p.jersey_number ?? "-"}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{p.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {p.position} ·{" "}
-                          {(teams.data ?? []).find((t) => t.id === p.team_id)?.name ?? "No team"}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${p.name}`}
-                        onClick={async () => {
-                          try {
-                            await deletePlayer(p.id);
-                            toast.success("Player deleted");
-                            invalidate();
-                          } catch (e) {
-                            toast.error(e instanceof Error ? e.message : "Delete failed");
-                          }
-                        }}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  ))}
+                  <Accordion type="multiple" defaultValue={[(teams.data ?? [])[0]?.id ?? ""].filter(Boolean)}>
+                    {(teams.data ?? []).map((team) => {
+                      const teamPlayers = (players.data ?? []).filter((p) => p.team_id === team.id);
+                      if (teamPlayers.length === 0) return null;
+                      
+                      return (
+                        <AccordionItem key={team.id} value={team.id} className="border-b-0">
+                          <AccordionTrigger className="px-3 py-2 hover:no-underline">
+                            <div className="flex items-center gap-2">
+                              <TeamBadge team={team} size={24} />
+                              <span className="font-medium">{team.name}</span>
+                              <span className="text-xs text-muted-foreground">({teamPlayers.length})</span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-0 py-0">
+                            {teamPlayers.map((p) => (
+                              <div key={p.id} className="flex items-center gap-3 border-t border-border/50 p-3">
+                                <span className="w-8 text-center text-sm text-muted-foreground tabular-nums">
+                                  {p.jersey_number ?? "-"}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate font-medium">{p.name}</p>
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {p.position}
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label={`Delete ${p.name}`}
+                                  onClick={async () => {
+                                    try {
+                                      await deletePlayer(p.id);
+                                      toast.success("Player deleted");
+                                      invalidate();
+                                    } catch (e) {
+                                      toast.error(e instanceof Error ? e.message : "Delete failed");
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
                 </CardContent>
               </Card>
             )}
