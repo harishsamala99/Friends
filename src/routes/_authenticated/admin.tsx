@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Check, Pencil, Trash2, X } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,8 @@ import {
   insertTeams,
   insertFixtures,
   upsertPlayer,
+  upsertTeam,
+  type Team,
 } from "@/lib/football";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -82,29 +84,7 @@ function AdminPage() {
               <Card>
                 <CardContent className="p-0">
                   {(teams.data ?? []).map((t) => (
-                    <div key={t.id} className="flex items-center gap-3 border-b border-border/50 p-3 last:border-0">
-                      <TeamBadge team={t} size={32} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{t.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{t.city ?? "—"}</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${t.name}`}
-                        onClick={async () => {
-                          try {
-                            await deleteTeam(t.id);
-                            toast.success("Team deleted");
-                            invalidate();
-                          } catch (e) {
-                            toast.error(e instanceof Error ? e.message : "Delete failed");
-                          }
-                        }}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
+                    <TeamRow key={t.id} team={t} onSaved={invalidate} />
                   ))}
                 </CardContent>
               </Card>
@@ -203,6 +183,87 @@ function AdminPage() {
         </Tabs>
       </div>
     </SiteLayout>
+  );
+}
+
+function TeamRow({ team, onSaved }: { team: Team; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [manager, setManager] = useState(team.manager ?? "");
+  const save = useMutation({
+    mutationFn: () => upsertTeam({ id: team.id, manager: manager.trim() || null }),
+    onSuccess: () => {
+      toast.success("Manager updated");
+      setEditing(false);
+      onSaved();
+    },
+    onError: (e: Error) => toast.error(`Could not update manager: ${e.message}`),
+  });
+
+  function cancelEditing() {
+    setManager(team.manager ?? "");
+    setEditing(false);
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 border-b border-border/50 p-3 last:border-0">
+      <TeamBadge team={team} size={32} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{team.name}</p>
+        {editing ? (
+          <form
+            className="mt-2 flex max-w-sm items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              save.mutate();
+            }}
+          >
+            <Input
+              autoFocus
+              aria-label={`${team.name} manager`}
+              placeholder="Manager name"
+              value={manager}
+              onChange={(event) => setManager(event.target.value)}
+            />
+            <Button type="submit" size="icon" aria-label={`Save manager for ${team.name}`} disabled={save.isPending}>
+              <Check className="size-4" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" aria-label={`Cancel editing ${team.name}`} onClick={cancelEditing}>
+              <X className="size-4" />
+            </Button>
+          </form>
+        ) : (
+          <p className="truncate text-xs text-muted-foreground">
+            Manager: {team.manager ?? "Not assigned"}
+          </p>
+        )}
+      </div>
+      {!editing && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Edit manager for ${team.name}`}
+          onClick={() => setEditing(true)}
+        >
+          <Pencil className="size-4" />
+        </Button>
+      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={`Delete ${team.name}`}
+        onClick={async () => {
+          try {
+            await deleteTeam(team.id);
+            toast.success("Team deleted");
+            onSaved();
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Delete failed");
+          }
+        }}
+      >
+        <Trash2 className="size-4" />
+      </Button>
+    </div>
   );
 }
 
