@@ -344,6 +344,12 @@ export async function upsertTeam(row: Partial<Team>) {
   return data as Team;
 }
 
+export async function updateTeam(id: string, changes: Partial<Team>) {
+  const { data, error } = await db.from("teams").update(changes).eq("id", id).select().single();
+  if (error) throw error;
+  return data as Team;
+}
+
 export async function insertTeams(rows: { competition_id: string | null; name: string; crest_color: string }[]) {
   const { data, error } = await db.from("teams").insert(rows).select();
   if (error) throw error;
@@ -361,8 +367,29 @@ export async function upsertPlayer(row: Partial<Player>) {
   return data as Player;
 }
 
+export async function savePlayer(row: Partial<Player>) {
+  if (row.name?.trim() && row.team_id) {
+    const { data, error } = await db
+      .from("players")
+      .select("*")
+      .eq("team_id", row.team_id)
+      .eq("name", row.name.trim())
+      .maybeSingle();
+    if (error) throw error;
+
+    return upsertPlayer({
+      ...row,
+      ...(data ? { id: data.id } : {}),
+      name: row.name.trim(),
+      status: "Active",
+    });
+  }
+
+  return upsertPlayer(row);
+}
+
 export async function deletePlayer(id: string) {
-  const { error } = await db.from("players").delete().eq("id", id);
+  const { error } = await db.from("players").update({ status: "Inactive" }).eq("id", id);
   if (error) throw error;
 }
 

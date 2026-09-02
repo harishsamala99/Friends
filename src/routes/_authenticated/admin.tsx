@@ -22,8 +22,9 @@ import {
   fetchTeams,
   insertTeams,
   insertFixtures,
-  upsertPlayer,
+  savePlayer,
   upsertTeam,
+  updateTeam,
   type Team,
 } from "@/lib/football";
 
@@ -100,7 +101,9 @@ function AdminPage() {
                 <CardContent className="p-0">
                   <Accordion type="multiple" defaultValue={[(teams.data ?? [])[0]?.id ?? ""].filter(Boolean)}>
                     {(teams.data ?? []).map((team) => {
-                      const teamPlayers = (players.data ?? []).filter((p) => p.team_id === team.id);
+                      const teamPlayers = (players.data ?? []).filter(
+                        (p) => p.team_id === team.id && p.status === "Active",
+                      );
                       if (teamPlayers.length === 0) return null;
                       
                       return (
@@ -190,7 +193,7 @@ function TeamRow({ team, onSaved }: { team: Team; onSaved: () => void }) {
   const [editing, setEditing] = useState(false);
   const [manager, setManager] = useState(team.manager ?? "");
   const save = useMutation({
-    mutationFn: () => upsertTeam({ id: team.id, manager: manager.trim() || null }),
+    mutationFn: () => updateTeam(team.id, { manager: manager.trim() || null }),
     onSuccess: () => {
       toast.success("Manager updated");
       setEditing(false);
@@ -424,7 +427,7 @@ function PlayerForm({
 
   const save = useMutation({
     mutationFn: async () =>
-      upsertPlayer({
+      savePlayer({
         name,
         team_id: teamId || null,
         position,
