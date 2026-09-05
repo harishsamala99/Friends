@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, X, RotateCcw, Trophy, BarChart3, Save, Zap, Crown, Users } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Plus, X, Trash2, RotateCcw, Trophy, BarChart3, Save, Zap, Crown, Users, ChevronDown, ChevronUp } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchTeams, fetchPlayers, saveTournament as saveTournamentToDB, fetchTournaments, deleteTournament as deleteTournamentFromDB, type Team, type Player as FootballPlayer } from "@/lib/football";
+import { fetchCompetitions, fetchTeams, fetchPlayers, fetchFixtures, insertFixtures, deleteFixture, saveTournament as saveTournamentToDB, updateTournament, fetchTournaments, deleteTournament as deleteTournamentFromDB, type Fixture, type Team, type Player as FootballPlayer } from "@/lib/football";
 import {
   Select,
   SelectContent,
@@ -71,6 +72,8 @@ interface TeamData {
 
 interface Tournament {
   id: string;
+  tournamentName: string;
+  status: "draft" | "completed";
   type: string;
   date: string;
   homeTeam: string;
@@ -101,15 +104,248 @@ const INITIAL_AWAY_PLAYERS: Player[] = [
   { id: "a3", name: "GK Player", isGK: true },
 ];
 
+function TournamentSetup({
+  name,
+  onNameChange,
+  teams,
+  competitionId,
+  tournamentId,
+  fixtures,
+  onFixturesSaved,
+  tournaments,
+  onCreateTournament,
+  onSelectTournament,
+  onDeleteTournament,
+  creating,
+  isCreated,
+}: {
+  name: string;
+  onNameChange: (name: string) => void;
+  teams: Team[];
+  competitionId: string | null;
+  tournamentId: string;
+  fixtures: Fixture[];
+  onFixturesSaved: () => void;
+  tournaments: Tournament[];
+  onCreateTournament: () => void;
+  onSelectTournament: (tournament: Tournament) => void;
+  onDeleteTournament: (tournamentId: string) => void;
+  creating: boolean;
+  isCreated: boolean;
+}) {
+  const [homeId, setHomeId] = useState("");
+  const [awayId, setAwayId] = useState("");
+  const [matchCount, setMatchCount] = useState("1");
+  const [saving, setSaving] = useState(false);
+
+  async function scheduleFixtures() {
+    if (!isCreated) return toast.error("Create the tournament before adding fixtures");
+    if (!homeId || !awayId || homeId === awayId) return toast.error("Pick two different teams");
+
+    const fixtureCompetitionId = competitionId
+      ?? teams.find((team) => team.id === homeId)?.competition_id
+      ?? teams.find((team) => team.id === awayId)?.competition_id;
+    if (!fixtureCompetitionId) return toast.error("The selected teams are not linked to a competition");
+
+    const count = Math.max(1, Math.min(50, Number(matchCount) || 1));
+    const firstMatchday = Math.max(0, ...fixtures.map((fixture) => fixture.matchday)) + 1;
+    setSaving(true);
+    try {
+      await insertFixtures(
+        Array.from({ length: count }, (_, index) => ({
+          competition_id: fixtureCompetitionId,
+          tournament_id: tournamentId,
+          home_team_id: homeId,
+          away_team_id: awayId,
+          matchday: firstMatchday + index,
+          kickoff: new Date(Date.now() + index * 7 * 24 * 3600 * 1000).toISOString(),
+        })),
+      );
+      toast.success(`${count} fixture${count === 1 ? "" : "s"} added to ${name.trim() || "your tournament"}`);
+      onFixturesSaved();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not add fixtures");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeFixture(fixtureId: string) {
+    if (!window.confirm("Delete this fixture from the tournament?")) return;
+    try {
+      await deleteFixture(fixtureId);
+      toast.success("Fixture deleted");
+      onFixturesSaved();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete fixture");
+    }
+  }
+
+  const teamNames = new Map(teams.map((team) => [team.id, team.name]));
+
+  return (
+    <Card className="mb-8 border-2 border-accent/40 bg-gradient-to-br from-card/98 via-card/96 to-card/94 shadow-lg">
+      <CardHeader className="border-b border-accent/20 bg-gradient-to-r from-accent/15 to-accent/5">
+        <CardTitle className="flex items-center gap-2">🏆 Create your tournament</CardTitle>
+        <p className="text-sm text-muted-foreground">Name it, schedule fixtures, then create the final below.</p>
+      </CardHeader>
+      <CardContent className="space-y-5 p-6">
+        <div>
+          <Label htmlFor="tournament-name">Tournament name</Label>
+          <Input
+            id="tournament-name"
+            value={name}
+            onChange={(event) => onNameChange(event.target.value)}
+            placeholder="e.g. Summer Cup 2026"
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <Label htmlFor="tournament-fixture-home">Home team</Label>
+            <select
+              id="tournament-fixture-home"
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              value={homeId}
+              onChange={(event) => setHomeId(event.target.value)}
+            >
+              <option value="">Select team</option>
+              {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="tournament-fixture-away">Away team</Label>
+            <select
+              id="tournament-fixture-away"
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              value={awayId}
+              onChange={(event) => setAwayId(event.target.value)}
+            >
+              <option value="">Select team</option>
+              {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="tournament-fixture-count">Number of fixtures</Label>
+            <Input id="tournament-fixture-count" type="number" min="1" max="50" value={matchCount} onChange={(event) => setMatchCount(event.target.value)} />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" onClick={onCreateTournament} disabled={creating || !name.trim()}>
+            {creating ? "Creating tournament..." : "Create tournament"}
+          </Button>
+          <Button type="button" variant="outline" onClick={scheduleFixtures} disabled={saving || !isCreated}>
+            {saving ? "Adding fixtures..." : "Add fixtures"}
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            {isCreated
+              ? `${fixtures.length} fixture${fixtures.length === 1 ? "" : "s"} currently scheduled. Select two teams to add more.`
+              : "Create or select a tournament to enable fixtures"}
+          </span>
+        </div>
+        <div className="space-y-2 border-t pt-5">
+          <h3 className="font-semibold">Current tournament fixtures</h3>
+          {fixtures.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No fixtures yet. Add the first fixture above.</p>
+          ) : (
+            <div className="divide-y rounded-md border">
+              {fixtures.map((fixture) => (
+                <div key={fixture.id} className="flex flex-wrap items-center gap-3 p-3">
+                  <span className="w-20 text-xs text-muted-foreground">Matchday {fixture.matchday}</span>
+                  <span className="min-w-45 flex-1 font-medium">
+                    {teamNames.get(fixture.home_team_id) ?? "Home team"} <span className="text-muted-foreground">vs</span>{" "}
+                    {teamNames.get(fixture.away_team_id) ?? "Away team"}
+                  </span>
+                  <span className="rounded bg-muted px-2 py-1 text-sm font-semibold tabular-nums">
+                    {fixture.home_score ?? "-"} - {fixture.away_score ?? "-"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{fixture.status}</span>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/match/$fixtureId" params={{ fixtureId: fixture.id }}>Edit</Link>
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" aria-label="Delete fixture" onClick={() => void removeFixture(fixture.id)}>
+                    <X className="size-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="space-y-2 border-t pt-5">
+          <h3 className="font-semibold">Saved tournaments</h3>
+          {tournaments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Your completed tournaments will appear here after you save the final.</p>
+          ) : (
+            <div className="space-y-2">
+              {tournaments.slice(0, 5).map((tournament) => (
+                <div key={tournament.id} className="rounded-md border bg-muted/20 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold">{tournament.tournamentName}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{tournament.date}</span>
+                      <Button
+                        type="button"
+                        variant={tournament.id === tournamentId ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => onSelectTournament(tournament)}
+                      >
+                        <Plus className="size-4" />
+                        {tournament.id === tournamentId ? "Selected" : "Create fixtures"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${tournament.tournamentName}`}
+                        onClick={() => onDeleteTournament(tournament.id)}
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="mt-1 text-sm">
+                    Final: {tournament.homeTeam} {tournament.homeScore} - {tournament.awayScore} {tournament.awayTeam}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Top scorer: {tournament.stats.topScorer.name} ({tournament.stats.topScorer.goals}) | Top saves: {tournament.stats.topSaver.name} ({tournament.stats.topSaver.saves})
+                  </p>
+                </div>
+              ))}
+              {tournaments.length > 5 && <p className="text-xs text-muted-foreground">Showing the 5 most recent tournaments. Open the Tournaments tab for the full history.</p>}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function FinalMatchScorecard() {
   // Fetch teams and players
   const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
   const playersQuery = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
+  const competitionsQuery = useQuery({ queryKey: ["competitions"], queryFn: fetchCompetitions });
+  const competitionId = competitionsQuery.data?.[0]?.id ?? teamsQuery.data?.find((team) => team.competition_id)?.competition_id;
+  const [tournamentId, setTournamentId] = useState("");
+  const [expandedTournamentId, setExpandedTournamentId] = useState<string | null>(null);
+  const fixturesQuery = useQuery({
+    queryKey: ["fixtures", tournamentId],
+    queryFn: () => fetchFixtures(undefined, tournamentId),
+    enabled: Boolean(tournamentId),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+  const tournamentFixturesQuery = useQuery({
+    queryKey: ["fixtures", expandedTournamentId],
+    queryFn: () => fetchFixtures(undefined, expandedTournamentId ?? undefined),
+    enabled: Boolean(expandedTournamentId),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
   const tournamentsQuery = useQuery({ queryKey: ["tournaments"], queryFn: () => fetchTournaments() });
   const queryClient = useQueryClient();
 
   const saveTournamentMutation = useMutation({
-    mutationFn: saveTournamentToDB,
+    mutationFn: ({ id, changes }: { id: string; changes: Parameters<typeof updateTournament>[1] }) => updateTournament(id, changes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tournaments"] });
       toast.success("Tournament saved successfully!");
@@ -119,10 +355,62 @@ export function FinalMatchScorecard() {
     },
   });
 
+  const createTournamentMutation = useMutation({
+    mutationFn: saveTournamentToDB,
+    onSuccess: (createdTournament) => {
+      const createdId = createdTournament?.id ?? tournamentId;
+      if (createdId) {
+        setTournamentId(createdId);
+        localStorage.setItem("current-tournament-id", createdId);
+      }
+
+      const nextTournament: Tournament = {
+        id: createdId,
+        tournamentName: createdTournament?.tournament_name || tournamentForm.name.trim() || `${home.name} vs ${away.name}`,
+        status: createdTournament?.status || "draft",
+        type: createdTournament?.type || tournamentForm.type,
+        date: createdTournament?.date || new Date().toISOString().split("T")[0],
+        homeTeam: createdTournament?.home_team || "TBD",
+        awayTeam: createdTournament?.away_team || "TBD",
+        homeScore: createdTournament?.home_score ?? 0,
+        awayScore: createdTournament?.away_score ?? 0,
+        winner: createdTournament?.winner || "TBD",
+        manager: createdTournament?.manager || tournamentForm.manager || "",
+        participants: createdTournament?.participants ?? tournamentForm.participants,
+        stats: {
+          topScorer: {
+            name: createdTournament?.top_scorer_name || "None",
+            goals: createdTournament?.top_scorer_goals ?? 0,
+          },
+          topAssister: {
+            name: createdTournament?.top_assister_name || "None",
+            assists: createdTournament?.top_assister_assists ?? 0,
+          },
+          topSaver: {
+            name: createdTournament?.top_saver_name || "None",
+            saves: createdTournament?.top_saver_saves ?? 0,
+          },
+        },
+      };
+
+      setTournaments((prevTournaments) => [nextTournament, ...prevTournaments.filter((t) => t.id !== createdId)]);
+      queryClient.setQueryData(["tournaments"], (existingTournaments: Tournament[] | undefined) => [
+        nextTournament,
+        ...(existingTournaments ?? []).filter((t) => t.id !== createdId),
+      ]);
+      void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+      toast.success("Tournament created. You can now add fixtures.");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to create tournament");
+    },
+  });
+
   const deleteTournamentMutation = useMutation({
     mutationFn: deleteTournamentFromDB,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+      queryClient.invalidateQueries({ queryKey: ["fixtures"] });
       toast.success("Tournament deleted successfully!");
     },
     onError: (error) => {
@@ -154,10 +442,22 @@ export function FinalMatchScorecard() {
   const [editingPlayerName, setEditingPlayerName] = useState<string>("");
   const [saveTournamentOpen, setSaveTournamentOpen] = useState(false);
   const [tournamentForm, setTournamentForm] = useState({
+    name: "",
     type: "League",
     manager: "",
     participants: 12,
+    topScorerName: "",
+    topScorerGoals: "",
+    topSaverName: "",
+    topSaverSaves: "",
   });
+
+  useEffect(() => {
+    const stored = localStorage.getItem("current-tournament-id");
+    const id = stored || crypto.randomUUID();
+    localStorage.setItem("current-tournament-id", id);
+    setTournamentId(id);
+  }, []);
 
   // Load players for selected team
   const loadTeamPlayers = (teamId: string, side: "home" | "away") => {
@@ -190,22 +490,29 @@ export function FinalMatchScorecard() {
   };
 
   // Delete tournament from both database and localStorage
-  const handleDeleteTournament = async (tournamentId: string) => {
+  const handleDeleteTournament = async (id: string) => {
+    if (!window.confirm("Delete this tournament and its saved final?")) return;
+
     // Remove from local state immediately
     setTournaments((prevTournaments) =>
-      prevTournaments.filter((t) => t.id !== tournamentId)
+      prevTournaments.filter((t) => t.id !== id)
     );
 
+    if (id === tournamentId) {
+      setTournamentId("");
+      localStorage.removeItem("current-tournament-id");
+    }
+
     // Try to delete from database if it's a UUID (database ID)
-    if (tournamentId.includes('-') && tournamentId.length === 36) {
-      deleteTournamentMutation.mutate(tournamentId);
+    if (id.includes('-') && id.length === 36) {
+      deleteTournamentMutation.mutate(id);
     } else {
       // If it's a localStorage ID, just remove from localStorage
       const saved = localStorage.getItem("tournaments");
       if (saved) {
         try {
           const localTournaments: Tournament[] = JSON.parse(saved);
-          const filtered = localTournaments.filter((t) => t.id !== tournamentId);
+          const filtered = localTournaments.filter((t) => t.id !== id);
           localStorage.setItem("tournaments", JSON.stringify(filtered));
           toast.success("Tournament deleted successfully!");
         } catch (e) {
@@ -222,6 +529,8 @@ export function FinalMatchScorecard() {
     if (tournamentsQuery.data && tournamentsQuery.data.length > 0) {
       const dbTournaments: Tournament[] = tournamentsQuery.data.map((t) => ({
         id: t.id,
+        tournamentName: t.tournament_name || t.type,
+        status: t.status,
         type: t.type,
         date: t.date,
         homeTeam: t.home_team,
@@ -251,6 +560,54 @@ export function FinalMatchScorecard() {
       }
     }
   }, [tournamentsQuery.data]);
+
+  const createTournament = () => {
+    const nextTournamentName = tournamentForm.name.trim() || `${home.name} vs ${away.name}`;
+    setTournamentForm((current) => ({ ...current, name: nextTournamentName }));
+
+    createTournamentMutation.mutate({
+      tournament_name: nextTournamentName,
+      type: tournamentForm.type,
+      date: new Date().toISOString().split("T")[0],
+      home_team: "TBD",
+      away_team: "TBD",
+      home_score: 0,
+      away_score: 0,
+      winner: "TBD",
+      manager: tournamentForm.manager || null,
+      participants: tournamentForm.participants,
+      top_scorer_name: null,
+      top_scorer_goals: 0,
+      top_assister_name: null,
+      top_assister_assists: 0,
+      top_saver_name: null,
+      top_saver_saves: 0,
+      status: "draft",
+    });
+  };
+
+  const isCurrentTournamentCreated = tournaments.some((tournament) => tournament.id === tournamentId);
+
+  const selectTournamentForFixtures = (tournament: Tournament) => {
+    setTournamentId(tournament.id);
+    localStorage.setItem("current-tournament-id", tournament.id);
+    setTournamentForm((current) => ({
+      ...current,
+      name: tournament.tournamentName,
+      type: tournament.type,
+    }));
+    toast.success(`Now creating fixtures for ${tournament.tournamentName}`);
+  };
+
+  useEffect(() => {
+    const selectedTournament = tournaments.find((tournament) => tournament.id === tournamentId);
+    if (!selectedTournament) return;
+    setTournamentForm((current) => ({
+      ...current,
+      name: selectedTournament.tournamentName,
+      type: selectedTournament.type,
+    }));
+  }, [tournamentId, tournaments]);
 
   // Save tournaments to localStorage
   useEffect(() => {
@@ -522,8 +879,14 @@ export function FinalMatchScorecard() {
     const awayScore = away.goals.length;
     const winner = homeScore > awayScore ? home.name : awayScore > homeScore ? away.name : "Draw";
     const stats = calculateStats();
+    const topScorerName = tournamentForm.topScorerName.trim() || stats.topScorer.name;
+    const topSaverName = tournamentForm.topSaverName.trim() || stats.topSaver.name;
+    const topScorerGoals = tournamentForm.topScorerGoals === "" ? stats.topScorer.goals : Number(tournamentForm.topScorerGoals);
+    const topSaverSaves = tournamentForm.topSaverSaves === "" ? stats.topSaver.saves : Number(tournamentForm.topSaverSaves);
 
     const newTournament = {
+      id: tournamentId,
+      tournament_name: tournamentForm.name.trim() || `${home.name} vs ${away.name}`,
       type: tournamentForm.type,
       date: new Date().toISOString().split('T')[0],
       home_team: home.name,
@@ -533,20 +896,26 @@ export function FinalMatchScorecard() {
       winner,
       manager: tournamentForm.manager || null,
       participants: tournamentForm.participants,
-      top_scorer_name: stats.topScorer.name,
-      top_scorer_goals: stats.topScorer.goals,
+      top_scorer_name: topScorerName,
+      top_scorer_goals: topScorerGoals,
       top_assister_name: stats.topAssister.name,
       top_assister_assists: stats.topAssister.assists,
-      top_saver_name: stats.topSaver.name,
-      top_saver_saves: stats.topSaver.saves,
+      top_saver_name: topSaverName,
+      top_saver_saves: topSaverSaves,
+      status: "completed" as const,
     };
 
-    // Save to database
-    saveTournamentMutation.mutate(newTournament);
+    if (isCurrentTournamentCreated) {
+      const { id: _id, ...changes } = newTournament;
+      saveTournamentMutation.mutate({ id: tournamentId, changes });
+    } else {
+      createTournamentMutation.mutate(newTournament);
+    }
 
     // Also save to localStorage for backwards compatibility
-    const localTournament = {
-      id: `tournament-${Date.now()}`,
+    const localTournament: Tournament = {
+      id: tournamentId,
+      tournamentName: newTournament.tournament_name,
       type: newTournament.type,
       date: newTournament.date,
       homeTeam: newTournament.home_team,
@@ -554,18 +923,18 @@ export function FinalMatchScorecard() {
       homeScore: newTournament.home_score,
       awayScore: newTournament.away_score,
       winner: newTournament.winner,
-      manager: newTournament.manager,
+      manager: newTournament.manager || "",
       participants: newTournament.participants,
       stats: {
-        topScorer: { name: stats.topScorer.name, goals: stats.topScorer.goals },
+        topScorer: { name: topScorerName, goals: topScorerGoals },
         topAssister: { name: stats.topAssister.name, assists: stats.topAssister.assists },
-        topSaver: { name: stats.topSaver.name, saves: stats.topSaver.saves },
+        topSaver: { name: topSaverName, saves: topSaverSaves },
       },
     };
 
-    setTournaments([localTournament, ...tournaments]);
+    setTournaments((prevTournaments) => [localTournament, ...prevTournaments.filter((t) => t.id !== tournamentId)]);
     setSaveTournamentOpen(false);
-    setTournamentForm({ type: "League", manager: "", participants: 12 });
+    setTournamentForm({ name: "", type: "League", manager: "", participants: 12, topScorerName: "", topScorerGoals: "", topSaverName: "", topSaverSaves: "" });
   };
 
   // Reset match
@@ -590,10 +959,15 @@ export function FinalMatchScorecard() {
   const outfieldPlayers = (players: Player[]) => players.filter((p) => !p.isGK);
 
   return (
-    <Tabs defaultValue="match" className="min-h-screen bg-gradient-to-b from-pitch via-pitch/95 to-pitch/90">
+    <Tabs defaultValue="tournament" className="min-h-screen bg-gradient-to-b from-pitch via-pitch/95 to-pitch/90">
       <TabsList className="sticky top-0 z-10 w-full justify-start rounded-none border-b-2 border-pitch-foreground/20 bg-card/95 backdrop-blur-xl p-0 shadow-lg">
+        <TabsTrigger value="tournament" className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary">
+          <Trophy className="h-4 w-4 mr-2" />
+          <span className="text-base sm:text-lg">Create Tournament</span>
+        </TabsTrigger>
         <TabsTrigger value="match" className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary">
-          <span className="text-base sm:text-lg">Match</span>
+          <Zap className="h-4 w-4 mr-2" />
+          <span className="text-base sm:text-lg">Create Final</span>
         </TabsTrigger>
         <TabsTrigger value="tournaments" className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary">
           <Trophy className="h-4 w-4 mr-2" />
@@ -605,7 +979,28 @@ export function FinalMatchScorecard() {
         </TabsTrigger>
       </TabsList>
 
-      {/* MATCH TAB */}
+      {/* TOURNAMENT SETUP TAB */}
+      <TabsContent value="tournament" className="py-8 px-4 sm:py-12">
+        <div className="mx-auto max-w-6xl">
+          <TournamentSetup
+            name={tournamentForm.name}
+            onNameChange={(name) => setTournamentForm({ ...tournamentForm, name })}
+            teams={teamsQuery.data ?? []}
+            competitionId={competitionId ?? null}
+            tournamentId={tournamentId}
+            fixtures={fixturesQuery.data ?? []}
+            onFixturesSaved={() => void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] })}
+            tournaments={tournaments}
+            onCreateTournament={createTournament}
+            onSelectTournament={selectTournamentForFixtures}
+            onDeleteTournament={(id) => void handleDeleteTournament(id)}
+            creating={createTournamentMutation.isPending}
+            isCreated={isCurrentTournamentCreated}
+          />
+        </div>
+      </TabsContent>
+
+      {/* FINAL MATCH TAB */}
       <TabsContent value="match" className="py-8 px-4 sm:py-12">
         <div className="mx-auto max-w-6xl">
           {/* Header */}
@@ -619,6 +1014,38 @@ export function FinalMatchScorecard() {
             </div>
             <p className="text-pitch-foreground/70 text-sm sm:text-base">Create, manage, and save championship matches</p>
           </div>
+
+          <Card className="mb-8 border-2 border-primary/30 bg-card/95">
+            <CardContent className="grid gap-3 p-5 sm:grid-cols-[1fr_auto] sm:items-end">
+              <div>
+                <Label htmlFor="final-tournament">Tournament this final belongs to</Label>
+                <Select
+                  value={isCurrentTournamentCreated ? tournamentId : ""}
+                  onValueChange={(value) => {
+                    setTournamentId(value);
+                    const selected = tournaments.find((tournament) => tournament.id === value);
+                    if (selected) {
+                      setTournamentForm((current) => ({ ...current, name: selected.tournamentName, type: selected.type }));
+                    }
+                  }}
+                >
+                  <SelectTrigger id="final-tournament">
+                    <SelectValue placeholder="Select a created tournament" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tournaments.map((tournament) => (
+                      <SelectItem key={tournament.id} value={tournament.id}>
+                        {tournament.tournamentName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {isCurrentTournamentCreated ? `Saving for ${tournamentForm.name || "selected tournament"}` : "Create a tournament in the first tab before recording a final."}
+              </p>
+            </CardContent>
+          </Card>
 
           {/* Current Teams Selection */}
           <Card className="mb-8 border-2 border-accent/40 bg-gradient-to-br from-card/98 via-card/96 to-card/94 backdrop-blur-sm shadow-lg">
@@ -721,17 +1148,27 @@ export function FinalMatchScorecard() {
                     <DialogTrigger asChild>
                       <Button className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg">
                         <Crown className="h-4 w-4" />
-                        Save as Tournament
+                        {isCurrentTournamentCreated ? "Save Final" : "Create Tournament & Save Final"}
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Save Tournament</DialogTitle>
+                        <DialogTitle>{isCurrentTournamentCreated ? "Save Final" : "Create Tournament"}</DialogTitle>
                         <DialogDescription>
-                          Save this match as a tournament record
+                          {isCurrentTournamentCreated
+                            ? `Save this final to ${tournamentForm.name || "the selected tournament"}.`
+                            : "Name your tournament, record the final, and save its tournament-wide leaders."}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
+                        <div>
+                          <Label>Tournament Name</Label>
+                          <Input
+                            value={tournamentForm.name}
+                            onChange={(e) => setTournamentForm({ ...tournamentForm, name: e.target.value })}
+                            placeholder="e.g. Summer Cup 2026"
+                          />
+                        </div>
                         <div>
                           <Label>Tournament Type</Label>
                           <Select
@@ -774,6 +1211,50 @@ export function FinalMatchScorecard() {
                             }
                             min="2"
                           />
+                        </div>
+                        <div className="border-t pt-4">
+                          <p className="mb-3 text-sm font-semibold">Whole-tournament leaders</p>
+                          <p className="mb-3 text-xs text-muted-foreground">
+                            The final teams and score above are saved as the final. Add the leaders from all tournament matches here.
+                          </p>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <Label>Top goal scorer</Label>
+                              <Input
+                                value={tournamentForm.topScorerName}
+                                onChange={(e) => setTournamentForm({ ...tournamentForm, topScorerName: e.target.value })}
+                                placeholder="Player name"
+                              />
+                            </div>
+                            <div>
+                              <Label>Total goals</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={tournamentForm.topScorerGoals}
+                                onChange={(e) => setTournamentForm({ ...tournamentForm, topScorerGoals: e.target.value })}
+                                placeholder={`${calculateStats().topScorer.goals}`}
+                              />
+                            </div>
+                            <div>
+                              <Label>Top saves</Label>
+                              <Input
+                                value={tournamentForm.topSaverName}
+                                onChange={(e) => setTournamentForm({ ...tournamentForm, topSaverName: e.target.value })}
+                                placeholder="Goalkeeper name"
+                              />
+                            </div>
+                            <div>
+                              <Label>Total saves</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={tournamentForm.topSaverSaves}
+                                onChange={(e) => setTournamentForm({ ...tournamentForm, topSaverSaves: e.target.value })}
+                                placeholder={`${calculateStats().topSaver.saves}`}
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                       <DialogFooter>
@@ -1468,8 +1949,24 @@ export function FinalMatchScorecard() {
           ) : (
             <div className="grid gap-4">
               {tournaments.map((tournament) => (
-                <Card key={tournament.id} className="border-2 border-primary/30 bg-gradient-to-br from-card/98 via-card/96 to-card/94 hover:shadow-lg transition-shadow">
+                <Card
+                  key={tournament.id}
+                  className="border-2 border-primary/30 bg-gradient-to-br from-card/98 via-card/96 to-card/94 hover:shadow-lg transition-shadow"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setExpandedTournamentId((current) => current === tournament.id ? null : tournament.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setExpandedTournamentId((current) => current === tournament.id ? null : tournament.id);
+                    }
+                  }}
+                >
                   <CardContent className="p-6">
+                    <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2 border-b pb-4">
+                      <h2 className="font-display text-2xl font-bold">{tournament.tournamentName}</h2>
+                      <span className="text-sm text-muted-foreground">{tournament.date}</span>
+                    </div>
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                       <div>
                         <p className="text-sm text-muted-foreground mb-1 font-semibold">Match</p>
@@ -1501,6 +1998,56 @@ export function FinalMatchScorecard() {
                           <p>🥅 Saver: <span className="font-semibold">{tournament.stats.topSaver.name}</span> ({tournament.stats.topSaver.saves})</p>
                         </div>
                       </div>
+                    </div>
+                    <div className="mt-5 border-t pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setExpandedTournamentId((current) => current === tournament.id ? null : tournament.id);
+                        }}
+                      >
+                        {expandedTournamentId === tournament.id ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                        {expandedTournamentId === tournament.id ? "Hide fixtures" : "View fixtures"}
+                      </Button>
+                      {expandedTournamentId === tournament.id && (
+                        <div className="mt-4 space-y-2">
+                          {tournamentFixturesQuery.isLoading ? (
+                            <p className="text-sm text-muted-foreground">Loading fixtures...</p>
+                          ) : tournamentFixturesQuery.isError ? (
+                            <p className="text-sm text-destructive">
+                              Could not load this tournament&apos;s fixtures. Apply the tournament fixture migration in Supabase, then refresh.
+                            </p>
+                          ) : (tournamentFixturesQuery.data ?? []).length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No fixtures created for this tournament yet.</p>
+                          ) : (
+                            <div className="divide-y rounded-md border">
+                              {(tournamentFixturesQuery.data ?? []).map((fixture) => {
+                                const homeTeam = teamsQuery.data?.find((team) => team.id === fixture.home_team_id);
+                                const awayTeam = teamsQuery.data?.find((team) => team.id === fixture.away_team_id);
+                                return (
+                                  <div key={fixture.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
+                                    <span className="w-20 text-xs text-muted-foreground">Matchday {fixture.matchday}</span>
+                                    <span className="min-w-50 flex-1 font-medium">
+                                      {homeTeam?.name ?? "Home team"} <span className="text-muted-foreground">vs</span> {awayTeam?.name ?? "Away team"}
+                                    </span>
+                                    <span className="rounded bg-muted px-2 py-1 font-semibold tabular-nums">
+                                      {fixture.home_score ?? "-"} - {fixture.away_score ?? "-"}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">{fixture.status}</span>
+                                    <Button asChild variant="ghost" size="sm">
+                                      <Link to="/match/$fixtureId" params={{ fixtureId: fixture.id }}>Edit</Link>
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="mt-4 flex justify-end">
                       <AlertDialog>

@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
-import { fetchStandings } from "@/lib/football";
+import { fetchCompetitions, fetchTournamentStandings, fetchTournaments, type Tournament } from "@/lib/football";
 
 export const Route = createFileRoute("/standings")({
   head: () => ({
@@ -19,18 +20,55 @@ export const Route = createFileRoute("/standings")({
 });
 
 function StandingsPage() {
+  const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: fetchTournaments });
+  const competitions = useQuery({ queryKey: ["competitions"], queryFn: fetchCompetitions });
+  const [tournamentId, setTournamentId] = useState("");
+  const tournamentList: Tournament[] = Array.isArray(tournaments.data) ? tournaments.data : [];
   const standings = useQuery({
-    queryKey: ["standings"],
-    queryFn: () => fetchStandings(),
+    queryKey: ["standings", tournamentId, competitions.data?.[0]?.id],
+    queryFn: () => fetchTournamentStandings(tournamentId, competitions.data?.[0]?.id),
+    enabled: Boolean(tournamentId),
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
 
+  useEffect(() => {
+    const storedId = localStorage.getItem("current-tournament-id");
+    const firstTournament = tournamentList[0];
+    const selectedId = tournamentList.some((tournament) => tournament.id === storedId) ? storedId : firstTournament?.id ?? "";
+    setTournamentId(selectedId);
+  }, [tournamentList]);
+
+  const selectedTournament = tournamentList.find((tournament) => tournament.id === tournamentId);
+
   return (
     <SiteLayout>
-      <PageHeader title="League Table" subtitle="Standings update automatically from recorded results." />
+      <PageHeader
+        title={selectedTournament?.tournament_name ?? "League Table"}
+        subtitle="Standings update automatically from recorded results."
+      />
       <div className="mx-auto max-w-5xl px-4 py-10">
-        {standings.isLoading ? (
+        {tournamentList.length > 0 && (
+          <div className="mb-6 flex items-center gap-3">
+            <label htmlFor="standings-tournament" className="text-sm font-medium">Tournament</label>
+            <select
+              id="standings-tournament"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={tournamentId}
+              onChange={(event) => {
+                setTournamentId(event.target.value);
+                localStorage.setItem("current-tournament-id", event.target.value);
+              }}
+            >
+              {tournamentList.map((tournament) => (
+                <option key={tournament.id} value={tournament.id}>{tournament.tournament_name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {tournaments.isError ? (
+          <EmptyState message="Unable to load tournaments. Refresh the page and try again." />
+        ) : standings.isLoading ? (
           <ListSkeleton rows={10} />
         ) : (standings.data ?? []).length === 0 ? (
           <EmptyState message="No standings available yet." />

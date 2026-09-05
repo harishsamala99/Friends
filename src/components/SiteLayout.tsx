@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 
 const NAV = [
   { to: "/", label: "Home" },
-  { to: "/fixtures", label: "Fixtures" },
-  { to: "/results", label: "Results" },
+  { to: "/fixtures", label: "Fixtures & Results" },
   { to: "/standings", label: "Standings" },
   { to: "/scorers", label: "Top Scorers" },
   { to: "/saves", label: "Top Saves" },
@@ -70,10 +69,10 @@ export function SiteLayout({ children }: { children: ReactNode }) {
                 variant="default"
                 size="sm"
                 className="gap-2 hidden sm:flex"
-                aria-label="Create Final Match"
+                aria-label="Create Tournament"
               >
                 <Zap className="size-4" />
-                Create Final
+                Create Tournament
               </Button>
             </Link>
             <ThemeToggle />
@@ -107,7 +106,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             >
               <div className="flex items-center gap-2">
                 <Zap className="size-4" />
-                Create Final
+                Create Tournament
               </div>
             </Link>
           </nav>

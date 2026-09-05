@@ -17,6 +17,8 @@ import {
 
 interface Tournament {
   id?: string;
+  tournamentName?: string;
+  tournament_name?: string | null;
   type: string;
   date: string;
   homeTeam?: string;
@@ -76,6 +78,7 @@ function Home() {
     if (tournament.data) {
       const dbTournament: Tournament = {
         id: tournament.data.id,
+        tournament_name: tournament.data.tournament_name,
         type: tournament.data.type,
         date: tournament.data.date,
         homeTeam: tournament.data.home_team,
@@ -157,6 +160,12 @@ function Home() {
 
             <Card className="border-3 border-pitch-foreground/30 bg-gradient-to-br from-card/98 via-card/96 to-card/94 shadow-2xl">
               <CardContent className="p-6 sm:p-8">
+                <div className="mb-6 rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
+                  <p className="text-sm font-semibold text-muted-foreground">Final of</p>
+                  <p className="text-xl font-bold text-primary">
+                    {latestTournament.tournament_name || latestTournament.tournamentName || latestTournament.type}
+                  </p>
+                </div>
                 <div className="grid gap-8 md:grid-cols-2">
                   {/* Match Score Display */}
                   <div className="flex flex-col justify-between">
