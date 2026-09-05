@@ -20,6 +20,7 @@ import {
   fetchFixtures,
   fetchPlayers,
   fetchTeams,
+  fetchTournaments,
   insertTeams,
   insertFixtures,
   savePlayer,
@@ -48,6 +49,7 @@ function AdminPage() {
   const competitions = useQuery({ queryKey: ["competitions"], queryFn: fetchCompetitions });
   const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
   const players = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
+  const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: fetchTournaments });
   const fixtures = useQuery({ queryKey: ["fixtures"], queryFn: () => fetchFixtures() });
 
   const competition = competitions.data?.[0];
@@ -159,6 +161,11 @@ function AdminPage() {
             <FixtureTools
               competitionId={competition?.id ?? null}
               teams={teams.data ?? []}
+                tournamentId={
+                  (typeof window !== "undefined" ? localStorage.getItem("current-tournament-id") : null) ??
+                  tournaments.data?.[0]?.id ??
+                  null
+                }
               onSaved={invalidate}
             />
             {(fixtures.data ?? []).length === 0 ? (
@@ -496,10 +503,12 @@ function PlayerForm({
 function FixtureTools({
   competitionId,
   teams,
+  tournamentId,
   onSaved,
 }: {
   competitionId: string | null;
   teams: { id: string; name: string }[];
+  tournamentId: string | null;
   onSaved: () => void;
 }) {
   const [homeId, setHomeId] = useState("");
@@ -515,6 +524,7 @@ function FixtureTools({
       await insertFixtures(
         Array.from({ length: count }, (_, index) => ({
           competition_id: competitionId,
+          tournament_id: tournamentId,
           home_team_id: homeId,
           away_team_id: awayId,
           matchday: index + 1,

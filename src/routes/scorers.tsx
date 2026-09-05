@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, ListSkeleton, EmptyState } from "@/components/football-ui";
-import { fetchTopScorers } from "@/lib/football";
-import { deletePlayerGoals } from "@/lib/football";
+import { fetchTopScorers, fetchTournaments, deletePlayerGoals, type Tournament } from "@/lib/football";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/scorers")({
@@ -23,20 +23,56 @@ export const Route = createFileRoute("/scorers")({
 
 function ScorersPage() {
   const queryClient = useQueryClient();
-  const scorers = useQuery({ queryKey: ["scorers"], queryFn: () => fetchTopScorers() });
+  const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: fetchTournaments });
+  const [tournamentId, setTournamentId] = useState("");
+  const tournamentList: Tournament[] = Array.isArray(tournaments.data) ? tournaments.data : [];
+  const selectedTournament = tournamentList.find((tournament) => tournament.id === tournamentId);
+  const scorers = useQuery({
+    queryKey: ["scorers", tournamentId],
+    queryFn: () => fetchTopScorers(tournamentId),
+    enabled: Boolean(tournamentId),
+  });
+
+  useEffect(() => {
+    const storedId = localStorage.getItem("current-tournament-id");
+    const firstTournament = tournamentList[0];
+    const selectedId = tournamentList.some((tournament) => tournament.id === storedId) ? storedId : firstTournament?.id ?? "";
+    setTournamentId(selectedId);
+  }, [tournamentList]);
+
   const removeGoals = useMutation({
-    mutationFn: deletePlayerGoals,
+    mutationFn: (playerId: string) => deletePlayerGoals(playerId, tournamentId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["scorers"] });
+      void queryClient.invalidateQueries({ queryKey: ["scorers", tournamentId] });
       void queryClient.invalidateQueries({ queryKey: ["standings"] });
     },
   });
 
   return (
     <SiteLayout>
-      <PageHeader title="Top Scorers" subtitle="Ranked by goals, then assists." />
+      <PageHeader title="Top Scorers" subtitle={`Ranked by goals, then assists${selectedTournament ? ` in ${selectedTournament.tournament_name}` : ""}.`} />
       <div className="mx-auto max-w-4xl px-4 py-10">
-        {scorers.isLoading ? (
+        {tournamentList.length > 0 && (
+          <div className="mb-6 flex items-center gap-3">
+            <label htmlFor="scorers-tournament" className="text-sm font-medium">Tournament</label>
+            <select
+              id="scorers-tournament"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={tournamentId}
+              onChange={(event) => {
+                setTournamentId(event.target.value);
+                localStorage.setItem("current-tournament-id", event.target.value);
+              }}
+            >
+              {tournamentList.map((tournament) => (
+                <option key={tournament.id} value={tournament.id}>{tournament.tournament_name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {tournaments.isError ? (
+          <EmptyState message="Unable to load tournaments. Refresh the page and try again." />
+        ) : scorers.isLoading ? (
           <ListSkeleton rows={10} />
         ) : (scorers.data ?? []).length === 0 ? (
           <EmptyState message="No goals recorded yet." />

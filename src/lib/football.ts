@@ -103,6 +103,7 @@ export type ScorerRow = {
   short_name: string | null;
   crest_color: string | null;
   competition_id: string | null;
+  tournament_id: string | null;
   goals: number;
   assists: number;
   matches: number;
@@ -125,6 +126,7 @@ export type SavesRow = {
   short_name: string | null;
   crest_color: string | null;
   competition_id: string | null;
+  tournament_id: string | null;
   saves: number;
   clean_sheets: number;
   matches: number;
@@ -319,9 +321,9 @@ export function sortStandings(rows: StandingRow[]): StandingRow[] {
   );
 }
 
-export async function fetchTopScorers(competitionId?: string): Promise<ScorerRow[]> {
+export async function fetchTopScorers(tournamentId?: string): Promise<ScorerRow[]> {
   let q = db.from("top_scorers").select("*");
-  if (competitionId) q = q.eq("competition_id", competitionId);
+  if (tournamentId) q = q.eq("tournament_id", tournamentId);
   const { data, error } = await q;
   if (error) throw error;
   return ((data ?? []) as ScorerRow[])
@@ -329,9 +331,9 @@ export async function fetchTopScorers(competitionId?: string): Promise<ScorerRow
     .sort((a, b) => b.goals - a.goals || b.assists - a.assists || a.matches - b.matches);
 }
 
-export async function fetchTopSaves(competitionId?: string): Promise<SavesRow[]> {
+export async function fetchTopSaves(tournamentId?: string): Promise<SavesRow[]> {
   let q = db.from("top_saves").select("*");
-  if (competitionId) q = q.eq("competition_id", competitionId);
+  if (tournamentId) q = q.eq("tournament_id", tournamentId);
   const { data, error } = await q;
   if (error) throw error;
   return ((data ?? []) as SavesRow[])
@@ -464,14 +466,32 @@ export async function deletePlayer(id: string) {
   if (error) throw error;
 }
 
-export async function deletePlayerGoals(playerId: string) {
-  const { error } = await db.from("match_events").delete().eq("player_id", playerId).eq("event_type", "goal");
+export async function deletePlayerGoals(playerId: string, tournamentId?: string) {
+  let q = db.from("match_events").delete().eq("player_id", playerId).eq("event_type", "goal");
+  if (tournamentId) {
+    const fixtureIds = await fetchFixtureIds(tournamentId);
+    if (fixtureIds.length === 0) return;
+    q = q.in("fixture_id", fixtureIds);
+  }
+  const { error } = await q;
   if (error) throw error;
 }
 
-export async function deletePlayerSaves(playerId: string) {
-  const { error } = await db.from("match_events").delete().eq("player_id", playerId).eq("event_type", "save");
+export async function deletePlayerSaves(playerId: string, tournamentId?: string) {
+  let q = db.from("match_events").delete().eq("player_id", playerId).eq("event_type", "save");
+  if (tournamentId) {
+    const fixtureIds = await fetchFixtureIds(tournamentId);
+    if (fixtureIds.length === 0) return;
+    q = q.in("fixture_id", fixtureIds);
+  }
+  const { error } = await q;
   if (error) throw error;
+}
+
+async function fetchFixtureIds(tournamentId: string): Promise<string[]> {
+  const { data, error } = await db.from("fixtures").select("id").eq("tournament_id", tournamentId);
+  if (error) throw error;
+  return (data ?? []).map((fixture: { id: string }) => fixture.id);
 }
 
 export async function insertFixtures(rows: Partial<Fixture>[]) {
