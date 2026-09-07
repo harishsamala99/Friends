@@ -259,7 +259,7 @@ function Home() {
                   <h2 className="font-display text-3xl font-bold sm:text-4xl">Latest Final Match</h2>
                 </div>
               </div>
-              <p className="text-sm font-medium text-pitch-foreground/70">{latestTournament.date || "Final result"}</p>
+              <p className="text-sm font-medium text-pitch-foreground/70">{latestTournament?.date || "Final result"}</p>
             </div>
 
             <Card className="relative isolate overflow-hidden border-0 bg-card shadow-2xl ring-1 ring-white/15">
