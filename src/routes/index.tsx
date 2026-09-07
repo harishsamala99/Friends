@@ -355,18 +355,12 @@ function Home() {
                         </div>
                       </div>
                     )}
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-1">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-1">
                       <div className="rounded-xl border border-primary/15 bg-card p-3 text-center sm:p-4 lg:text-left">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Final status" : "Top scorer"}</p>
                         <p className="mt-1 truncate text-sm font-bold">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.stats.topScorer.name}</p>
                         <p className="mt-1 font-display text-2xl font-black text-primary">{finalIsToBePlayed ? "-" : latestTournament?.stats.topScorer.goals}</p>
                         <p className="text-[10px] text-muted-foreground">goals</p>
-                      </div>
-                      <div className="rounded-xl border border-secondary/60 bg-card p-3 text-center sm:p-4 lg:text-left">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Tournament" : "Top assister"}</p>
-                        <p className="mt-1 truncate text-sm font-bold">{finalIsToBePlayed ? "Final" : latestTournament?.stats.topAssister.name}</p>
-                        <p className="mt-1 font-display text-2xl font-black text-[#166b58]">{finalIsToBePlayed ? "-" : latestTournament?.stats.topAssister.assists}</p>
-                        <p className="text-[10px] text-muted-foreground">assists</p>
                       </div>
                       <div className="rounded-xl border border-accent/50 bg-card p-3 text-center sm:p-4 lg:text-left">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Next step" : "Top saver"}</p>

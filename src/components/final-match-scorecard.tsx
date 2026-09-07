@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Link } from "@tanstack/react-router";
-import { Plus, X, Trash2, RotateCcw, Trophy, BarChart3, Save, Zap, Crown, Users, ChevronDown, ChevronUp } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Plus, X, Trash2, RotateCcw, Trophy, BarChart3, Save, Zap, Crown, Users, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -188,6 +188,7 @@ function TournamentSetup({
   tournaments,
   onCreateTournament,
   onSelectTournament,
+  onEditTournament,
   onDeleteTournament,
   creating,
   isCreated,
@@ -202,6 +203,7 @@ function TournamentSetup({
   tournaments: Tournament[];
   onCreateTournament: () => void;
   onSelectTournament: (tournament: Tournament) => void;
+  onEditTournament: (tournament: Tournament) => void;
   onDeleteTournament: (tournamentId: string) => void;
   creating: boolean;
   isCreated: boolean;
@@ -405,6 +407,16 @@ function TournamentSetup({
                       </Button>
                       <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => onEditTournament(tournament)}
+                      >
+                        <Pencil className="size-3.5" />
+                        Edit final
+                      </Button>
+                      <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         aria-label={`Delete ${tournament.tournamentName}`}
@@ -432,6 +444,7 @@ function TournamentSetup({
 }
 
 export function FinalMatchScorecard() {
+  const navigate = useNavigate();
   // Fetch teams and players
   const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
   const playersQuery = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
@@ -444,6 +457,7 @@ export function FinalMatchScorecard() {
     refetchOnWindowFocus: true,
   });
   const [tournamentId, setTournamentId] = useState("");
+  const [activeTab, setActiveTab] = useState("tournament");
   const [expandedTournamentId, setExpandedTournamentId] = useState<string | null>(null);
   const fixturesQuery = useQuery({
     queryKey: ["fixtures", tournamentId],
@@ -845,6 +859,94 @@ export function FinalMatchScorecard() {
     toast.success(`Now creating fixtures for ${tournament.tournamentName}`);
   };
 
+  const loadTournamentFinalForEditing = async (tournament: Tournament) => {
+    try {
+      const fixtures = await fetchFixtures(undefined, tournament.id);
+      const notedFinal = fixtures.find((fixture) =>
+        fixture.notes?.includes("completed league standings") ||
+        fixture.notes?.includes("Final teams selected manually"),
+      );
+      const homeTeam = teamsQuery.data?.find((team) => team.name === tournament.homeTeam);
+      const awayTeam = teamsQuery.data?.find((team) => team.name === tournament.awayTeam);
+      const finalFixture = notedFinal ?? fixtures.find((fixture) =>
+        fixture.home_team_id === homeTeam?.id &&
+        fixture.away_team_id === awayTeam?.id &&
+        fixture.home_score != null &&
+        fixture.away_score != null,
+      );
+      if (!finalFixture) {
+        toast.error("No final fixture was found for this tournament.");
+        return;
+      }
+
+      const [finalEvents, allPlayers] = await Promise.all([
+        fetchEvents(finalFixture.id),
+        fetchPlayers(),
+      ]);
+      const homePlayers = allPlayers
+        .filter((player) => player.team_id === finalFixture.home_team_id)
+        .map((player) => ({ id: player.id, name: player.name, isGK: player.position?.toLowerCase().includes("goalkeeper") ?? false }));
+      const awayPlayers = allPlayers
+        .filter((player) => player.team_id === finalFixture.away_team_id)
+        .map((player) => ({ id: player.id, name: player.name, isGK: player.position?.toLowerCase().includes("goalkeeper") ?? false }));
+      const playerNames = new Map(allPlayers.map((player) => [player.id, player.name]));
+      const goalsFor = (teamId: string) => finalEvents
+        .filter((event) => event.event_type === "goal" && event.team_id === teamId && event.player_id)
+        .map((event, index) => ({
+          id: event.id || `goal-${teamId}-${index}`,
+          playerId: event.player_id ?? "",
+          playerName: playerNames.get(event.player_id ?? "") ?? "",
+          minute: event.minute,
+        }));
+      const savesFor = (teamId: string) => finalEvents
+        .filter((event) => event.event_type === "save" && event.team_id === teamId && event.player_id)
+        .map((event, index) => ({
+          id: event.id || `save-${teamId}-${index}`,
+          playerId: event.player_id ?? "",
+          playerName: playerNames.get(event.player_id ?? "") ?? "",
+          minute: event.minute,
+        }));
+
+      setTournamentId(tournament.id);
+      localStorage.setItem("current-tournament-id", tournament.id);
+      setSelectedHomeTeam(finalFixture.home_team_id);
+      setSelectedAwayTeam(finalFixture.away_team_id);
+      setHome({ name: tournament.homeTeam, players: homePlayers, goals: goalsFor(finalFixture.home_team_id), assists: [], saves: savesFor(finalFixture.home_team_id) });
+      setAway({ name: tournament.awayTeam, players: awayPlayers, goals: goalsFor(finalFixture.away_team_id), assists: [], saves: savesFor(finalFixture.away_team_id) });
+      setTournamentForm((current) => ({
+        ...current,
+        name: tournament.tournamentName,
+        type: tournament.type,
+        manager: tournament.manager,
+        participants: tournament.participants,
+        topScorerName: tournament.stats.topScorer.name === "None" ? "" : tournament.stats.topScorer.name,
+        topScorerGoals: String(tournament.stats.topScorer.goals),
+        topSaverName: tournament.stats.topSaver.name === "None" ? "" : tournament.stats.topSaver.name,
+        topSaverSaves: String(tournament.stats.topSaver.saves),
+      }));
+      setActiveTab("tournament");
+      toast.success("Final loaded for editing.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load the final for editing");
+    }
+  };
+
+  const editTournamentFinal = (tournament: Tournament) => {
+    localStorage.setItem("edit-final-tournament-id", tournament.id);
+    localStorage.setItem("current-tournament-id", tournament.id);
+    void navigate({ to: "/scorecard" });
+  };
+
+  useEffect(() => {
+    const editTournamentId = localStorage.getItem("edit-final-tournament-id");
+    if (!editTournamentId) return;
+    const tournament = tournaments.find((item) => item.id === editTournamentId);
+    if (!tournament) return;
+
+    localStorage.removeItem("edit-final-tournament-id");
+    void loadTournamentFinalForEditing(tournament);
+  }, [tournaments]);
+
   useEffect(() => {
     const selectedTournament = tournaments.find((tournament) => tournament.id === tournamentId);
     if (!selectedTournament) return;
@@ -1122,6 +1224,7 @@ export function FinalMatchScorecard() {
 
     return {
       topScorer: { name: topScorer[0], goals: topScorer[1] },
+      topAssister: { name: "None", assists: 0 },
       topSaver: { name: topSaver[0], saves: topSaver[1] },
     };
   };
@@ -1158,50 +1261,56 @@ export function FinalMatchScorecard() {
       status: "completed" as const,
     };
 
-    const finalFixture = (tournamentFixturesQuery.data ?? []).find((fixture) =>
-      fixture.home_team_id === selectedHomeTeam && fixture.away_team_id === selectedAwayTeam,
+    const finalFixture = (fixturesQuery.data ?? []).find((fixture) =>
+      (fixture.home_team_id === selectedHomeTeam && fixture.away_team_id === selectedAwayTeam) ||
+      fixture.notes?.includes("completed league standings") ||
+      fixture.notes?.includes("Final teams selected manually"),
     );
-    if (finalFixture) {
-      try {
-        await updateFixture(finalFixture.id, {
-          home_score: homeScore,
-          away_score: awayScore,
-          status: "Full Time",
-        });
-        await replaceFixtureEvents(finalFixture.id, [
-          ...home.goals.map((goal) => ({
-            team_id: selectedHomeTeam,
-            player_id: goal.playerId,
-            minute: goal.minute ?? 0,
-            event_type: "goal",
-          })),
-          ...away.goals.map((goal) => ({
-            team_id: selectedAwayTeam,
-            player_id: goal.playerId,
-            minute: goal.minute ?? 0,
-            event_type: "goal",
-          })),
-          ...home.saves.map((save) => ({
-            team_id: selectedHomeTeam,
-            player_id: save.playerId,
-            minute: save.minute ?? 0,
-            event_type: "save",
-          })),
-          ...away.saves.map((save) => ({
-            team_id: selectedAwayTeam,
-            player_id: save.playerId,
-            minute: save.minute ?? 0,
-            event_type: "save",
-          })),
-        ]);
-        void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
-        void queryClient.invalidateQueries({ queryKey: ["fixtures"] });
-        void queryClient.invalidateQueries({ queryKey: ["scorers"] });
-        void queryClient.invalidateQueries({ queryKey: ["saves"] });
-        void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Final saved, but the bracket score could not be updated");
-      }
+    if (!finalFixture) {
+      toast.error("Save the final teams before recording the final result.");
+      return;
+    }
+
+    try {
+      await updateFixture(finalFixture.id, {
+        home_score: homeScore,
+        away_score: awayScore,
+        status: "Full Time",
+      });
+      await replaceFixtureEvents(finalFixture.id, [
+        ...home.goals.map((goal) => ({
+          team_id: selectedHomeTeam,
+          player_id: goal.playerId,
+          minute: goal.minute ?? 0,
+          event_type: "goal",
+        })),
+        ...away.goals.map((goal) => ({
+          team_id: selectedAwayTeam,
+          player_id: goal.playerId,
+          minute: goal.minute ?? 0,
+          event_type: "goal",
+        })),
+        ...home.saves.map((save) => ({
+          team_id: selectedHomeTeam,
+          player_id: save.playerId,
+          minute: save.minute ?? 0,
+          event_type: "save",
+        })),
+        ...away.saves.map((save) => ({
+          team_id: selectedAwayTeam,
+          player_id: save.playerId,
+          minute: save.minute ?? 0,
+          event_type: "save",
+        })),
+      ]);
+      await queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
+      await queryClient.invalidateQueries({ queryKey: ["fixtures"] });
+      await queryClient.invalidateQueries({ queryKey: ["scorers"] });
+      await queryClient.invalidateQueries({ queryKey: ["saves"] });
+      await queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the final goals and saves");
+      return;
     }
 
     if (isCurrentTournamentCreated) {
@@ -1226,6 +1335,7 @@ export function FinalMatchScorecard() {
       participants: newTournament.participants,
       stats: {
         topScorer: { name: topScorerName, goals: topScorerGoals },
+        topAssister: { name: "None", assists: 0 },
         topSaver: { name: topSaverName, saves: topSaverSaves },
       },
     };
@@ -1257,7 +1367,7 @@ export function FinalMatchScorecard() {
   const outfieldPlayers = (players: Player[]) => players.filter((p) => !p.isGK);
 
   return (
-    <Tabs defaultValue="tournament" className="min-h-screen bg-linear-to-br from-[#102a3a] via-[#145b62] to-[#287f72]">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="min-h-screen bg-linear-to-br from-[#102a3a] via-[#145b62] to-[#287f72]">
       <TabsList className="sticky top-0 z-10 w-full justify-start rounded-none border-b-2 border-pitch-foreground/20 bg-card/95 backdrop-blur-xl p-0 shadow-lg">
         <TabsTrigger value="tournament" className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary">
           <Trophy className="h-4 w-4 mr-2" />
@@ -1291,6 +1401,7 @@ export function FinalMatchScorecard() {
             tournaments={tournaments}
             onCreateTournament={createTournament}
             onSelectTournament={selectTournamentForFixtures}
+            onEditTournament={editTournamentFinal}
             onDeleteTournament={(id) => void handleDeleteTournament(id)}
             creating={createTournamentMutation.isPending}
             isCreated={isCurrentTournamentCreated}
@@ -2201,19 +2312,34 @@ export function FinalMatchScorecard() {
                       </div>
                     </div>
                     <div className="mt-5 border-t pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setExpandedTournamentId((current) => current === tournament.id ? null : tournament.id);
-                        }}
-                      >
-                        {expandedTournamentId === tournament.id ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-                        {expandedTournamentId === tournament.id ? "Hide fixtures" : "View fixtures"}
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          className="gap-2"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void editTournamentFinal(tournament);
+                          }}
+                        >
+                          <Pencil className="size-4" />
+                          Edit final
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setExpandedTournamentId((current) => current === tournament.id ? null : tournament.id);
+                          }}
+                        >
+                          {expandedTournamentId === tournament.id ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                          {expandedTournamentId === tournament.id ? "Hide fixtures" : "View fixtures"}
+                        </Button>
+                      </div>
                       {expandedTournamentId === tournament.id && (
                         <div className="mt-4 space-y-2">
                           {tournamentFixturesQuery.isLoading ? (
