@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { Crown, Trophy } from "lucide-react";
+import { useState, useEffect, type CSSProperties } from "react";
+import { Crown, Trophy, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { TeamBadge, ListSkeleton, EmptyState, formatKickoff } from "@/components/football-ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +45,42 @@ interface Tournament {
   top_saver_saves?: number | null;
 }
 
+const EMPTY_TOURNAMENT_STATS = {
+  topScorer: { name: "None", goals: 0 },
+  topAssister: { name: "None", assists: 0 },
+  topSaver: { name: "None", saves: 0 },
+};
+
+function teamInitials(name?: string) {
+  return (name || "Team")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+function normalizeTournament(tournament: Tournament): Tournament {
+  return {
+    ...tournament,
+    stats: {
+      topScorer: tournament.stats?.topScorer ?? {
+        name: tournament.top_scorer_name || EMPTY_TOURNAMENT_STATS.topScorer.name,
+        goals: tournament.top_scorer_goals || 0,
+      },
+      topAssister: tournament.stats?.topAssister ?? {
+        name: tournament.top_assister_name || EMPTY_TOURNAMENT_STATS.topAssister.name,
+        assists: tournament.top_assister_assists || 0,
+      },
+      topSaver: tournament.stats?.topSaver ?? {
+        name: tournament.top_saver_name || EMPTY_TOURNAMENT_STATS.topSaver.name,
+        saves: tournament.top_saver_saves || 0,
+      },
+    },
+  };
+}
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -74,9 +110,9 @@ function Home() {
   });
 
   useEffect(() => {
-    // First try to fetch from database
+    setLatestTournament(null);
     if (tournament.data) {
-      const dbTournament: Tournament = {
+      const dbTournament = normalizeTournament({
         id: tournament.data.id,
         tournament_name: tournament.data.tournament_name,
         type: tournament.data.type,
@@ -93,21 +129,20 @@ function Home() {
           topAssister: { name: tournament.data.top_assister_name || "None", assists: tournament.data.top_assister_assists || 0 },
           topSaver: { name: tournament.data.top_saver_name || "None", saves: tournament.data.top_saver_saves || 0 },
         },
-      };
+      });
       setLatestTournament(dbTournament);
       return;
     }
 
-    // Fallback to localStorage if no database record
     const saved = localStorage.getItem("tournaments");
     if (saved) {
       try {
         const tournaments: Tournament[] = JSON.parse(saved);
         if (tournaments.length > 0) {
-          setLatestTournament(tournaments[0]);
+          setLatestTournament(normalizeTournament(tournaments[0]));
         }
-      } catch (e) {
-        console.error("Failed to load tournaments", e);
+      } catch {
+        setLatestTournament(null);
       }
     }
   }, [tournament.data]);
@@ -119,6 +154,36 @@ function Home() {
 
   const byId = new Map((teams.data ?? []).map((t: Team) => [t.id, t]));
   const all = fixtures.data ?? [];
+  const scheduledFinal = all
+    .filter((fixture) => fixture.tournament_id && (fixture.notes?.includes("completed league standings") || fixture.notes?.includes("Final teams selected manually")) && fixture.home_score == null && fixture.away_score == null)
+    .sort((a, b) => +new Date(a.kickoff) - +new Date(b.kickoff))[0];
+  const finalistRows = (standings.data ?? []).slice(0, 2);
+  const hasFinalists = finalistRows.length === 2;
+  const finalHomeName = scheduledFinal
+    ? byId.get(scheduledFinal.home_team_id)?.name
+    : latestTournament
+      ? latestTournament.homeTeam
+      : finalistRows[0]?.team_name;
+  const finalAwayName = scheduledFinal
+    ? byId.get(scheduledFinal.away_team_id)?.name
+    : latestTournament
+      ? latestTournament.awayTeam
+      : finalistRows[1]?.team_name;
+  const finalIsToBePlayed = Boolean(scheduledFinal || (!latestTournament && hasFinalists));
+  const finalScoreRecorded = Boolean(
+    latestTournament &&
+      latestTournament.homeScore != null &&
+      latestTournament.awayScore != null &&
+      typeof latestTournament.homeScore === "number" &&
+      typeof latestTournament.awayScore === "number",
+  );
+  const finalCompleted = Boolean(latestTournament && finalScoreRecorded && !finalIsToBePlayed && Boolean(latestTournament.winner));
+  const fireworksBursts = Array.from({ length: 12 }, (_, index) => ({
+    left: `${8 + (index * 6.5) % 84}%`,
+    top: `${12 + (index % 5) * 17}%`,
+    delay: `${(index % 6) * 0.32}s`,
+    color: ["#ffd166", "#ff8c42", "#ef476f", "#f9c74f", "#ffb703", "#fb7185", "#f97316", "#ffe08a"][index % 8],
+  }));
   const upcoming = all.filter((f) => f.status === "Scheduled").slice(0, 5);
   const recent = all
     .filter((f) => f.home_score != null)
@@ -127,7 +192,7 @@ function Home() {
 
   return (
     <SiteLayout>
-      <section className="matchday-grid border-b border-border/60 bg-gradient-to-br from-primary/15 via-background to-background">
+      <section className="matchday-grid border-b border-border/60 bg-linear-to-br from-primary/15 via-background to-background">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
           <p className="text-sm font-semibold uppercase tracking-widest text-primary">
             Season 2026/27
@@ -149,109 +214,178 @@ function Home() {
         </div>
       </section>
 
-      {/* Final Match Section */}
-      {latestTournament && (
-        <section className="border-b border-border/60 bg-gradient-to-r from-pitch via-pitch/95 to-pitch/90 py-12">
+      {scheduledFinal && (
+        <section className="border-b border-border/60 bg-accent/10 py-8 sm:py-10">
           <div className="mx-auto max-w-6xl px-4">
-            <div className="mb-8 flex items-center gap-3">
-              <Trophy className="h-8 w-8 text-pitch-foreground" />
-              <h2 className="font-display text-3xl font-bold text-pitch-foreground">Latest Final Match</h2>
+            <Card className="overflow-hidden border-2 border-accent/50 bg-card shadow-lg">
+              <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent-foreground">Next final</p>
+                  <h2 className="mt-1 font-display text-2xl font-bold sm:text-3xl">Who is playing the final?</h2>
+                  <p className="mt-2 text-muted-foreground">The league standings have selected the two finalists.</p>
+                </div>
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 text-center sm:min-w-90">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team 1</p>
+                    <p className="mt-1 truncate font-display text-xl font-bold">{byId.get(scheduledFinal.home_team_id)?.name ?? "Qualified team"}</p>
+                  </div>
+                  <span className="font-display text-lg font-bold text-primary">VS</span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team 2</p>
+                    <p className="mt-1 truncate font-display text-xl font-bold">{byId.get(scheduledFinal.away_team_id)?.name ?? "Qualified team"}</p>
+                  </div>
+                </div>
+                <Button asChild className="shrink-0">
+                  <Link to="/scorecard">Add final score</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
+
+      {/* Final Match Section */}
+      {(latestTournament || scheduledFinal || hasFinalists) && (
+        <section className="relative overflow-hidden border-b border-border/60 bg-linear-to-br from-pitch via-pitch/95 to-[#173d35] py-10 sm:py-14">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,transparent_49.8%,currentColor_50%,transparent_50.2%),linear-gradient(currentColor_1px,transparent_1px)] bg-size-[50%_100%,100%_56px] opacity-20 text-pitch-foreground" />
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="relative mb-6 flex flex-wrap items-end justify-between gap-3 sm:mb-8">
+              <div className="flex items-center gap-3 text-pitch-foreground">
+                <span className="grid size-11 place-items-center rounded-full bg-accent text-accent-foreground shadow-lg">
+                  <Trophy className="size-5" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-pitch-foreground/70">Matchday archive</p>
+                  <h2 className="font-display text-3xl font-bold sm:text-4xl">Latest Final Match</h2>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-pitch-foreground/70">{latestTournament.date || "Final result"}</p>
             </div>
 
-            <Card className="border-3 border-pitch-foreground/30 bg-gradient-to-br from-card/98 via-card/96 to-card/94 shadow-2xl">
-              <CardContent className="p-6 sm:p-8">
-                <div className="mb-6 rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
-                  <p className="text-sm font-semibold text-muted-foreground">Final of</p>
-                  <p className="text-xl font-bold text-primary">
-                    {latestTournament.tournament_name || latestTournament.tournamentName || latestTournament.type}
+            <Card className="relative isolate overflow-hidden border-0 bg-card shadow-2xl ring-1 ring-white/15">
+              {finalCompleted && (
+                <div className="firework-layer" aria-hidden="true">
+                  {fireworksBursts.map((burst, index) => (
+                    <span
+                      key={`${burst.left}-${burst.top}-${index}`}
+                      className="firework-spark"
+                      style={{
+                        left: burst.left,
+                        top: burst.top,
+                        animationDelay: burst.delay,
+                        background: burst.color,
+                        color: burst.color,
+                        boxShadow: `0 0 12px ${burst.color}, 0 0 30px ${burst.color}`,
+                      }}
+                    >
+                      {Array.from({ length: 8 }, (_, rayIndex) => (
+                        <i
+                          key={rayIndex}
+                          className="firework-ray"
+                          style={{ "--ray-angle": `${rayIndex * 45}deg` } as CSSProperties}
+                        />
+                      ))}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <CardContent className="relative z-10 p-0">
+                <div className="border-b border-border/70 bg-linear-to-r from-primary/10 via-accent/10 to-transparent px-5 py-4 sm:px-8">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Final of</p>
+                  <p className="mt-1 truncate font-display text-2xl font-bold text-card-foreground sm:text-3xl">
+                    {latestTournament?.tournament_name || latestTournament?.tournamentName || latestTournament?.type || "League Final"}
                   </p>
                 </div>
-                <div className="grid gap-8 md:grid-cols-2">
-                  {/* Match Score Display */}
-                  <div className="flex flex-col justify-between">
-                    <div className="space-y-6">
-                      {/* Home Team */}
-                      <div className="text-center sm:text-left">
-                        <p className="text-sm font-semibold text-muted-foreground mb-2">Home Team</p>
-                        <p className="text-2xl font-bold text-card-foreground">{latestTournament.homeTeam}</p>
+
+                <div className="grid gap-0 lg:grid-cols-[1.35fr_0.65fr]">
+                  <div className="p-5 sm:p-8">
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-8">
+                      <div className="min-w-0 text-center">
+                        <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-primary text-2xl font-black text-primary-foreground shadow-lg shadow-primary/20 sm:size-20 sm:text-3xl">
+                          {teamInitials(finalHomeName)}
+                        </div>
+                        <p className="mt-3 truncate font-display text-xl font-bold sm:text-2xl">{finalHomeName || "Team 1"}</p>
+                        <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team 1</p>
                       </div>
 
-                      {/* Score Display */}
-                      <div className="flex items-center justify-center sm:justify-start gap-6">
-                        <div className="flex flex-col items-center">
-                          <div className="text-5xl font-display font-black text-primary">
-                            {latestTournament.homeScore}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">Goals</p>
+                      <div className="text-center">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{finalIsToBePlayed ? "TO BE PLAYED" : "Full time"}</p>
+                        <div className="mt-1 flex items-center gap-2 font-display text-5xl font-black tabular-nums text-primary sm:text-7xl sm:gap-3">
+                          <span>{finalIsToBePlayed ? "-" : latestTournament?.homeScore ?? 0}</span>
+                          <span className="text-2xl text-muted-foreground sm:text-3xl">:</span>
+                          <span>{finalIsToBePlayed ? "-" : latestTournament?.awayScore ?? 0}</span>
                         </div>
-                        <div className="text-2xl font-bold text-muted-foreground">—</div>
-                        <div className="flex flex-col items-center">
-                          <div className="text-5xl font-display font-black text-primary">
-                            {latestTournament.awayScore}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">Goals</p>
-                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{finalIsToBePlayed ? "Awaiting final result" : "Final score"}</p>
                       </div>
 
-                      {/* Away Team */}
-                      <div className="text-center sm:text-left">
-                        <p className="text-sm font-semibold text-muted-foreground mb-2">Away Team</p>
-                        <p className="text-2xl font-bold text-card-foreground">{latestTournament.awayTeam}</p>
+                      <div className="min-w-0 text-center">
+                        <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-[#166b58] text-2xl font-black text-white shadow-lg shadow-[#166b58]/20 sm:size-20 sm:text-3xl">
+                          {teamInitials(finalAwayName)}
+                        </div>
+                        <p className="mt-3 truncate font-display text-xl font-bold sm:text-2xl">{finalAwayName || "Team 2"}</p>
+                        <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team 2</p>
                       </div>
+                    </div>
+
+                    <div className="mt-7 flex items-center justify-center gap-2 rounded-xl bg-accent/20 px-4 py-3 text-center">
+                      <Crown className="size-5 shrink-0 text-accent-foreground" />
+                      <span className="text-sm text-muted-foreground">{finalIsToBePlayed ? "Status" : "Champion"}</span>
+                      <strong className="truncate text-sm text-accent-foreground">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.winner || "Not recorded"}</strong>
                     </div>
                   </div>
 
-                  {/* Match Details */}
-                  <div className="space-y-6 border-t pt-6 md:border-t-0 md:border-l md:pl-6 md:pt-0">
-                    {/* Winner */}
-                    <div className="rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 p-4 border border-primary/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Crown className="h-5 w-5 text-primary" />
-                        <p className="text-sm font-semibold text-muted-foreground">Winner</p>
+                  <div className="border-t border-border/70 bg-muted/25 p-5 sm:p-8 lg:border-l lg:border-t-0">
+                    {!finalIsToBePlayed && (
+                      <div className="mb-4 grid gap-2 sm:grid-cols-2">
+                        <div className="golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-2.5">
+                          <div className="flex items-center gap-2 text-[#9a7410]">
+                            <Trophy className="size-4 shrink-0" aria-hidden="true" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em]">Golden Boot</p>
+                          </div>
+                          <p className="mt-1 truncate text-sm font-bold text-[#8a6610]">{latestTournament?.stats.topScorer.name || "Not recorded"}</p>
+                          <p className="text-xs font-semibold text-[#9a7410]">{latestTournament?.stats.topScorer.goals ?? 0} goals</p>
+                        </div>
+                        <div className="golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-2.5">
+                          <div className="flex items-center gap-2 text-[#9a7410]">
+                            <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em]">Golden Gloves</p>
+                          </div>
+                          <p className="mt-1 truncate text-sm font-bold text-[#8a6610]">{latestTournament?.stats.topSaver.name || "Not recorded"}</p>
+                          <p className="text-xs font-semibold text-[#9a7410]">{latestTournament?.stats.topSaver.saves ?? 0} saves</p>
+                        </div>
                       </div>
-                      <p className="text-2xl font-bold text-primary">{latestTournament.winner}</p>
-                    </div>
-
-                    {/* Tournament Info */}
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm font-semibold text-muted-foreground mb-1">Tournament Type</p>
-                        <p className="font-medium text-card-foreground">{latestTournament.type}</p>
+                    )}
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-1">
+                      <div className="rounded-xl border border-primary/15 bg-card p-3 text-center sm:p-4 lg:text-left">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Final status" : "Top scorer"}</p>
+                        <p className="mt-1 truncate text-sm font-bold">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.stats.topScorer.name}</p>
+                        <p className="mt-1 font-display text-2xl font-black text-primary">{finalIsToBePlayed ? "-" : latestTournament?.stats.topScorer.goals}</p>
+                        <p className="text-[10px] text-muted-foreground">goals</p>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-muted-foreground mb-1">Winning Manager</p>
-                        <p className="font-medium text-card-foreground">{latestTournament.manager || "N/A"}</p>
+                      <div className="rounded-xl border border-secondary/60 bg-card p-3 text-center sm:p-4 lg:text-left">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Tournament" : "Top assister"}</p>
+                        <p className="mt-1 truncate text-sm font-bold">{finalIsToBePlayed ? "Final" : latestTournament?.stats.topAssister.name}</p>
+                        <p className="mt-1 font-display text-2xl font-black text-[#166b58]">{finalIsToBePlayed ? "-" : latestTournament?.stats.topAssister.assists}</p>
+                        <p className="text-[10px] text-muted-foreground">assists</p>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-muted-foreground mb-1">Participants</p>
-                        <p className="font-medium text-card-foreground">{latestTournament.participants}</p>
-                      </div>
-                    </div>
-
-                    {/* Top Stats */}
-                    <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border/50">
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground mb-1">⚽ Top Scorer</p>
-                        <p className="font-semibold text-sm truncate">{latestTournament.stats.topScorer.name}</p>
-                        <p className="text-lg font-bold text-primary">{latestTournament.stats.topScorer.goals}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground mb-1">🎯 Top Assister</p>
-                        <p className="font-semibold text-sm truncate">{latestTournament.stats.topAssister.name}</p>
-                        <p className="text-lg font-bold text-secondary">{latestTournament.stats.topAssister.assists}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground mb-1">🥅 Top Saver</p>
-                        <p className="font-semibold text-sm truncate">{latestTournament.stats.topSaver.name}</p>
-                        <p className="text-lg font-bold text-accent">{latestTournament.stats.topSaver.saves}</p>
+                      <div className="rounded-xl border border-accent/50 bg-card p-3 text-center sm:p-4 lg:text-left">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Next step" : "Top saver"}</p>
+                        <p className="mt-1 truncate text-sm font-bold">{finalIsToBePlayed ? "Add goals" : latestTournament?.stats.topSaver.name}</p>
+                        <p className="mt-1 font-display text-2xl font-black text-accent-foreground">{finalIsToBePlayed ? "-" : latestTournament?.stats.topSaver.saves}</p>
+                        <p className="text-[10px] text-muted-foreground">saves</p>
                       </div>
                     </div>
 
-                    {/* View Details Button */}
-                    <Button asChild className="w-full gap-2" variant="default">
+                    <div className="mt-5 grid grid-cols-3 gap-3 border-t border-border/70 pt-5 text-center lg:grid-cols-1 lg:gap-2 lg:text-left">
+                      <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Format</p><p className="truncate text-sm font-semibold">{latestTournament?.type || "Final"}</p></div>
+                      <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Manager</p><p className="truncate text-sm font-semibold">{latestTournament?.manager || "N/A"}</p></div>
+                      <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Players</p><p className="text-sm font-semibold">{latestTournament?.participants ?? "N/A"}</p></div>
+                    </div>
+
+                    <Button asChild className="mt-5 w-full gap-2" variant="default">
                       <Link to="/final">
-                        <Trophy className="h-4 w-4" />
-                        View All Tournaments
+                        <Trophy className="size-4" />
+                        View tournament history
                       </Link>
                     </Button>
                   </div>

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/SiteLayout";
@@ -39,6 +39,7 @@ export const Route = createFileRoute("/match/$fixtureId")({
 });
 
 function MatchPage() {
+  const queryClient = useQueryClient();
   const { fixtureId } = Route.useParams();
   const fixture = useQuery({ queryKey: ["fixture", fixtureId], queryFn: () => fetchFixture(fixtureId) });
   const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
@@ -95,6 +96,9 @@ function MatchPage() {
               onSaved={() => {
                 void fixture.refetch();
                 void events.refetch();
+                void queryClient.invalidateQueries({ queryKey: ["scorers"] });
+                void queryClient.invalidateQueries({ queryKey: ["saves"] });
+                void queryClient.invalidateQueries({ queryKey: ["fixtures"] });
               }}
             />
             <h2 className="mb-4 font-display text-2xl font-bold">Timeline</h2>

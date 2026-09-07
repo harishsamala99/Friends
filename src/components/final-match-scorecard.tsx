@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { Plus, X, Trash2, RotateCcw, Trophy, BarChart3, Save, Zap, Crown, Users, ChevronDown, ChevronUp } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchCompetitions, fetchTeams, fetchPlayers, fetchFixtures, insertFixtures, deleteFixture, saveTournament as saveTournamentToDB, updateTournament, fetchTournaments, deleteTournament as deleteTournamentFromDB, type Fixture, type Team, type Player as FootballPlayer } from "@/lib/football";
+import { fetchCompetitions, fetchTeams, fetchPlayers, fetchFixtures, fetchEvents, replaceFixtureEvents, sortStandings, insertFixtures, updateFixture, deleteFixture, saveTournament as saveTournamentToDB, updateTournament, fetchTournaments, deleteTournament as deleteTournamentFromDB, type Fixture, type Team, type StandingRow, type Player as FootballPlayer } from "@/lib/football";
 import {
   Select,
   SelectContent,
@@ -92,6 +92,79 @@ interface TournamentStats {
   topSaver: { name: string; saves: number };
 }
 
+function calculateFinalStandings(
+  teams: Team[],
+  fixtures: Fixture[],
+  pointsWin: number,
+  pointsDraw: number,
+): StandingRow[] {
+  const rows = new Map<string, StandingRow>();
+
+  for (const team of teams) {
+    rows.set(team.id, {
+      competition_id: team.competition_id,
+      team_id: team.id,
+      team_name: team.name,
+      short_name: team.short_name,
+      crest_color: team.crest_color,
+      logo_url: team.logo_url,
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goals_for: 0,
+      goals_against: 0,
+      goal_difference: 0,
+      points: 0,
+      home_won: 0,
+      away_won: 0,
+      clean_sheets: 0,
+    });
+  }
+
+  for (const fixture of fixtures) {
+    if (fixture.tournament_id || fixture.home_score == null || fixture.away_score == null) continue;
+    const home = rows.get(fixture.home_team_id);
+    const away = rows.get(fixture.away_team_id);
+    if (!home || !away) continue;
+
+    home.played += 1;
+    away.played += 1;
+    home.goals_for += fixture.home_score;
+    home.goals_against += fixture.away_score;
+    away.goals_for += fixture.away_score;
+    away.goals_against += fixture.home_score;
+    if (fixture.home_score > fixture.away_score) {
+      home.won += 1;
+      home.points += pointsWin;
+      home.home_won += 1;
+      away.lost += 1;
+    } else if (fixture.home_score < fixture.away_score) {
+      away.won += 1;
+      away.points += pointsWin;
+      away.away_won += 1;
+      home.lost += 1;
+    } else {
+      home.drawn += 1;
+      away.drawn += 1;
+      home.points += pointsDraw;
+      away.points += pointsDraw;
+    }
+    if (fixture.away_score === 0) home.clean_sheets += 1;
+    if (fixture.home_score === 0) away.clean_sheets += 1;
+  }
+
+  for (const row of rows.values()) row.goal_difference = row.goals_for - row.goals_against;
+  return sortStandings([...rows.values()]);
+}
+
+function createLocalTournamentId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 const INITIAL_HOME_PLAYERS: Player[] = [
   { id: "h1", name: "Player 1" },
   { id: "h2", name: "Player 2" },
@@ -170,6 +243,42 @@ function TournamentSetup({
     }
   }
 
+  async function saveFinalTeams() {
+    if (!isCreated) return toast.error("Create the tournament before saving final teams");
+    if (!homeId || !awayId || homeId === awayId) return toast.error("Pick two different final teams");
+
+    const fixtureCompetitionId = competitionId
+      ?? teams.find((team) => team.id === homeId)?.competition_id
+      ?? teams.find((team) => team.id === awayId)?.competition_id;
+    if (!fixtureCompetitionId) return toast.error("The selected teams are not linked to a competition");
+
+    const existingFinal = fixtures.find((fixture) => fixture.notes?.includes("completed league standings"));
+    if (existingFinal) {
+      toast.success("Final teams are already saved in the bracket");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await insertFixtures([{
+        competition_id: fixtureCompetitionId,
+        tournament_id: tournamentId,
+        home_team_id: homeId,
+        away_team_id: awayId,
+        matchday: Math.max(0, ...fixtures.map((fixture) => fixture.matchday)) + 1,
+        kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        status: "Scheduled",
+        notes: "Automatically created from the completed league standings.",
+      }]);
+      toast.success(`${teamNames.get(homeId)} vs ${teamNames.get(awayId)} saved as the final`);
+      onFixturesSaved();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save final teams");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function removeFixture(fixtureId: string) {
     if (!window.confirm("Delete this fixture from the tournament?")) return;
     try {
@@ -184,8 +293,8 @@ function TournamentSetup({
   const teamNames = new Map(teams.map((team) => [team.id, team.name]));
 
   return (
-    <Card className="mb-8 border-2 border-accent/40 bg-gradient-to-br from-card/98 via-card/96 to-card/94 shadow-lg">
-      <CardHeader className="border-b border-accent/20 bg-gradient-to-r from-accent/15 to-accent/5">
+    <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] shadow-lg">
+      <CardHeader className="border-b border-[#f28c5b]/25 bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10">
         <CardTitle className="flex items-center gap-2">🏆 Create your tournament</CardTitle>
         <p className="text-sm text-muted-foreground">Name it, schedule fixtures, then create the final below.</p>
       </CardHeader>
@@ -201,7 +310,7 @@ function TournamentSetup({
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <Label htmlFor="tournament-fixture-home">Home team</Label>
+            <Label htmlFor="tournament-fixture-home">Team 1</Label>
             <select
               id="tournament-fixture-home"
               className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -213,7 +322,7 @@ function TournamentSetup({
             </select>
           </div>
           <div>
-            <Label htmlFor="tournament-fixture-away">Away team</Label>
+            <Label htmlFor="tournament-fixture-away">Team 2</Label>
             <select
               id="tournament-fixture-away"
               className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -235,6 +344,9 @@ function TournamentSetup({
           </Button>
           <Button type="button" variant="outline" onClick={scheduleFixtures} disabled={saving || !isCreated}>
             {saving ? "Adding fixtures..." : "Add fixtures"}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => void saveFinalTeams()} disabled={saving || !isCreated || !homeId || !awayId}>
+            {saving ? "Saving final teams..." : "Save final teams"}
           </Button>
           <span className="text-sm text-muted-foreground">
             {isCreated
@@ -325,6 +437,12 @@ export function FinalMatchScorecard() {
   const playersQuery = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
   const competitionsQuery = useQuery({ queryKey: ["competitions"], queryFn: fetchCompetitions });
   const competitionId = competitionsQuery.data?.[0]?.id ?? teamsQuery.data?.find((team) => team.competition_id)?.competition_id;
+  const competitionFixturesQuery = useQuery({
+    queryKey: ["competition-fixtures", competitionId],
+    queryFn: () => fetchFixtures(competitionId),
+    enabled: Boolean(competitionId),
+    refetchOnWindowFocus: true,
+  });
   const [tournamentId, setTournamentId] = useState("");
   const [expandedTournamentId, setExpandedTournamentId] = useState<string | null>(null);
   const fixturesQuery = useQuery({
@@ -339,6 +457,16 @@ export function FinalMatchScorecard() {
     queryFn: () => fetchFixtures(undefined, expandedTournamentId ?? undefined),
     enabled: Boolean(expandedTournamentId),
     refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+  const tournamentEventStatsQuery = useQuery({
+    queryKey: ["tournament-event-stats", tournamentId, fixturesQuery.data?.map((fixture) => fixture.id).join(",")],
+    queryFn: async () => {
+      const fixtures = fixturesQuery.data ?? [];
+      const events = await Promise.all(fixtures.map((fixture) => fetchEvents(fixture.id)));
+      return events.flat();
+    },
+    enabled: Boolean(tournamentId && fixturesQuery.data),
     refetchOnWindowFocus: true,
   });
   const tournamentsQuery = useQuery({ queryKey: ["tournaments"], queryFn: () => fetchTournaments() });
@@ -419,7 +547,7 @@ export function FinalMatchScorecard() {
   });
 
   const [home, setHome] = useState<TeamData>({
-    name: "Home Team",
+    name: "Team 1",
     players: INITIAL_HOME_PLAYERS,
     goals: [],
     assists: [],
@@ -427,7 +555,7 @@ export function FinalMatchScorecard() {
   });
 
   const [away, setAway] = useState<TeamData>({
-    name: "Away Team",
+    name: "Team 2",
     players: INITIAL_AWAY_PLAYERS,
     goals: [],
     assists: [],
@@ -441,6 +569,9 @@ export function FinalMatchScorecard() {
   const [editingPlayerIndex, setEditingPlayerIndex] = useState<number | null>(null);
   const [editingPlayerName, setEditingPlayerName] = useState<string>("");
   const [saveTournamentOpen, setSaveTournamentOpen] = useState(false);
+  const [savingFinalTeams, setSavingFinalTeams] = useState(false);
+  const finalFixtureCreationKey = useRef<string | null>(null);
+  const manuallySelectedFinalKey = useRef<string | null>(null);
   const [tournamentForm, setTournamentForm] = useState({
     name: "",
     type: "League",
@@ -454,7 +585,7 @@ export function FinalMatchScorecard() {
 
   useEffect(() => {
     const stored = localStorage.getItem("current-tournament-id");
-    const id = stored || crypto.randomUUID();
+    const id = stored || createLocalTournamentId();
     localStorage.setItem("current-tournament-id", id);
     setTournamentId(id);
   }, []);
@@ -488,6 +619,38 @@ export function FinalMatchScorecard() {
       }
     }
   };
+
+  const leagueFixtures = useMemo(
+    () => (competitionFixturesQuery.data ?? []).filter((fixture) => !fixture.tournament_id),
+    [competitionFixturesQuery.data],
+  );
+  const competition = competitionsQuery.data?.find((item) => item.id === competitionId);
+  const finalStandings = useMemo(
+    () => calculateFinalStandings(
+      teamsQuery.data ?? [],
+      leagueFixtures,
+      competition?.points_win ?? 3,
+      competition?.points_draw ?? 1,
+    ),
+    [teamsQuery.data, leagueFixtures, competition?.points_win, competition?.points_draw],
+  );
+  const homeFinalist = finalStandings[0];
+  const awayFinalist = finalStandings[1];
+  const leagueComplete = leagueFixtures.length > 0 && leagueFixtures.every(
+    (fixture) => fixture.home_score != null && fixture.away_score != null,
+  );
+
+  useEffect(() => {
+    if (!homeFinalist || !awayFinalist) return;
+    if (!leagueComplete) return;
+
+    if (selectedHomeTeam !== homeFinalist.team_id) loadTeamPlayers(homeFinalist.team_id, "home");
+    if (selectedAwayTeam !== awayFinalist.team_id) loadTeamPlayers(awayFinalist.team_id, "away");
+    setTournamentForm((current) => ({
+      ...current,
+      name: current.name || `${homeFinalist.team_name} vs ${awayFinalist.team_name} Final`,
+    }));
+  }, [leagueComplete, homeFinalist, awayFinalist, selectedHomeTeam, selectedAwayTeam, teamsQuery.data, playersQuery.data]);
 
   // Delete tournament from both database and localStorage
   const handleDeleteTournament = async (id: string) => {
@@ -587,6 +750,89 @@ export function FinalMatchScorecard() {
   };
 
   const isCurrentTournamentCreated = tournaments.some((tournament) => tournament.id === tournamentId);
+
+  const saveSelectedFinalTeams = async () => {
+    if (!isCurrentTournamentCreated) return toast.error("Create or select a tournament first");
+    if (!selectedHomeTeam || !selectedAwayTeam || selectedHomeTeam === selectedAwayTeam) {
+      return toast.error("Select two different teams for the final");
+    }
+    if (!competitionId) return toast.error("Select a competition before saving the final");
+
+    const existingFinal = (tournamentFixturesQuery.data ?? []).find((fixture) =>
+      fixture.notes?.includes("completed league standings") || fixture.notes?.includes("Final teams selected manually"),
+    );
+
+    setSavingFinalTeams(true);
+    try {
+      if (existingFinal) {
+        await updateFixture(existingFinal.id, {
+          home_team_id: selectedHomeTeam,
+          away_team_id: selectedAwayTeam,
+          home_score: null,
+          away_score: null,
+          status: "Scheduled",
+          notes: "Final teams selected manually from the bracket.",
+        });
+      } else {
+        await insertFixtures([{
+          competition_id: competitionId,
+          tournament_id: tournamentId,
+          matchday: Math.max(0, ...(tournamentFixturesQuery.data ?? []).map((fixture) => fixture.matchday)) + 1,
+          home_team_id: selectedHomeTeam,
+          away_team_id: selectedAwayTeam,
+          kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          status: "Scheduled",
+          notes: "Final teams selected manually from the bracket.",
+        }]);
+      }
+      manuallySelectedFinalKey.current = `${tournamentId}:${selectedHomeTeam}:${selectedAwayTeam}`;
+      await queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
+      await queryClient.invalidateQueries({ queryKey: ["fixtures"] });
+      toast.success("Final teams saved. They will now appear on the home page.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the final teams");
+    } finally {
+      setSavingFinalTeams(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isCurrentTournamentCreated || tournaments.length === 0) return;
+    const firstTournament = tournaments[0];
+    setTournamentId(firstTournament.id);
+    localStorage.setItem("current-tournament-id", firstTournament.id);
+  }, [isCurrentTournamentCreated, tournaments]);
+
+  useEffect(() => {
+    if (!leagueComplete || !homeFinalist || !awayFinalist || !competitionId || !isCurrentTournamentCreated) return;
+    if (tournamentFixturesQuery.isLoading) return;
+    if (manuallySelectedFinalKey.current?.startsWith(`${tournamentId}:`)) return;
+    if ((tournamentFixturesQuery.data ?? []).some((fixture) =>
+      fixture.notes?.includes("completed league standings") || fixture.notes?.includes("Final teams selected manually"),
+    )) return;
+
+    const creationKey = `${tournamentId}:${homeFinalist.team_id}:${awayFinalist.team_id}`;
+    if (finalFixtureCreationKey.current === creationKey) return;
+    finalFixtureCreationKey.current = creationKey;
+
+    const nextMatchday = Math.max(0, ...(tournamentFixturesQuery.data ?? []).map((fixture) => fixture.matchday)) + 1;
+    void insertFixtures([{
+      competition_id: competitionId,
+      tournament_id: tournamentId,
+      matchday: nextMatchday,
+      home_team_id: homeFinalist.team_id,
+      away_team_id: awayFinalist.team_id,
+      kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      status: "Scheduled",
+      notes: "Automatically created from the completed league standings.",
+    }]).then(() => {
+      void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
+      toast.success(`${homeFinalist.team_name} vs ${awayFinalist.team_name} added to the final bracket.`);
+    }).catch((error) => {
+      finalFixtureCreationKey.current = null;
+      toast.error(error instanceof Error ? error.message : "Could not create the final fixture");
+    });
+  }, [leagueComplete, homeFinalist, awayFinalist, competitionId, isCurrentTournamentCreated, tournamentId, tournamentFixturesQuery.data, tournamentFixturesQuery.isLoading, queryClient]);
 
   const selectTournamentForFixtures = (tournament: Tournament) => {
     setTournamentId(tournament.id);
@@ -833,31 +1079,39 @@ export function FinalMatchScorecard() {
 
   // Calculate tournament stats
   const calculateStats = (): TournamentStats => {
-    const allPlayers = [...home.players, ...away.players];
     const allGoals = [...home.goals, ...away.goals];
-    const allAssists = [...home.assists, ...away.assists];
     const allSaves = [...home.saves, ...away.saves];
+    const finalFixture = (fixturesQuery.data ?? []).find((fixture) =>
+      fixture.home_team_id === selectedHomeTeam && fixture.away_team_id === selectedAwayTeam,
+    );
+    const playerNames = new Map((playersQuery.data ?? []).map((player) => [player.id, player.name]));
+    const historicalEvents = (tournamentEventStatsQuery.data ?? []).filter(
+      (event) => event.fixture_id !== finalFixture?.id,
+    );
 
     const goalCounts = new Map<string, number>();
+    historicalEvents
+      .filter((event) => event.event_type === "goal" && event.player_id)
+      .forEach((event) => {
+        const playerName = playerNames.get(event.player_id ?? "");
+        if (playerName) goalCounts.set(playerName, (goalCounts.get(playerName) || 0) + 1);
+      });
     allGoals.forEach((g) => {
       goalCounts.set(g.playerName, (goalCounts.get(g.playerName) || 0) + 1);
     });
 
-    const assistCounts = new Map<string, number>();
-    allAssists.forEach((a) => {
-      assistCounts.set(a.playerName, (assistCounts.get(a.playerName) || 0) + 1);
-    });
-
     const saveCounts = new Map<string, number>();
+    historicalEvents
+      .filter((event) => event.event_type === "save" && event.player_id)
+      .forEach((event) => {
+        const playerName = playerNames.get(event.player_id ?? "");
+        if (playerName) saveCounts.set(playerName, (saveCounts.get(playerName) || 0) + 1);
+      });
     allSaves.forEach((s) => {
       saveCounts.set(s.playerName, (saveCounts.get(s.playerName) || 0) + 1);
     });
 
     const topScorer = [...goalCounts.entries()].sort((a, b) => b[1] - a[1])[0] || [
-      "None",
-      0,
-    ];
-    const topAssister = [...assistCounts.entries()].sort((a, b) => b[1] - a[1])[0] || [
       "None",
       0,
     ];
@@ -868,7 +1122,6 @@ export function FinalMatchScorecard() {
 
     return {
       topScorer: { name: topScorer[0], goals: topScorer[1] },
-      topAssister: { name: topAssister[0], assists: topAssister[1] },
       topSaver: { name: topSaver[0], saves: topSaver[1] },
     };
   };
@@ -905,6 +1158,52 @@ export function FinalMatchScorecard() {
       status: "completed" as const,
     };
 
+    const finalFixture = (tournamentFixturesQuery.data ?? []).find((fixture) =>
+      fixture.home_team_id === selectedHomeTeam && fixture.away_team_id === selectedAwayTeam,
+    );
+    if (finalFixture) {
+      try {
+        await updateFixture(finalFixture.id, {
+          home_score: homeScore,
+          away_score: awayScore,
+          status: "Full Time",
+        });
+        await replaceFixtureEvents(finalFixture.id, [
+          ...home.goals.map((goal) => ({
+            team_id: selectedHomeTeam,
+            player_id: goal.playerId,
+            minute: goal.minute ?? 0,
+            event_type: "goal",
+          })),
+          ...away.goals.map((goal) => ({
+            team_id: selectedAwayTeam,
+            player_id: goal.playerId,
+            minute: goal.minute ?? 0,
+            event_type: "goal",
+          })),
+          ...home.saves.map((save) => ({
+            team_id: selectedHomeTeam,
+            player_id: save.playerId,
+            minute: save.minute ?? 0,
+            event_type: "save",
+          })),
+          ...away.saves.map((save) => ({
+            team_id: selectedAwayTeam,
+            player_id: save.playerId,
+            minute: save.minute ?? 0,
+            event_type: "save",
+          })),
+        ]);
+        void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
+        void queryClient.invalidateQueries({ queryKey: ["fixtures"] });
+        void queryClient.invalidateQueries({ queryKey: ["scorers"] });
+        void queryClient.invalidateQueries({ queryKey: ["saves"] });
+        void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Final saved, but the bracket score could not be updated");
+      }
+    }
+
     if (isCurrentTournamentCreated) {
       const { id: _id, ...changes } = newTournament;
       saveTournamentMutation.mutate({ id: tournamentId, changes });
@@ -927,7 +1226,6 @@ export function FinalMatchScorecard() {
       participants: newTournament.participants,
       stats: {
         topScorer: { name: topScorerName, goals: topScorerGoals },
-        topAssister: { name: stats.topAssister.name, assists: stats.topAssister.assists },
         topSaver: { name: topSaverName, saves: topSaverSaves },
       },
     };
@@ -940,14 +1238,14 @@ export function FinalMatchScorecard() {
   // Reset match
   const resetMatch = () => {
     setHome({
-      name: "Home Team",
+      name: "Team 1",
       players: INITIAL_HOME_PLAYERS,
       goals: [],
       assists: [],
       saves: [],
     });
     setAway({
-      name: "Away Team",
+      name: "Team 2",
       players: INITIAL_AWAY_PLAYERS,
       goals: [],
       assists: [],
@@ -959,7 +1257,7 @@ export function FinalMatchScorecard() {
   const outfieldPlayers = (players: Player[]) => players.filter((p) => !p.isGK);
 
   return (
-    <Tabs defaultValue="tournament" className="min-h-screen bg-gradient-to-b from-pitch via-pitch/95 to-pitch/90">
+    <Tabs defaultValue="tournament" className="min-h-screen bg-linear-to-br from-[#102a3a] via-[#145b62] to-[#287f72]">
       <TabsList className="sticky top-0 z-10 w-full justify-start rounded-none border-b-2 border-pitch-foreground/20 bg-card/95 backdrop-blur-xl p-0 shadow-lg">
         <TabsTrigger value="tournament" className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary">
           <Trophy className="h-4 w-4 mr-2" />
@@ -1047,9 +1345,31 @@ export function FinalMatchScorecard() {
             </CardContent>
           </Card>
 
+          {homeFinalist && awayFinalist && (
+            <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-white text-slate-900 shadow-lg">
+              <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-wider text-[#16756b]">
+                    {leagueComplete ? "Finalists confirmed" : "Current final places"}
+                  </p>
+                  <p className="mt-1 font-semibold text-slate-800">
+                    {leagueComplete ? "The final has been prepared from the top two teams." : "The top two teams currently lead the standings."}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    1st {homeFinalist.team_name} <span className="px-1">vs</span> 2nd {awayFinalist.team_name}
+                  </p>
+                </div>
+                <div className="shrink-0 rounded-lg bg-slate-50 px-4 py-3 text-center shadow-sm">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{leagueComplete ? "Final status" : "Qualification"}</p>
+                  <p className="mt-1 text-sm font-bold text-primary">{leagueComplete ? "TO BE PLAYED" : "Top two currently qualify"}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Current Teams Selection */}
-          <Card className="mb-8 border-2 border-accent/40 bg-gradient-to-br from-card/98 via-card/96 to-card/94 backdrop-blur-sm shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-accent/15 to-accent/5 border-b border-accent/20">
+          <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] backdrop-blur-sm shadow-lg">
+            <CardHeader className="bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10 border-b border-[#f28c5b]/25">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 📋 Select Current Teams
@@ -1057,12 +1377,12 @@ export function FinalMatchScorecard() {
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid gap-6 lg:grid-cols-2">
-                {/* Home Team Selection */}
+                {/* Team 1 Selection */}
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold text-foreground">🏠 Home Team</Label>
+                  <Label className="text-base font-semibold text-foreground">Team 1</Label>
                   <Select value={selectedHomeTeam} onValueChange={(teamId) => loadTeamPlayers(teamId, "home")}>
                     <SelectTrigger className="bg-background border-2 hover:border-primary/50 transition-colors">
-                      <SelectValue placeholder="Select home team..." />
+                      <SelectValue placeholder="Select team 1..." />
                     </SelectTrigger>
                     <SelectContent>
                       {(teamsQuery.data ?? []).map((team) => (
@@ -1079,12 +1399,12 @@ export function FinalMatchScorecard() {
                   )}
                 </div>
 
-                {/* Away Team Selection */}
+                {/* Team 2 Selection */}
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold text-foreground">✈️ Away Team</Label>
+                  <Label className="text-base font-semibold text-foreground">Team 2</Label>
                   <Select value={selectedAwayTeam} onValueChange={(teamId) => loadTeamPlayers(teamId, "away")}>
                     <SelectTrigger className="bg-background border-2 hover:border-primary/50 transition-colors">
-                      <SelectValue placeholder="Select away team..." />
+                      <SelectValue placeholder="Select team 2..." />
                     </SelectTrigger>
                     <SelectContent>
                       {(teamsQuery.data ?? []).map((team) => (
@@ -1101,16 +1421,28 @@ export function FinalMatchScorecard() {
                   )}
                 </div>
               </div>
+              <div className="flex flex-col gap-3 border-t border-[#f28c5b]/20 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">Choose both finalists, then save them to the tournament bracket and home page.</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="shrink-0 bg-[#16756b] text-white hover:bg-[#105d55]"
+                  onClick={() => void saveSelectedFinalTeams()}
+                  disabled={savingFinalTeams || !isCurrentTournamentCreated || !selectedHomeTeam || !selectedAwayTeam}
+                >
+                  {savingFinalTeams ? "Saving final teams..." : "Save final teams"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
           {/* Main Match Display */}
-          <Card className="mb-8 overflow-hidden border-3 border-pitch-foreground/30 shadow-2xl bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-sm">
+          <Card className="mb-8 overflow-hidden border-3 border-[#f28c5b]/35 shadow-2xl bg-linear-to-b from-[#fffaf5] to-[#e9f5f1] backdrop-blur-sm">
             <CardContent className="p-6 sm:p-8">
               {/* Match Header with Editable Team Names */}
               <div className="mb-8">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
-                  {/* Home Team */}
+                  {/* Team 1 */}
                   <div className="flex-1 text-center min-w-0">
                     <input
                       type="text"
@@ -1118,7 +1450,7 @@ export function FinalMatchScorecard() {
                       onChange={(e) => updateTeamName("home", e.target.value)}
                       className="w-full bg-transparent text-center text-2xl sm:text-3xl font-bold text-card-foreground outline-none ring-2 ring-transparent transition-all hover:ring-primary/30 focus:ring-primary/50 px-2 py-1 rounded hover:bg-primary/5 truncate"
                     />
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">Home Team</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">Team 1</p>
                   </div>
 
                   {/* VS and Score - More Prominent */}
@@ -1130,7 +1462,7 @@ export function FinalMatchScorecard() {
                     <div className="text-xs sm:text-sm text-muted-foreground font-medium">Final Score</div>
                   </div>
 
-                  {/* Away Team */}
+                  {/* Team 2 */}
                   <div className="flex-1 text-center min-w-0">
                     <input
                       type="text"
@@ -1138,7 +1470,7 @@ export function FinalMatchScorecard() {
                       onChange={(e) => updateTeamName("away", e.target.value)}
                       className="w-full bg-transparent text-center text-2xl sm:text-3xl font-bold text-card-foreground outline-none ring-2 ring-transparent transition-all hover:ring-primary/30 focus:ring-primary/50 px-2 py-1 rounded hover:bg-primary/5 truncate"
                     />
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">Away Team</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">Team 2</p>
                   </div>
                 </div>
 
@@ -1146,7 +1478,7 @@ export function FinalMatchScorecard() {
                 <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
                   <Dialog open={saveTournamentOpen} onOpenChange={setSaveTournamentOpen}>
                     <DialogTrigger asChild>
-                      <Button className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg">
+                      <Button className="gap-2 bg-linear-to-r from-[#e66f51] to-[#2f8f83] text-white hover:from-[#d95f43] hover:to-[#26776d] shadow-lg">
                         <Crown className="h-4 w-4" />
                         {isCurrentTournamentCreated ? "Save Final" : "Create Tournament & Save Final"}
                       </Button>
@@ -1459,137 +1791,6 @@ export function FinalMatchScorecard() {
             </Card>
           </div>
 
-          {/* Assists Section */}
-          <div className="grid gap-8 lg:grid-cols-2 mb-8">
-            {/* Home Team Assists */}
-            <Card className="border-3 border-primary/40 bg-gradient-to-br from-card/98 via-card/96 to-card/94 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-primary/20 to-primary/5 border-b-2 border-primary/20">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <span className="text-2xl">🎯</span>
-                  {home.name} — Assists ({home.assists.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-3">
-                  {home.assists.length === 0 ? (
-                    <p className="text-center text-sm text-muted-foreground py-6 italic">
-                      No assists recorded yet
-                    </p>
-                  ) : (
-                    home.assists.map((assist, idx) => (
-                      <div
-                        key={assist.id}
-                        className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-muted/40 to-muted/20 hover:from-muted/60 hover:to-muted/40 transition-all border border-primary/20 group"
-                      >
-                        <span className="text-lg font-bold text-primary w-8 text-center flex-shrink-0">
-                          {idx + 1}
-                        </span>
-                        <Select
-                          value={assist.playerId}
-                          onValueChange={(playerId) =>
-                            updateAssist("home", idx, playerId)
-                          }
-                        >
-                          <SelectTrigger className="flex-1 bg-background/80 border-primary/30 hover:border-primary/50">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {outfieldPlayers(home.players).map((player) => (
-                              <SelectItem key={player.id} value={player.id}>
-                                {player.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeAssist("home", idx)}
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <Button
-                  onClick={() => addAssist("home")}
-                  disabled={outfieldPlayers(home.players).length === 0}
-                  className="w-full mt-4 gap-2"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Assist
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Away Team Assists */}
-            <Card className="border-3 border-secondary/40 bg-gradient-to-br from-card/98 via-card/96 to-card/94 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-secondary/20 to-secondary/5 border-b-2 border-secondary/20">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <span className="text-2xl">🎯</span>
-                  {away.name} — Assists ({away.assists.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-3">
-                  {away.assists.length === 0 ? (
-                    <p className="text-center text-sm text-muted-foreground py-6 italic">
-                      No assists recorded yet
-                    </p>
-                  ) : (
-                    away.assists.map((assist, idx) => (
-                      <div
-                        key={assist.id}
-                        className="flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-muted/40 to-muted/20 hover:from-muted/60 hover:to-muted/40 transition-all border border-secondary/20 group"
-                      >
-                        <span className="text-lg font-bold text-secondary w-8 text-center flex-shrink-0">
-                          {idx + 1}
-                        </span>
-                        <Select
-                          value={assist.playerId}
-                          onValueChange={(playerId) =>
-                            updateAssist("away", idx, playerId)
-                          }
-                        >
-                          <SelectTrigger className="flex-1 bg-background/80 border-secondary/30 hover:border-secondary/50">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {outfieldPlayers(away.players).map((player) => (
-                              <SelectItem key={player.id} value={player.id}>
-                                {player.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeAssist("away", idx)}
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <Button
-                  onClick={() => addAssist("away")}
-                  disabled={outfieldPlayers(away.players).length === 0}
-                  className="w-full mt-4 gap-2"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Assist
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
           {/* GK Saves Section */}
           <div className="grid gap-8 lg:grid-cols-2 mb-8">
             {/* Home Team Saves */}
@@ -1762,7 +1963,7 @@ export function FinalMatchScorecard() {
               <CardHeader className="bg-gradient-to-r from-primary/20 to-primary/5 border-b-2 border-primary/20">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  {home.name} — Squad ({home.players.length})
+                  Team 1 squad ({home.players.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -1844,7 +2045,7 @@ export function FinalMatchScorecard() {
               <CardHeader className="bg-gradient-to-r from-secondary/20 to-secondary/5 border-b-2 border-secondary/20">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  {away.name} — Squad ({away.players.length})
+                  Team 2 squad ({away.players.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">

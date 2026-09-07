@@ -31,7 +31,10 @@ function SavesPage() {
     queryKey: ["saves", tournamentId],
     queryFn: () => fetchTopSaves(tournamentId),
     enabled: Boolean(tournamentId),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
+  const leadingSaves = Math.max(0, ...(saves.data ?? []).map((player) => player.saves));
 
   useEffect(() => {
     const storedId = localStorage.getItem("current-tournament-id");
@@ -72,6 +75,8 @@ function SavesPage() {
         )}
         {tournaments.isError ? (
           <EmptyState message="Unable to load tournaments. Refresh the page and try again." />
+        ) : saves.isError ? (
+          <EmptyState message="Unable to load save statistics. Try returning to the page." />
         ) : saves.isLoading ? (
           <ListSkeleton rows={10} />
         ) : (saves.data ?? []).length === 0 ? (
@@ -94,11 +99,13 @@ function SavesPage() {
                 {(saves.data ?? []).map((s, i) => (
                   <tr key={s.player_id} className="border-t border-border/60">
                     <td className="p-3 text-muted-foreground">{i + 1}</td>
-                    <td className="p-3 font-medium">{s.player_name}</td>
+                    <td className={`p-3 ${s.saves === leadingSaves ? "text-[#D4AF37] text-[1.02em] font-bold" : "font-medium"}`}>
+                      {s.player_name}
+                    </td>
                     <td className="p-3 text-muted-foreground">{s.team_name}</td>
                     <td className="p-3 text-center tabular-nums">{s.matches}</td>
                     <td className="p-3 text-center tabular-nums">{s.clean_sheets}</td>
-                    <td className="p-3 text-center font-semibold tabular-nums">{s.saves}</td>
+                    <td className={`p-3 text-center tabular-nums ${s.saves === leadingSaves ? "text-[#D4AF37] text-[1.02em] font-bold" : "font-semibold"}`}>{s.saves}</td>
                     <td className="p-3 text-right">
                       <Button
                         variant="ghost"

@@ -17,5 +17,8 @@ export default defineConfig({
     optimizeDeps: {
       rolldownOptions: undefined,
     },
+    server: {
+      host: true,
+    },
   },
 });

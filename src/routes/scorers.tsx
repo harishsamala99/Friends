@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, ListSkeleton, EmptyState } from "@/components/football-ui";
-import { fetchTopScorers, fetchTournaments, deletePlayerGoals, type Tournament } from "@/lib/football";
+import { fetchFixtures, fetchTopScorers, fetchTournaments, deletePlayerGoals, type Tournament } from "@/lib/football";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/scorers")({
@@ -31,7 +31,20 @@ function ScorersPage() {
     queryKey: ["scorers", tournamentId],
     queryFn: () => fetchTopScorers(tournamentId),
     enabled: Boolean(tournamentId),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
+  const fixtures = useQuery({
+    queryKey: ["fixtures", tournamentId],
+    queryFn: () => fetchFixtures(undefined, tournamentId),
+    enabled: Boolean(tournamentId),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+  const totalGoals = (fixtures.data ?? [])
+    .filter((fixture) => fixture.status === "Full Time" && fixture.home_score != null && fixture.away_score != null)
+    .reduce((total, fixture) => total + (fixture.home_score ?? 0) + (fixture.away_score ?? 0), 0);
+  const leadingGoals = Math.max(0, ...(scorers.data ?? []).map((scorer) => scorer.goals));
 
   useEffect(() => {
     const storedId = localStorage.getItem("current-tournament-id");
@@ -72,13 +85,19 @@ function ScorersPage() {
         )}
         {tournaments.isError ? (
           <EmptyState message="Unable to load tournaments. Refresh the page and try again." />
+        ) : scorers.isError ? (
+          <EmptyState message="Unable to load scorer statistics. Try returning to the page." />
         ) : scorers.isLoading ? (
           <ListSkeleton rows={10} />
         ) : (scorers.data ?? []).length === 0 ? (
           <EmptyState message="No goals recorded yet." />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-[560px] text-sm">
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm">
+              Tournament goals: <span className="font-semibold tabular-nums">{totalGoals}</span>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full min-w-140 text-sm">
               <thead className="bg-muted/60 text-muted-foreground">
                 <tr>
                   <th className="p-3 text-left font-medium">#</th>
@@ -94,11 +113,13 @@ function ScorersPage() {
                 {(scorers.data ?? []).map((s, i) => (
                   <tr key={s.player_id} className="border-t border-border/60">
                     <td className="p-3 text-muted-foreground">{i + 1}</td>
-                    <td className="p-3 font-medium">{s.player_name}</td>
+                    <td className={`p-3 ${s.goals === leadingGoals ? "text-[#D4AF37] text-[1.02em] font-bold" : "font-medium"}`}>
+                      {s.player_name}
+                    </td>
                     <td className="p-3 text-muted-foreground">{s.team_name}</td>
                     <td className="p-3 text-center tabular-nums">{s.matches}</td>
                     <td className="p-3 text-center tabular-nums">{s.assists}</td>
-                    <td className="p-3 text-center font-semibold tabular-nums">{s.goals}</td>
+                    <td className={`p-3 text-center tabular-nums ${s.goals === leadingGoals ? "text-[#D4AF37] text-[1.02em] font-bold" : "font-semibold"}`}>{s.goals}</td>
                     <td className="p-3 text-right">
                       <Button
                         variant="ghost"
@@ -118,7 +139,8 @@ function ScorersPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         )}
       </div>

@@ -532,6 +532,24 @@ export async function deleteEvent(id: string) {
   if (error) throw error;
 }
 
+export async function replaceFixtureEvents(
+  fixtureId: string,
+  events: Array<Partial<MatchEvent>>,
+) {
+  const { error: deleteError } = await db
+    .from("match_events")
+    .delete()
+    .eq("fixture_id", fixtureId)
+    .in("event_type", ["goal", "save"]);
+  if (deleteError) throw deleteError;
+  if (events.length === 0) return;
+
+  const { error: insertError } = await db.from("match_events").insert(
+    events.map((event) => ({ ...event, fixture_id: fixtureId })),
+  );
+  if (insertError) throw insertError;
+}
+
 /* Tournament management */
 
 export async function fetchTournaments(): Promise<Tournament[]> {
