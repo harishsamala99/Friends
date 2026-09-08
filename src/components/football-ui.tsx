@@ -66,12 +66,3 @@ export function EmptyState({ message }: { message: string }) {
   );
 }
 
-export function formatKickoff(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}

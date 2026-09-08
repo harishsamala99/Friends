@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { SiteLayout } from "@/components/SiteLayout";
-import { PageHeader, TeamBadge, ListSkeleton, EmptyState, formatKickoff } from "@/components/football-ui";
+import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchFixtures, fetchTeams, type Team } from "@/lib/football";
 
@@ -52,9 +52,6 @@ function ResultsPage() {
                       <div className="shrink-0 text-center">
                         <div className="rounded-md bg-secondary px-3 py-1 font-semibold tabular-nums">
                           {f.home_score} - {f.away_score}
-                        </div>
-                        <div className="mt-1 text-[10px] text-muted-foreground">
-                          {formatKickoff(f.kickoff)}
                         </div>
                       </div>
                       <div className="flex flex-1 items-center justify-end gap-2">

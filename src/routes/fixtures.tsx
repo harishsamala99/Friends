@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
-import { PageHeader, TeamBadge, ListSkeleton, EmptyState, formatKickoff } from "@/components/football-ui";
+import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchFixtures, fetchTeams, fetchTournaments, type Team, type Tournament } from "@/lib/football";
 
@@ -105,7 +105,6 @@ function FixturesPage() {
                                     {home && <TeamBadge team={home} size={30} />}
                                     <span className="truncate font-medium">{home?.name}</span>
                                   </div>
-                                  <div className="shrink-0 text-center text-xs text-muted-foreground">{formatKickoff(fixture.kickoff)}</div>
                                   <div className="flex flex-1 items-center justify-end gap-2">
                                     <span className="truncate font-medium">{away?.name}</span>
                                     {away && <TeamBadge team={away} size={30} />}
@@ -138,7 +137,6 @@ function FixturesPage() {
                             </div>
                             <div className="shrink-0 text-center">
                               <div className="rounded-md bg-secondary px-3 py-1 font-semibold tabular-nums">{fixture.home_score ?? 0} - {fixture.away_score ?? 0}</div>
-                              <div className="mt-1 text-[10px] text-muted-foreground">{formatKickoff(fixture.kickoff)}</div>
                             </div>
                             <div className="flex flex-1 items-center justify-end gap-2">
                               <span className="truncate font-medium">{away?.name}</span>

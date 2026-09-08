@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, type CSSProperties } from "react";
 import { Crown, Trophy, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
-import { TeamBadge, ListSkeleton, EmptyState, formatKickoff } from "@/components/football-ui";
+import { FinalFireworks } from "@/components/final-fireworks";
+import { TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ interface Tournament {
   awayScore?: number;
   away_score?: number;
   winner: string;
+  status?: "draft" | "completed";
   manager?: string | null;
   participants?: number | null;
   stats?: {
@@ -122,6 +124,7 @@ function Home() {
         homeScore: tournament.data.home_score,
         awayScore: tournament.data.away_score,
         winner: tournament.data.winner,
+        status: tournament.data.status,
         manager: tournament.data.manager,
         participants: tournament.data.participants,
         stats: {
@@ -155,7 +158,13 @@ function Home() {
   const byId = new Map((teams.data ?? []).map((t: Team) => [t.id, t]));
   const all = fixtures.data ?? [];
   const scheduledFinal = all
-    .filter((fixture) => fixture.tournament_id && (fixture.notes?.includes("completed league standings") || fixture.notes?.includes("Final teams selected manually")) && fixture.home_score == null && fixture.away_score == null)
+    .filter((fixture) =>
+      fixture.tournament_id &&
+      (!latestTournament?.id || fixture.tournament_id === latestTournament.id) &&
+      (fixture.notes?.includes("completed league standings") || fixture.notes?.includes("Final teams selected manually")) &&
+      fixture.home_score == null &&
+      fixture.away_score == null,
+    )
     .sort((a, b) => +new Date(a.kickoff) - +new Date(b.kickoff))[0];
   const finalistRows = (standings.data ?? []).slice(0, 2);
   const hasFinalists = finalistRows.length === 2;
@@ -177,13 +186,14 @@ function Home() {
       typeof latestTournament.homeScore === "number" &&
       typeof latestTournament.awayScore === "number",
   );
-  const finalCompleted = Boolean(latestTournament && finalScoreRecorded && !finalIsToBePlayed && Boolean(latestTournament.winner));
-  const fireworksBursts = Array.from({ length: 12 }, (_, index) => ({
-    left: `${8 + (index * 6.5) % 84}%`,
-    top: `${12 + (index % 5) * 17}%`,
-    delay: `${(index % 6) * 0.32}s`,
-    color: ["#ffd166", "#ff8c42", "#ef476f", "#f9c74f", "#ffb703", "#fb7185", "#f97316", "#ffe08a"][index % 8],
-  }));
+  const finalCompleted = Boolean(
+    latestTournament &&
+      latestTournament.status === "completed" &&
+      finalScoreRecorded &&
+      !finalIsToBePlayed &&
+      latestTournament.winner &&
+      latestTournament.winner !== "TBD",
+  );
   const upcoming = all.filter((f) => f.status === "Scheduled").slice(0, 5);
   const recent = all
     .filter((f) => f.home_score != null)
@@ -259,35 +269,11 @@ function Home() {
                   <h2 className="font-display text-3xl font-bold sm:text-4xl">Latest Final Match</h2>
                 </div>
               </div>
-              <p className="text-sm font-medium text-pitch-foreground/70">{latestTournament?.date || "Final result"}</p>
             </div>
 
             <Card className="relative isolate overflow-hidden border-0 bg-card shadow-2xl ring-1 ring-white/15">
               {finalCompleted && (
-                <div className="firework-layer" aria-hidden="true">
-                  {fireworksBursts.map((burst, index) => (
-                    <span
-                      key={`${burst.left}-${burst.top}-${index}`}
-                      className="firework-spark"
-                      style={{
-                        left: burst.left,
-                        top: burst.top,
-                        animationDelay: burst.delay,
-                        background: burst.color,
-                        color: burst.color,
-                        boxShadow: `0 0 12px ${burst.color}, 0 0 30px ${burst.color}`,
-                      }}
-                    >
-                      {Array.from({ length: 8 }, (_, rayIndex) => (
-                        <i
-                          key={rayIndex}
-                          className="firework-ray"
-                          style={{ "--ray-angle": `${rayIndex * 45}deg` } as CSSProperties}
-                        />
-                      ))}
-                    </span>
-                  ))}
-                </div>
+                <FinalFireworks />
               )}
               <CardContent className="relative z-10 p-0">
                 <div className="border-b border-border/70 bg-linear-to-r from-primary/10 via-accent/10 to-transparent px-5 py-4 sm:px-8">

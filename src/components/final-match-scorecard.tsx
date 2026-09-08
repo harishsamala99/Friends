@@ -180,6 +180,8 @@ const INITIAL_AWAY_PLAYERS: Player[] = [
 function TournamentSetup({
   name,
   onNameChange,
+  status,
+  onStatusChange,
   teams,
   competitionId,
   tournamentId,
@@ -195,6 +197,8 @@ function TournamentSetup({
 }: {
   name: string;
   onNameChange: (name: string) => void;
+  status: "draft" | "completed";
+  onStatusChange: (status: "draft" | "completed") => void;
   teams: Team[];
   competitionId: string | null;
   tournamentId: string;
@@ -310,6 +314,18 @@ function TournamentSetup({
             placeholder="e.g. Summer Cup 2026"
           />
         </div>
+        <div className="max-w-xs">
+          <Label htmlFor="tournament-status">Tournament status</Label>
+          <select
+            id="tournament-status"
+            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+            value={status}
+            onChange={(event) => onStatusChange(event.target.value as "draft" | "completed")}
+          >
+            <option value="draft">In progress</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <Label htmlFor="tournament-fixture-home">Team 1</Label>
@@ -395,7 +411,6 @@ function TournamentSetup({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-semibold">{tournament.tournamentName}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{tournament.date}</span>
                       <Button
                         type="button"
                         variant={tournament.id === tournamentId ? "secondary" : "outline"}
@@ -579,6 +594,7 @@ export function FinalMatchScorecard() {
   const [selectedHomeTeam, setSelectedHomeTeam] = useState<string>("");
   const [selectedAwayTeam, setSelectedAwayTeam] = useState<string>("");
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const currentTournament = tournaments.find((tournament) => tournament.id === tournamentId);
   const [editingPlayerTeam, setEditingPlayerTeam] = useState<"home" | "away" | null>(null);
   const [editingPlayerIndex, setEditingPlayerIndex] = useState<number | null>(null);
   const [editingPlayerName, setEditingPlayerName] = useState<string>("");
@@ -589,6 +605,7 @@ export function FinalMatchScorecard() {
   const [tournamentForm, setTournamentForm] = useState({
     name: "",
     type: "League",
+    status: "draft" as "draft" | "completed",
     manager: "",
     participants: 12,
     topScorerName: "",
@@ -652,6 +669,16 @@ export function FinalMatchScorecard() {
   const awayFinalist = finalStandings[1];
   const leagueComplete = leagueFixtures.length > 0 && leagueFixtures.every(
     (fixture) => fixture.home_score != null && fixture.away_score != null,
+  );
+  const finalHasBeenPosted = Boolean(
+    currentTournament?.status === "completed" ||
+      (fixturesQuery.data ?? []).some(
+        (fixture) =>
+          (fixture.notes?.includes("completed league standings") || fixture.notes?.includes("Final teams selected manually")) &&
+          fixture.home_score != null &&
+          fixture.away_score != null &&
+          fixture.status === "Full Time",
+      ),
   );
 
   useEffect(() => {
@@ -759,7 +786,7 @@ export function FinalMatchScorecard() {
       top_assister_assists: 0,
       top_saver_name: null,
       top_saver_saves: 0,
-      status: "draft",
+      status: tournamentForm.status,
     });
   };
 
@@ -855,6 +882,7 @@ export function FinalMatchScorecard() {
       ...current,
       name: tournament.tournamentName,
       type: tournament.type,
+        status: tournament.status,
     }));
     toast.success(`Now creating fixtures for ${tournament.tournamentName}`);
   };
@@ -1313,16 +1341,23 @@ export function FinalMatchScorecard() {
       return;
     }
 
-    if (isCurrentTournamentCreated) {
-      const { id: _id, ...changes } = newTournament;
-      saveTournamentMutation.mutate({ id: tournamentId, changes });
-    } else {
-      createTournamentMutation.mutate(newTournament);
+    let savedTournamentId = tournamentId;
+    try {
+      if (isCurrentTournamentCreated) {
+        const { id: _id, ...changes } = newTournament;
+        await saveTournamentMutation.mutateAsync({ id: tournamentId, changes });
+      } else {
+        const { id: _id, ...newTournamentWithoutLocalId } = newTournament;
+        const createdTournament = await createTournamentMutation.mutateAsync(newTournamentWithoutLocalId);
+        savedTournamentId = createdTournament?.id ?? tournamentId;
+      }
+    } catch {
+      return;
     }
 
     // Also save to localStorage for backwards compatibility
     const localTournament: Tournament = {
-      id: tournamentId,
+      id: savedTournamentId,
       tournamentName: newTournament.tournament_name,
       type: newTournament.type,
       date: newTournament.date,
@@ -1331,6 +1366,7 @@ export function FinalMatchScorecard() {
       homeScore: newTournament.home_score,
       awayScore: newTournament.away_score,
       winner: newTournament.winner,
+      status: "completed",
       manager: newTournament.manager || "",
       participants: newTournament.participants,
       stats: {
@@ -1340,9 +1376,9 @@ export function FinalMatchScorecard() {
       },
     };
 
-    setTournaments((prevTournaments) => [localTournament, ...prevTournaments.filter((t) => t.id !== tournamentId)]);
+    setTournaments((prevTournaments) => [localTournament, ...prevTournaments.filter((t) => t.id !== savedTournamentId)]);
     setSaveTournamentOpen(false);
-    setTournamentForm({ name: "", type: "League", manager: "", participants: 12, topScorerName: "", topScorerGoals: "", topSaverName: "", topSaverSaves: "" });
+    setTournamentForm({ name: "", type: "League", status: "draft", manager: "", participants: 12, topScorerName: "", topScorerGoals: "", topSaverName: "", topSaverSaves: "" });
   };
 
   // Reset match
@@ -1393,6 +1429,8 @@ export function FinalMatchScorecard() {
           <TournamentSetup
             name={tournamentForm.name}
             onNameChange={(name) => setTournamentForm({ ...tournamentForm, name })}
+            status={tournamentForm.status}
+            onStatusChange={(status) => setTournamentForm((current) => ({ ...current, status }))}
             teams={teamsQuery.data ?? []}
             competitionId={competitionId ?? null}
             tournamentId={tournamentId}
@@ -1434,7 +1472,12 @@ export function FinalMatchScorecard() {
                     setTournamentId(value);
                     const selected = tournaments.find((tournament) => tournament.id === value);
                     if (selected) {
-                      setTournamentForm((current) => ({ ...current, name: selected.tournamentName, type: selected.type }));
+                      setTournamentForm((current) => ({
+                        ...current,
+                        name: selected.tournamentName,
+                        type: selected.type,
+                        status: selected.status,
+                      }));
                     }
                   }}
                 >
@@ -1456,7 +1499,7 @@ export function FinalMatchScorecard() {
             </CardContent>
           </Card>
 
-          {homeFinalist && awayFinalist && (
+          {homeFinalist && awayFinalist && !finalHasBeenPosted && (
             <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-white text-slate-900 shadow-lg">
               <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -2277,7 +2320,6 @@ export function FinalMatchScorecard() {
                   <CardContent className="p-6">
                     <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2 border-b pb-4">
                       <h2 className="font-display text-2xl font-bold">{tournament.tournamentName}</h2>
-                      <span className="text-sm text-muted-foreground">{tournament.date}</span>
                     </div>
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                       <div>
@@ -2445,7 +2487,7 @@ export function FinalMatchScorecard() {
                     {tournaments.map((tournament) => (
                       <div key={tournament.id} className="border-b pb-4 last:border-0">
                         <p className="text-xs text-muted-foreground mb-2 font-medium">
-                          {tournament.homeTeam} vs {tournament.awayTeam} ({tournament.date})
+                          {tournament.homeTeam} vs {tournament.awayTeam}
                         </p>
                         <div className="flex items-center justify-between">
                           <span className="font-semibold">{tournament.stats.topScorer.name}</span>
@@ -2469,7 +2511,7 @@ export function FinalMatchScorecard() {
                     {tournaments.map((tournament) => (
                       <div key={tournament.id} className="border-b pb-4 last:border-0">
                         <p className="text-xs text-muted-foreground mb-2 font-medium">
-                          {tournament.homeTeam} vs {tournament.awayTeam} ({tournament.date})
+                          {tournament.homeTeam} vs {tournament.awayTeam}
                         </p>
                         <div className="flex items-center justify-between">
                           <span className="font-semibold">{tournament.stats.topAssister.name}</span>
@@ -2493,7 +2535,7 @@ export function FinalMatchScorecard() {
                     {tournaments.map((tournament) => (
                       <div key={tournament.id} className="border-b pb-4 last:border-0">
                         <p className="text-xs text-muted-foreground mb-2 font-medium">
-                          {tournament.homeTeam} vs {tournament.awayTeam} ({tournament.date})
+                          {tournament.homeTeam} vs {tournament.awayTeam}
                         </p>
                         <div className="flex items-center justify-between">
                           <span className="font-semibold">{tournament.stats.topSaver.name}</span>
