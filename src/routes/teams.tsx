@@ -27,7 +27,9 @@ function TeamsPage() {
 
   const counts = new Map<string, number>();
   for (const p of players.data ?? []) {
-    if (p.team_id) counts.set(p.team_id, (counts.get(p.team_id) ?? 0) + 1);
+    if (p.team_id && p.status === "Active") {
+      counts.set(p.team_id, (counts.get(p.team_id) ?? 0) + 1);
+    }
   }
 
   return (
@@ -77,7 +79,9 @@ function TeamsPage() {
         )}
         {selectedTeamId && (() => {
           const selectedTeam = (teams.data ?? []).find((team) => team.id === selectedTeamId);
-          const squad = (players.data ?? []).filter((player) => player.team_id === selectedTeamId);
+          const squad = (players.data ?? []).filter(
+            (player) => player.team_id === selectedTeamId && player.status === "Active",
+          );
           if (!selectedTeam) return null;
           return (
             <section className="mt-8" aria-label={`${selectedTeam.name} squad`}>
