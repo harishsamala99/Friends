@@ -271,32 +271,35 @@ function Home() {
               </div>
             </div>
 
-            <Card className="relative isolate overflow-hidden border-0 bg-card shadow-2xl ring-1 ring-white/15">
+            <Card className="latest-final-card relative isolate overflow-hidden border-0 bg-card shadow-2xl ring-1 ring-white/20">
               {finalCompleted && (
                 <FinalFireworks />
               )}
               <CardContent className="relative z-10 p-0">
-                <div className="border-b border-border/70 bg-linear-to-r from-primary/10 via-accent/10 to-transparent px-5 py-4 sm:px-8">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Final of</p>
+                <div className="latest-final-card__header border-b border-border/70 bg-linear-to-r from-primary/15 via-accent/10 to-transparent px-5 py-5 sm:px-8 sm:py-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="latest-final-card__eyebrow text-xs font-black uppercase tracking-[0.22em] text-primary">Final of</p>
+                    <span className="latest-final-card__live-tag">{finalIsToBePlayed ? "UPCOMING" : "RESULT"}</span>
+                  </div>
                   <p className="mt-1 truncate font-display text-2xl font-bold text-card-foreground sm:text-3xl">
                     {latestTournament?.tournament_name || latestTournament?.tournamentName || latestTournament?.type || "League Final"}
                   </p>
                 </div>
 
                 <div className="grid gap-0 lg:grid-cols-[1.35fr_0.65fr]">
-                  <div className="p-5 sm:p-8">
+                  <div className="latest-final-card__score-stage p-5 sm:p-10">
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-8">
-                      <div className="min-w-0 text-center">
-                        <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-primary text-2xl font-black text-primary-foreground shadow-lg shadow-primary/20 sm:size-20 sm:text-3xl">
+                      <div className="latest-final-card__team min-w-0 text-center">
+                        <div className="latest-final-card__badge mx-auto grid size-16 place-items-center rounded-2xl bg-primary text-2xl font-black text-primary-foreground shadow-lg shadow-primary/20 sm:size-20 sm:text-3xl">
                           {teamInitials(finalHomeName)}
                         </div>
-                        <p className="mt-3 truncate font-display text-xl font-bold sm:text-2xl">{finalHomeName || "Team 1"}</p>
+                        <p className="mt-4 truncate font-display text-xl font-bold sm:text-2xl">{finalHomeName || "Team 1"}</p>
                         <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team 1</p>
                       </div>
 
-                      <div className="text-center">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{finalIsToBePlayed ? "TO BE PLAYED" : "Full time"}</p>
-                        <div className="mt-1 flex items-center gap-2 font-display text-5xl font-black tabular-nums text-primary drop-shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_35%,transparent)] dark:text-[#fff7e6] dark:drop-shadow-[0_0_18px_rgba(255,177,66,0.55)] sm:text-7xl sm:gap-3">
+                      <div className="latest-final-card__score text-center">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{finalIsToBePlayed ? "TO BE PLAYED" : "Full time"}</p>
+                        <div className="latest-final-card__score-value mt-2 flex items-center gap-2 font-display text-5xl font-black tabular-nums text-primary drop-shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_35%,transparent)] dark:text-[#fff7e6] dark:drop-shadow-[0_0_18px_rgba(255,177,66,0.55)] sm:text-7xl sm:gap-3">
                           <span>{finalIsToBePlayed ? "-" : latestTournament?.homeScore ?? 0}</span>
                           <span className="text-2xl text-muted-foreground sm:text-3xl">:</span>
                           <span>{finalIsToBePlayed ? "-" : latestTournament?.awayScore ?? 0}</span>
@@ -304,26 +307,26 @@ function Home() {
                         <p className="mt-1 text-xs text-muted-foreground">{finalIsToBePlayed ? "Awaiting final result" : "Final score"}</p>
                       </div>
 
-                      <div className="min-w-0 text-center">
-                        <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-[#166b58] text-2xl font-black text-white shadow-lg shadow-[#166b58]/20 sm:size-20 sm:text-3xl">
+                      <div className="latest-final-card__team min-w-0 text-center">
+                        <div className="latest-final-card__badge mx-auto grid size-16 place-items-center rounded-2xl bg-[#166b58] text-2xl font-black text-white shadow-lg shadow-[#166b58]/20 sm:size-20 sm:text-3xl">
                           {teamInitials(finalAwayName)}
                         </div>
-                        <p className="mt-3 truncate font-display text-xl font-bold sm:text-2xl">{finalAwayName || "Team 2"}</p>
+                        <p className="mt-4 truncate font-display text-xl font-bold sm:text-2xl">{finalAwayName || "Team 2"}</p>
                         <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team 2</p>
                       </div>
                     </div>
 
-                    <div className="mt-7 flex items-center justify-center gap-2 rounded-xl bg-accent/20 px-4 py-3 text-center">
+                    <div className="latest-final-card__champion mt-8 flex items-center justify-center gap-2 rounded-xl bg-accent/20 px-4 py-3 text-center">
                       <Crown className="size-5 shrink-0 text-accent-foreground" />
                       <span className="text-sm text-muted-foreground">{finalIsToBePlayed ? "Status" : "Champion"}</span>
-                      <strong className="truncate text-sm text-accent-foreground dark:text-[#ffd666] dark:drop-shadow-[0_0_10px_rgba(255,214,102,0.5)]">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.winner || "Not recorded"}</strong>
+                      <strong className="truncate text-base font-black text-accent-foreground dark:text-[#fff0a8] dark:drop-shadow-[0_0_14px_rgba(255,214,102,0.8)] sm:text-lg">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.winner || "Not recorded"}</strong>
                     </div>
                   </div>
 
-                  <div className="border-t border-border/70 bg-muted/25 p-5 sm:p-8 lg:border-l lg:border-t-0">
+                  <div className="latest-final-card__rail border-t border-border/70 bg-muted/25 p-5 sm:p-8 lg:border-l lg:border-t-0">
                     {!finalIsToBePlayed && (
                       <div className="mb-4 grid gap-2 sm:grid-cols-2">
-                        <div className="golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-2.5">
+                        <div className="latest-final-card__award golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3">
                           <div className="flex items-center gap-2 text-[#9a7410] dark:text-[#ffd666]">
                             <Trophy className="size-4 shrink-0" aria-hidden="true" />
                             <p className="text-[10px] font-black uppercase tracking-[0.16em]">Golden Boot</p>
@@ -331,7 +334,7 @@ function Home() {
                             <p className="mt-1 truncate text-sm font-bold text-[#8a6610] dark:text-[#fff0b3]">{latestTournament?.stats.topScorer.name || "Not recorded"}</p>
                             <p className="text-xs font-semibold text-[#9a7410] dark:text-[#ffd666]">{latestTournament?.stats.topScorer.goals ?? 0} goals</p>
                         </div>
-                        <div className="golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-2.5">
+                        <div className="latest-final-card__award golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3">
                             <div className="flex items-center gap-2 text-[#9a7410] dark:text-[#ffd666]">
                             <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
                             <p className="text-[10px] font-black uppercase tracking-[0.16em]">Golden Gloves</p>
@@ -342,13 +345,13 @@ function Home() {
                       </div>
                     )}
                     <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-1">
-                      <div className="rounded-xl border border-primary/15 bg-card p-3 text-center sm:p-4 lg:text-left">
+                      <div className="latest-final-card__stat rounded-xl border border-primary/25 bg-card p-3 text-center sm:p-4 lg:text-left">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Final status" : "Top scorer"}</p>
                         <p className="mt-1 truncate text-sm font-bold dark:text-[#fff7e6]">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.stats.topScorer.name}</p>
                         <p className="mt-1 font-display text-2xl font-black text-primary dark:text-[#ffb347] dark:drop-shadow-[0_0_12px_rgba(255,179,71,0.55)]">{finalIsToBePlayed ? "-" : latestTournament?.stats.topScorer.goals}</p>
                         <p className="text-[10px] text-muted-foreground">goals</p>
                       </div>
-                      <div className="rounded-xl border border-accent/50 bg-card p-3 text-center sm:p-4 lg:text-left">
+                      <div className="latest-final-card__stat latest-final-card__stat--accent rounded-xl border border-accent/50 bg-card p-3 text-center sm:p-4 lg:text-left">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Next step" : "Top saver"}</p>
                         <p className="mt-1 truncate text-sm font-bold dark:text-[#fff7e6]">{finalIsToBePlayed ? "Add goals" : latestTournament?.stats.topSaver.name}</p>
                         <p className="mt-1 font-display text-2xl font-black text-accent-foreground dark:text-[#ffd666] dark:drop-shadow-[0_0_12px_rgba(255,214,102,0.55)]">{finalIsToBePlayed ? "-" : latestTournament?.stats.topSaver.saves}</p>
