@@ -318,7 +318,7 @@ function Home() {
 
                     <div className="latest-final-card__champion mt-8 flex items-center justify-center gap-2 rounded-xl bg-accent/20 px-4 py-3 text-center">
                       <Crown className="size-5 shrink-0 text-accent-foreground" />
-                      <span className="text-sm text-muted-foreground">{finalIsToBePlayed ? "Status" : "Champion"}</span>
+                      <span className="text-sm text-muted-foreground dark:text-[#fff0a8] dark:drop-shadow-[0_0_14px_rgba(255,214,102,0.8)]">{finalIsToBePlayed ? "Status" : "Champion"}</span>
                       <strong className="truncate text-base font-black text-accent-foreground dark:text-[#fff0a8] dark:drop-shadow-[0_0_14px_rgba(255,214,102,0.8)] sm:text-lg">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.winner || "Not recorded"}</strong>
                     </div>
                   </div>
@@ -326,7 +326,7 @@ function Home() {
                   <div className="latest-final-card__rail border-t border-border/70 bg-muted/25 p-5 sm:p-8 lg:border-l lg:border-t-0">
                     {!finalIsToBePlayed && (
                       <div className="mb-4 grid gap-2 sm:grid-cols-2">
-                        <div className="latest-final-card__award golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3">
+                        <div className="latest-final-card__award golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3 dark:shadow-[0_0_18px_rgba(255,214,102,0.35)]">
                           <div className="flex items-center gap-2 text-[#9a7410] dark:text-[#ffd666]">
                             <Trophy className="size-4 shrink-0" aria-hidden="true" />
                             <p className="text-[10px] font-black uppercase tracking-[0.16em]">Golden Boot</p>
@@ -348,7 +348,7 @@ function Home() {
                       <div className="latest-final-card__stat rounded-xl border border-primary/25 bg-card p-3 text-center sm:p-4 lg:text-left">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Final status" : "Top scorer"}</p>
                         <p className="mt-1 truncate text-sm font-bold dark:text-[#fff7e6]">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.stats.topScorer.name}</p>
-                        <p className="mt-1 font-display text-2xl font-black text-primary dark:text-[#ffb347] dark:drop-shadow-[0_0_12px_rgba(255,179,71,0.55)]">{finalIsToBePlayed ? "-" : latestTournament?.stats.topScorer.goals}</p>
+                        <p className="mt-1 font-display text-2xl font-black text-primary dark:text-[#ffd666] dark:drop-shadow-[0_0_12px_rgba(255,214,102,0.55)]">{finalIsToBePlayed ? "-" : latestTournament?.stats.topScorer.goals}</p>
                         <p className="text-[10px] text-muted-foreground">goals</p>
                       </div>
                       <div className="latest-final-card__stat latest-final-card__stat--accent rounded-xl border border-accent/50 bg-card p-3 text-center sm:p-4 lg:text-left">
