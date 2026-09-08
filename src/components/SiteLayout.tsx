@@ -25,6 +25,7 @@ function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
+      className="bg-[#fff1d6] text-[#182235] hover:bg-[#ffe5bd] hover:text-[#182235]"
       aria-label="Toggle theme"
       onClick={() => {
         const next = !dark;
@@ -55,8 +56,8 @@ export function SiteLayout({ children }: { children: ReactNode }) {
               <Link
                 key={n.to}
                 to={n.to}
-                className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                activeProps={{ className: "rounded-md px-3 py-2 text-sm font-medium bg-accent text-foreground" }}
+                className="rounded-md bg-[#fff1d6] px-3 py-2 text-sm font-medium text-[#182235] transition-colors hover:bg-[#ffe5bd] hover:text-[#182235]"
+                activeProps={{ className: "rounded-md bg-[#ffe5bd] px-3 py-2 text-sm font-semibold text-[#182235]" }}
                 activeOptions={{ exact: n.to === "/" }}
               >
                 {n.label}
@@ -68,7 +69,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
               <Button
                 variant="default"
                 size="sm"
-                className="gap-2 hidden sm:flex"
+                className="hidden gap-2 bg-[#fff1d6] text-[#182235] shadow-sm hover:bg-[#ffe5bd] hover:text-[#182235] sm:flex dark:bg-[#fff1d6] dark:text-[#182235] dark:hover:bg-[#ffe5bd] dark:hover:text-[#182235]"
                 aria-label="Create Tournament"
               >
                 <Zap className="size-4" />
@@ -79,7 +80,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="bg-[#fff1d6] text-[#182235] hover:bg-[#ffe5bd] hover:text-[#182235] md:hidden"
               aria-label="Menu"
               onClick={() => setOpen((v) => !v)}
             >
@@ -94,7 +95,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
                 key={n.to}
                 to={n.to}
                 onClick={() => setOpen(false)}
-                className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="rounded-md bg-[#fff1d6] px-3 py-2 text-sm font-medium text-[#182235] hover:bg-[#ffe5bd] hover:text-[#182235]"
               >
                 {n.label}
               </Link>
@@ -102,7 +103,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             <Link
               to="/final"
               onClick={() => setOpen(false)}
-              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="rounded-md bg-[#fff1d6] px-3 py-2 text-sm font-medium text-[#182235] hover:bg-[#ffe5bd] hover:text-[#182235]"
             >
               <div className="flex items-center gap-2">
                 <Zap className="size-4" />

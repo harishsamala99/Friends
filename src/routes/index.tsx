@@ -296,7 +296,7 @@ function Home() {
 
                       <div className="text-center">
                         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{finalIsToBePlayed ? "TO BE PLAYED" : "Full time"}</p>
-                        <div className="mt-1 flex items-center gap-2 font-display text-5xl font-black tabular-nums text-primary sm:text-7xl sm:gap-3">
+                        <div className="mt-1 flex items-center gap-2 font-display text-5xl font-black tabular-nums text-primary drop-shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_35%,transparent)] dark:text-[#fff7e6] dark:drop-shadow-[0_0_18px_rgba(255,177,66,0.55)] sm:text-7xl sm:gap-3">
                           <span>{finalIsToBePlayed ? "-" : latestTournament?.homeScore ?? 0}</span>
                           <span className="text-2xl text-muted-foreground sm:text-3xl">:</span>
                           <span>{finalIsToBePlayed ? "-" : latestTournament?.awayScore ?? 0}</span>
@@ -316,7 +316,7 @@ function Home() {
                     <div className="mt-7 flex items-center justify-center gap-2 rounded-xl bg-accent/20 px-4 py-3 text-center">
                       <Crown className="size-5 shrink-0 text-accent-foreground" />
                       <span className="text-sm text-muted-foreground">{finalIsToBePlayed ? "Status" : "Champion"}</span>
-                      <strong className="truncate text-sm text-accent-foreground">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.winner || "Not recorded"}</strong>
+                      <strong className="truncate text-sm text-accent-foreground dark:text-[#ffd666] dark:drop-shadow-[0_0_10px_rgba(255,214,102,0.5)]">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.winner || "Not recorded"}</strong>
                     </div>
                   </div>
 
@@ -324,34 +324,34 @@ function Home() {
                     {!finalIsToBePlayed && (
                       <div className="mb-4 grid gap-2 sm:grid-cols-2">
                         <div className="golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-2.5">
-                          <div className="flex items-center gap-2 text-[#9a7410]">
+                          <div className="flex items-center gap-2 text-[#9a7410] dark:text-[#ffd666]">
                             <Trophy className="size-4 shrink-0" aria-hidden="true" />
                             <p className="text-[10px] font-black uppercase tracking-[0.16em]">Golden Boot</p>
                           </div>
-                          <p className="mt-1 truncate text-sm font-bold text-[#8a6610]">{latestTournament?.stats.topScorer.name || "Not recorded"}</p>
-                          <p className="text-xs font-semibold text-[#9a7410]">{latestTournament?.stats.topScorer.goals ?? 0} goals</p>
+                            <p className="mt-1 truncate text-sm font-bold text-[#8a6610] dark:text-[#fff0b3]">{latestTournament?.stats.topScorer.name || "Not recorded"}</p>
+                            <p className="text-xs font-semibold text-[#9a7410] dark:text-[#ffd666]">{latestTournament?.stats.topScorer.goals ?? 0} goals</p>
                         </div>
                         <div className="golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-2.5">
-                          <div className="flex items-center gap-2 text-[#9a7410]">
+                            <div className="flex items-center gap-2 text-[#9a7410] dark:text-[#ffd666]">
                             <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
                             <p className="text-[10px] font-black uppercase tracking-[0.16em]">Golden Gloves</p>
                           </div>
-                          <p className="mt-1 truncate text-sm font-bold text-[#8a6610]">{latestTournament?.stats.topSaver.name || "Not recorded"}</p>
-                          <p className="text-xs font-semibold text-[#9a7410]">{latestTournament?.stats.topSaver.saves ?? 0} saves</p>
+                          <p className="mt-1 truncate text-sm font-bold text-[#8a6610] dark:text-[#fff0b3]">{latestTournament?.stats.topSaver.name || "Not recorded"}</p>
+                          <p className="text-xs font-semibold text-[#9a7410] dark:text-[#ffd666]">{latestTournament?.stats.topSaver.saves ?? 0} saves</p>
                         </div>
                       </div>
                     )}
                     <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-1">
                       <div className="rounded-xl border border-primary/15 bg-card p-3 text-center sm:p-4 lg:text-left">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Final status" : "Top scorer"}</p>
-                        <p className="mt-1 truncate text-sm font-bold">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.stats.topScorer.name}</p>
-                        <p className="mt-1 font-display text-2xl font-black text-primary">{finalIsToBePlayed ? "-" : latestTournament?.stats.topScorer.goals}</p>
+                        <p className="mt-1 truncate text-sm font-bold dark:text-[#fff7e6]">{finalIsToBePlayed ? "TO BE PLAYED" : latestTournament?.stats.topScorer.name}</p>
+                        <p className="mt-1 font-display text-2xl font-black text-primary dark:text-[#ffb347] dark:drop-shadow-[0_0_12px_rgba(255,179,71,0.55)]">{finalIsToBePlayed ? "-" : latestTournament?.stats.topScorer.goals}</p>
                         <p className="text-[10px] text-muted-foreground">goals</p>
                       </div>
                       <div className="rounded-xl border border-accent/50 bg-card p-3 text-center sm:p-4 lg:text-left">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{finalIsToBePlayed ? "Next step" : "Top saver"}</p>
-                        <p className="mt-1 truncate text-sm font-bold">{finalIsToBePlayed ? "Add goals" : latestTournament?.stats.topSaver.name}</p>
-                        <p className="mt-1 font-display text-2xl font-black text-accent-foreground">{finalIsToBePlayed ? "-" : latestTournament?.stats.topSaver.saves}</p>
+                        <p className="mt-1 truncate text-sm font-bold dark:text-[#fff7e6]">{finalIsToBePlayed ? "Add goals" : latestTournament?.stats.topSaver.name}</p>
+                        <p className="mt-1 font-display text-2xl font-black text-accent-foreground dark:text-[#ffd666] dark:drop-shadow-[0_0_12px_rgba(255,214,102,0.55)]">{finalIsToBePlayed ? "-" : latestTournament?.stats.topSaver.saves}</p>
                         <p className="text-[10px] text-muted-foreground">saves</p>
                       </div>
                     </div>

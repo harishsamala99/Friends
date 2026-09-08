@@ -1610,7 +1610,7 @@ export function FinalMatchScorecard() {
                   {/* VS and Score - More Prominent */}
                   <div className="flex flex-col items-center gap-3 px-4 sm:px-8 flex-shrink-0">
                     <div className="text-sm sm:text-lg font-bold text-muted-foreground tracking-wider">VS</div>
-                    <div className="font-display text-5xl sm:text-7xl font-black text-pitch-foreground tabular-nums drop-shadow-lg">
+                    <div className="font-display text-5xl sm:text-7xl font-black text-pitch-foreground tabular-nums drop-shadow-[0_0_18px_color-mix(in_oklab,var(--accent)_35%,transparent)] dark:text-[#fff7e6] dark:drop-shadow-[0_0_18px_rgba(255,214,102,0.6)]">
                       {home.goals.length} — {away.goals.length}
                     </div>
                     <div className="text-xs sm:text-sm text-muted-foreground font-medium">Final Score</div>
