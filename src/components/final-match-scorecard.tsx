@@ -2875,30 +2875,6 @@ export function FinalMatchScorecard() {
                 </CardContent>
               </Card>
 
-              {/* Most Assists */}
-              <Card className="border-3 border-secondary/40 bg-gradient-to-br from-card/98 via-card/96 to-card/94 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-secondary/20 to-secondary/5 border-b-2 border-secondary/20">
-                  <CardTitle className="text-lg">🎯 Most Assists</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {tournaments.map((tournament) => (
-                      <div key={tournament.id} className="border-b pb-4 last:border-0">
-                        <p className="text-xs text-muted-foreground mb-2 font-medium">
-                          {tournament.homeTeam} vs {tournament.awayTeam}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold">{tournament.stats.topAssister.name}</span>
-                          <span className="bg-secondary/20 text-secondary font-bold px-3 py-1 rounded-full text-sm">
-                            {tournament.stats.topAssister.assists}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Most Saves */}
               <Card className="border-3 border-accent/40 bg-gradient-to-br from-card/98 via-card/96 to-card/94 shadow-lg">
                 <CardHeader className="bg-gradient-to-r from-accent/20 to-accent/5 border-b-2 border-accent/20">
