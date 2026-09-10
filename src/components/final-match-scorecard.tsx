@@ -2682,13 +2682,6 @@ export function FinalMatchScorecard() {
                             ({tournament.stats.topScorer.goals})
                           </p>
                           <p>
-                            🎯 Assister:{" "}
-                            <span className="font-semibold">
-                              {tournament.stats.topAssister.name}
-                            </span>{" "}
-                            ({tournament.stats.topAssister.assists})
-                          </p>
-                          <p>
                             🥅 Saver:{" "}
                             <span className="font-semibold">{tournament.stats.topSaver.name}</span>{" "}
                             ({tournament.stats.topSaver.saves})
