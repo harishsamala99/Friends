@@ -120,7 +120,9 @@ export function FinalFireworks() {
     const explode = (x: number, y: number, color: string) => {
       const count = 90 + Math.floor(Math.random() * 50);
       for (let index = 0; index < count; index += 1) {
-        particles.push(new Particle(x, y, Math.random() * Math.PI * 2, 1.5 + Math.random() * 5.5, color));
+        particles.push(
+          new Particle(x, y, Math.random() * Math.PI * 2, 1.5 + Math.random() * 5.5, color),
+        );
       }
     };
 

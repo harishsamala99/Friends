@@ -1,6 +1,20 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Plus, X, Trash2, RotateCcw, Trophy, BarChart3, Save, Zap, Crown, Users, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import {
+  Plus,
+  X,
+  Trash2,
+  RotateCcw,
+  Trophy,
+  BarChart3,
+  Save,
+  Zap,
+  Crown,
+  Users,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+} from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,7 +22,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchCompetitions, fetchTeams, fetchPlayers, fetchFixtures, fetchEvents, replaceFixtureEvents, sortStandings, insertFixtures, updateFixture, deleteFixture, saveTournament as saveTournamentToDB, updateTournament, fetchTournaments, deleteTournament as deleteTournamentFromDB, type Fixture, type Team, type StandingRow, type Player as FootballPlayer } from "@/lib/football";
+import {
+  fetchCompetitions,
+  fetchTeams,
+  fetchPlayers,
+  fetchFixtures,
+  fetchEvents,
+  replaceFixtureEvents,
+  sortStandings,
+  insertFixtures,
+  updateFixture,
+  deleteFixture,
+  saveTournament as saveTournamentToDB,
+  updateTournament,
+  fetchTournaments,
+  deleteTournament as deleteTournamentFromDB,
+  type Fixture,
+  type Team,
+  type StandingRow,
+  type Player as FootballPlayer,
+} from "@/lib/football";
 import {
   Select,
   SelectContent,
@@ -221,10 +254,12 @@ function TournamentSetup({
     if (!isCreated) return toast.error("Create the tournament before adding fixtures");
     if (!homeId || !awayId || homeId === awayId) return toast.error("Pick two different teams");
 
-    const fixtureCompetitionId = competitionId
-      ?? teams.find((team) => team.id === homeId)?.competition_id
-      ?? teams.find((team) => team.id === awayId)?.competition_id;
-    if (!fixtureCompetitionId) return toast.error("The selected teams are not linked to a competition");
+    const fixtureCompetitionId =
+      competitionId ??
+      teams.find((team) => team.id === homeId)?.competition_id ??
+      teams.find((team) => team.id === awayId)?.competition_id;
+    if (!fixtureCompetitionId)
+      return toast.error("The selected teams are not linked to a competition");
 
     const count = Math.max(1, Math.min(50, Number(matchCount) || 1));
     const firstMatchday = Math.max(0, ...fixtures.map((fixture) => fixture.matchday)) + 1;
@@ -240,7 +275,9 @@ function TournamentSetup({
           kickoff: new Date(Date.now() + index * 7 * 24 * 3600 * 1000).toISOString(),
         })),
       );
-      toast.success(`${count} fixture${count === 1 ? "" : "s"} added to ${name.trim() || "your tournament"}`);
+      toast.success(
+        `${count} fixture${count === 1 ? "" : "s"} added to ${name.trim() || "your tournament"}`,
+      );
       onFixturesSaved();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not add fixtures");
@@ -251,14 +288,19 @@ function TournamentSetup({
 
   async function saveFinalTeams() {
     if (!isCreated) return toast.error("Create the tournament before saving final teams");
-    if (!homeId || !awayId || homeId === awayId) return toast.error("Pick two different final teams");
+    if (!homeId || !awayId || homeId === awayId)
+      return toast.error("Pick two different final teams");
 
-    const fixtureCompetitionId = competitionId
-      ?? teams.find((team) => team.id === homeId)?.competition_id
-      ?? teams.find((team) => team.id === awayId)?.competition_id;
-    if (!fixtureCompetitionId) return toast.error("The selected teams are not linked to a competition");
+    const fixtureCompetitionId =
+      competitionId ??
+      teams.find((team) => team.id === homeId)?.competition_id ??
+      teams.find((team) => team.id === awayId)?.competition_id;
+    if (!fixtureCompetitionId)
+      return toast.error("The selected teams are not linked to a competition");
 
-    const existingFinal = fixtures.find((fixture) => fixture.notes?.includes("completed league standings"));
+    const existingFinal = fixtures.find((fixture) =>
+      fixture.notes?.includes("completed league standings"),
+    );
     if (existingFinal) {
       toast.success("Final teams are already saved in the bracket");
       return;
@@ -266,16 +308,18 @@ function TournamentSetup({
 
     setSaving(true);
     try {
-      await insertFixtures([{
-        competition_id: fixtureCompetitionId,
-        tournament_id: tournamentId,
-        home_team_id: homeId,
-        away_team_id: awayId,
-        matchday: Math.max(0, ...fixtures.map((fixture) => fixture.matchday)) + 1,
-        kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        status: "Scheduled",
-        notes: "Automatically created from the completed league standings.",
-      }]);
+      await insertFixtures([
+        {
+          competition_id: fixtureCompetitionId,
+          tournament_id: tournamentId,
+          home_team_id: homeId,
+          away_team_id: awayId,
+          matchday: Math.max(0, ...fixtures.map((fixture) => fixture.matchday)) + 1,
+          kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          status: "Scheduled",
+          notes: "Automatically created from the completed league standings.",
+        },
+      ]);
       toast.success(`${teamNames.get(homeId)} vs ${teamNames.get(awayId)} saved as the final`);
       onFixturesSaved();
     } catch (error) {
@@ -299,10 +343,12 @@ function TournamentSetup({
   const teamNames = new Map(teams.map((team) => [team.id, team.name]));
 
   return (
-    <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] shadow-lg">
+    <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] text-foreground shadow-lg">
       <CardHeader className="border-b border-[#f28c5b]/25 bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10">
         <CardTitle className="flex items-center gap-2">🏆 Create your tournament</CardTitle>
-        <p className="text-sm text-muted-foreground">Name it, schedule fixtures, then create the final below.</p>
+        <p className="text-sm text-muted-foreground">
+          Name it, schedule fixtures, then create the final below.
+        </p>
       </CardHeader>
       <CardContent className="space-y-5 p-6">
         <div>
@@ -312,58 +358,88 @@ function TournamentSetup({
             value={name}
             onChange={(event) => onNameChange(event.target.value)}
             placeholder="e.g. Summer Cup 2026"
+            className="text-foreground"
           />
         </div>
         <div className="max-w-xs">
-          <Label htmlFor="tournament-status">Tournament status</Label>
+          <Label htmlFor="tournament-status">Tournament progress</Label>
           <select
             id="tournament-status"
-            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground [color-scheme:light] dark:[color-scheme:dark]"
             value={status}
             onChange={(event) => onStatusChange(event.target.value as "draft" | "completed")}
           >
-            <option value="draft">In progress</option>
-            <option value="completed">Completed</option>
+            <option value="draft">In progress - still adding fixtures</option>
+            <option value="completed">Completed - final results are ready</option>
           </select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Choose Completed only after the tournament final and results are saved.
+          </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <Label htmlFor="tournament-fixture-home">Team 1</Label>
             <select
               id="tournament-fixture-home"
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground [color-scheme:light] dark:[color-scheme:dark]"
               value={homeId}
               onChange={(event) => setHomeId(event.target.value)}
             >
               <option value="">Select team</option>
-              {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>
             <Label htmlFor="tournament-fixture-away">Team 2</Label>
             <select
               id="tournament-fixture-away"
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground [color-scheme:light] dark:[color-scheme:dark]"
               value={awayId}
               onChange={(event) => setAwayId(event.target.value)}
             >
               <option value="">Select team</option>
-              {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>
             <Label htmlFor="tournament-fixture-count">Number of fixtures</Label>
-            <Input id="tournament-fixture-count" type="number" min="1" max="50" value={matchCount} onChange={(event) => setMatchCount(event.target.value)} />
+            <Input
+              id="tournament-fixture-count"
+              type="number"
+              min="1"
+              max="50"
+              value={matchCount}
+              onChange={(event) => setMatchCount(event.target.value)}
+              className="text-foreground"
+            />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button type="button" onClick={onCreateTournament} disabled={creating || !name.trim()}>
             {creating ? "Creating tournament..." : "Create tournament"}
           </Button>
-          <Button type="button" variant="outline" onClick={scheduleFixtures} disabled={saving || !isCreated}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={scheduleFixtures}
+            disabled={saving || !isCreated}
+          >
             {saving ? "Adding fixtures..." : "Add fixtures"}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => void saveFinalTeams()} disabled={saving || !isCreated || !homeId || !awayId}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void saveFinalTeams()}
+            disabled={saving || !isCreated || !homeId || !awayId}
+          >
             {saving ? "Saving final teams..." : "Save final teams"}
           </Button>
           <span className="text-sm text-muted-foreground">
@@ -375,14 +451,19 @@ function TournamentSetup({
         <div className="space-y-2 border-t pt-5">
           <h3 className="font-semibold">Current tournament fixtures</h3>
           {fixtures.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No fixtures yet. Add the first fixture above.</p>
+            <p className="text-sm text-muted-foreground">
+              No fixtures yet. Add the first fixture above.
+            </p>
           ) : (
             <div className="divide-y rounded-md border">
               {fixtures.map((fixture) => (
                 <div key={fixture.id} className="flex flex-wrap items-center gap-3 p-3">
-                  <span className="w-20 text-xs text-muted-foreground">Matchday {fixture.matchday}</span>
+                  <span className="w-20 text-xs text-muted-foreground">
+                    Matchday {fixture.matchday}
+                  </span>
                   <span className="min-w-45 flex-1 font-medium">
-                    {teamNames.get(fixture.home_team_id) ?? "Home team"} <span className="text-muted-foreground">vs</span>{" "}
+                    {teamNames.get(fixture.home_team_id) ?? "Home team"}{" "}
+                    <span className="text-muted-foreground">vs</span>{" "}
                     {teamNames.get(fixture.away_team_id) ?? "Away team"}
                   </span>
                   <span className="rounded bg-muted px-2 py-1 text-sm font-semibold tabular-nums">
@@ -390,9 +471,17 @@ function TournamentSetup({
                   </span>
                   <span className="text-xs text-muted-foreground">{fixture.status}</span>
                   <Button asChild variant="outline" size="sm">
-                    <Link to="/match/$fixtureId" params={{ fixtureId: fixture.id }}>Edit</Link>
+                    <Link to="/match/$fixtureId" params={{ fixtureId: fixture.id }}>
+                      Edit
+                    </Link>
                   </Button>
-                  <Button type="button" variant="ghost" size="icon" aria-label="Delete fixture" onClick={() => void removeFixture(fixture.id)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Delete fixture"
+                    onClick={() => void removeFixture(fixture.id)}
+                  >
                     <X className="size-4 text-destructive" />
                   </Button>
                 </div>
@@ -403,7 +492,9 @@ function TournamentSetup({
         <div className="space-y-2 border-t pt-5">
           <h3 className="font-semibold">Saved tournaments</h3>
           {tournaments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Your completed tournaments will appear here after you save the final.</p>
+            <p className="text-sm text-muted-foreground">
+              Your completed tournaments will appear here after you save the final.
+            </p>
           ) : (
             <div className="space-y-2">
               {tournaments.slice(0, 5).map((tournament) => (
@@ -442,14 +533,22 @@ function TournamentSetup({
                     </div>
                   </div>
                   <p className="mt-1 text-sm">
-                    Final: {tournament.homeTeam} {tournament.homeScore} - {tournament.awayScore} {tournament.awayTeam}
+                    Final: {tournament.homeTeam} {tournament.homeScore} - {tournament.awayScore}{" "}
+                    {tournament.awayTeam}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Top scorer: {tournament.stats.topScorer.name} ({tournament.stats.topScorer.goals}) | Top saves: {tournament.stats.topSaver.name} ({tournament.stats.topSaver.saves})
+                    Top scorer: {tournament.stats.topScorer.name} (
+                    {tournament.stats.topScorer.goals}) | Top saves:{" "}
+                    {tournament.stats.topSaver.name} ({tournament.stats.topSaver.saves})
                   </p>
                 </div>
               ))}
-              {tournaments.length > 5 && <p className="text-xs text-muted-foreground">Showing the 5 most recent tournaments. Open the Tournaments tab for the full history.</p>}
+              {tournaments.length > 5 && (
+                <p className="text-xs text-muted-foreground">
+                  Showing the 5 most recent tournaments. Open the Tournaments tab for the full
+                  history.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -464,7 +563,9 @@ export function FinalMatchScorecard() {
   const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
   const playersQuery = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
   const competitionsQuery = useQuery({ queryKey: ["competitions"], queryFn: fetchCompetitions });
-  const competitionId = competitionsQuery.data?.[0]?.id ?? teamsQuery.data?.find((team) => team.competition_id)?.competition_id;
+  const competitionId =
+    competitionsQuery.data?.[0]?.id ??
+    teamsQuery.data?.find((team) => team.competition_id)?.competition_id;
   const competitionFixturesQuery = useQuery({
     queryKey: ["competition-fixtures", competitionId],
     queryFn: () => fetchFixtures(competitionId),
@@ -489,7 +590,11 @@ export function FinalMatchScorecard() {
     refetchOnWindowFocus: true,
   });
   const tournamentEventStatsQuery = useQuery({
-    queryKey: ["tournament-event-stats", tournamentId, fixturesQuery.data?.map((fixture) => fixture.id).join(",")],
+    queryKey: [
+      "tournament-event-stats",
+      tournamentId,
+      fixturesQuery.data?.map((fixture) => fixture.id).join(","),
+    ],
     queryFn: async () => {
       const fixtures = fixturesQuery.data ?? [];
       const events = await Promise.all(fixtures.map((fixture) => fetchEvents(fixture.id)));
@@ -498,11 +603,20 @@ export function FinalMatchScorecard() {
     enabled: Boolean(tournamentId && fixturesQuery.data),
     refetchOnWindowFocus: true,
   });
-  const tournamentsQuery = useQuery({ queryKey: ["tournaments"], queryFn: () => fetchTournaments() });
+  const tournamentsQuery = useQuery({
+    queryKey: ["tournaments"],
+    queryFn: () => fetchTournaments(),
+  });
   const queryClient = useQueryClient();
 
   const saveTournamentMutation = useMutation({
-    mutationFn: ({ id, changes }: { id: string; changes: Parameters<typeof updateTournament>[1] }) => updateTournament(id, changes),
+    mutationFn: ({
+      id,
+      changes,
+    }: {
+      id: string;
+      changes: Parameters<typeof updateTournament>[1];
+    }) => updateTournament(id, changes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tournaments"] });
       toast.success("Tournament saved successfully!");
@@ -523,7 +637,10 @@ export function FinalMatchScorecard() {
 
       const nextTournament: Tournament = {
         id: createdId,
-        tournamentName: createdTournament?.tournament_name || tournamentForm.name.trim() || `${home.name} vs ${away.name}`,
+        tournamentName:
+          createdTournament?.tournament_name ||
+          tournamentForm.name.trim() ||
+          `${home.name} vs ${away.name}`,
         status: createdTournament?.status || "draft",
         type: createdTournament?.type || tournamentForm.type,
         date: createdTournament?.date || new Date().toISOString().split("T")[0],
@@ -550,7 +667,10 @@ export function FinalMatchScorecard() {
         },
       };
 
-      setTournaments((prevTournaments) => [nextTournament, ...prevTournaments.filter((t) => t.id !== createdId)]);
+      setTournaments((prevTournaments) => [
+        nextTournament,
+        ...prevTournaments.filter((t) => t.id !== createdId),
+      ]);
       queryClient.setQueryData(["tournaments"], (existingTournaments: Tournament[] | undefined) => [
         nextTournament,
         ...(existingTournaments ?? []).filter((t) => t.id !== createdId),
@@ -657,28 +777,30 @@ export function FinalMatchScorecard() {
   );
   const competition = competitionsQuery.data?.find((item) => item.id === competitionId);
   const finalStandings = useMemo(
-    () => calculateFinalStandings(
-      teamsQuery.data ?? [],
-      leagueFixtures,
-      competition?.points_win ?? 3,
-      competition?.points_draw ?? 1,
-    ),
+    () =>
+      calculateFinalStandings(
+        teamsQuery.data ?? [],
+        leagueFixtures,
+        competition?.points_win ?? 3,
+        competition?.points_draw ?? 1,
+      ),
     [teamsQuery.data, leagueFixtures, competition?.points_win, competition?.points_draw],
   );
   const homeFinalist = finalStandings[0];
   const awayFinalist = finalStandings[1];
-  const leagueComplete = leagueFixtures.length > 0 && leagueFixtures.every(
-    (fixture) => fixture.home_score != null && fixture.away_score != null,
-  );
+  const leagueComplete =
+    leagueFixtures.length > 0 &&
+    leagueFixtures.every((fixture) => fixture.home_score != null && fixture.away_score != null);
   const finalHasBeenPosted = Boolean(
     currentTournament?.status === "completed" ||
-      (fixturesQuery.data ?? []).some(
-        (fixture) =>
-          (fixture.notes?.includes("completed league standings") || fixture.notes?.includes("Final teams selected manually")) &&
-          fixture.home_score != null &&
-          fixture.away_score != null &&
-          fixture.status === "Full Time",
-      ),
+    (fixturesQuery.data ?? []).some(
+      (fixture) =>
+        (fixture.notes?.includes("completed league standings") ||
+          fixture.notes?.includes("Final teams selected manually")) &&
+        fixture.home_score != null &&
+        fixture.away_score != null &&
+        fixture.status === "Full Time",
+    ),
   );
 
   useEffect(() => {
@@ -691,16 +813,22 @@ export function FinalMatchScorecard() {
       ...current,
       name: current.name || `${homeFinalist.team_name} vs ${awayFinalist.team_name} Final`,
     }));
-  }, [leagueComplete, homeFinalist, awayFinalist, selectedHomeTeam, selectedAwayTeam, teamsQuery.data, playersQuery.data]);
+  }, [
+    leagueComplete,
+    homeFinalist,
+    awayFinalist,
+    selectedHomeTeam,
+    selectedAwayTeam,
+    teamsQuery.data,
+    playersQuery.data,
+  ]);
 
   // Delete tournament from both database and localStorage
   const handleDeleteTournament = async (id: string) => {
     if (!window.confirm("Delete this tournament and its saved final?")) return;
 
     // Remove from local state immediately
-    setTournaments((prevTournaments) =>
-      prevTournaments.filter((t) => t.id !== id)
-    );
+    setTournaments((prevTournaments) => prevTournaments.filter((t) => t.id !== id));
 
     if (id === tournamentId) {
       setTournamentId("");
@@ -708,7 +836,7 @@ export function FinalMatchScorecard() {
     }
 
     // Try to delete from database if it's a UUID (database ID)
-    if (id.includes('-') && id.length === 36) {
+    if (id.includes("-") && id.length === 36) {
       deleteTournamentMutation.mutate(id);
     } else {
       // If it's a localStorage ID, just remove from localStorage
@@ -746,7 +874,10 @@ export function FinalMatchScorecard() {
         participants: t.participants || 12,
         stats: {
           topScorer: { name: t.top_scorer_name || "None", goals: t.top_scorer_goals || 0 },
-          topAssister: { name: t.top_assister_name || "None", assists: t.top_assister_assists || 0 },
+          topAssister: {
+            name: t.top_assister_name || "None",
+            assists: t.top_assister_assists || 0,
+          },
           topSaver: { name: t.top_saver_name || "None", saves: t.top_saver_saves || 0 },
         },
       }));
@@ -790,7 +921,9 @@ export function FinalMatchScorecard() {
     });
   };
 
-  const isCurrentTournamentCreated = tournaments.some((tournament) => tournament.id === tournamentId);
+  const isCurrentTournamentCreated = tournaments.some(
+    (tournament) => tournament.id === tournamentId,
+  );
 
   const saveSelectedFinalTeams = async () => {
     if (!isCurrentTournamentCreated) return toast.error("Create or select a tournament first");
@@ -799,8 +932,10 @@ export function FinalMatchScorecard() {
     }
     if (!competitionId) return toast.error("Select a competition before saving the final");
 
-    const existingFinal = (tournamentFixturesQuery.data ?? []).find((fixture) =>
-      fixture.notes?.includes("completed league standings") || fixture.notes?.includes("Final teams selected manually"),
+    const existingFinal = (tournamentFixturesQuery.data ?? []).find(
+      (fixture) =>
+        fixture.notes?.includes("completed league standings") ||
+        fixture.notes?.includes("Final teams selected manually"),
     );
 
     setSavingFinalTeams(true);
@@ -815,16 +950,22 @@ export function FinalMatchScorecard() {
           notes: "Final teams selected manually from the bracket.",
         });
       } else {
-        await insertFixtures([{
-          competition_id: competitionId,
-          tournament_id: tournamentId,
-          matchday: Math.max(0, ...(tournamentFixturesQuery.data ?? []).map((fixture) => fixture.matchday)) + 1,
-          home_team_id: selectedHomeTeam,
-          away_team_id: selectedAwayTeam,
-          kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          status: "Scheduled",
-          notes: "Final teams selected manually from the bracket.",
-        }]);
+        await insertFixtures([
+          {
+            competition_id: competitionId,
+            tournament_id: tournamentId,
+            matchday:
+              Math.max(
+                0,
+                ...(tournamentFixturesQuery.data ?? []).map((fixture) => fixture.matchday),
+              ) + 1,
+            home_team_id: selectedHomeTeam,
+            away_team_id: selectedAwayTeam,
+            kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            status: "Scheduled",
+            notes: "Final teams selected manually from the bracket.",
+          },
+        ]);
       }
       manuallySelectedFinalKey.current = `${tournamentId}:${selectedHomeTeam}:${selectedAwayTeam}`;
       await queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
@@ -838,42 +979,71 @@ export function FinalMatchScorecard() {
   };
 
   useEffect(() => {
-    if (isCurrentTournamentCreated || tournaments.length === 0) return;
+    if (tournamentId || tournaments.length === 0) return;
     const firstTournament = tournaments[0];
     setTournamentId(firstTournament.id);
     localStorage.setItem("current-tournament-id", firstTournament.id);
-  }, [isCurrentTournamentCreated, tournaments]);
+  }, [tournamentId, tournaments]);
 
   useEffect(() => {
-    if (!leagueComplete || !homeFinalist || !awayFinalist || !competitionId || !isCurrentTournamentCreated) return;
+    if (
+      !leagueComplete ||
+      !homeFinalist ||
+      !awayFinalist ||
+      !competitionId ||
+      !isCurrentTournamentCreated
+    )
+      return;
     if (tournamentFixturesQuery.isLoading) return;
     if (manuallySelectedFinalKey.current?.startsWith(`${tournamentId}:`)) return;
-    if ((tournamentFixturesQuery.data ?? []).some((fixture) =>
-      fixture.notes?.includes("completed league standings") || fixture.notes?.includes("Final teams selected manually"),
-    )) return;
+    if (
+      (tournamentFixturesQuery.data ?? []).some(
+        (fixture) =>
+          fixture.notes?.includes("completed league standings") ||
+          fixture.notes?.includes("Final teams selected manually"),
+      )
+    )
+      return;
 
     const creationKey = `${tournamentId}:${homeFinalist.team_id}:${awayFinalist.team_id}`;
     if (finalFixtureCreationKey.current === creationKey) return;
     finalFixtureCreationKey.current = creationKey;
 
-    const nextMatchday = Math.max(0, ...(tournamentFixturesQuery.data ?? []).map((fixture) => fixture.matchday)) + 1;
-    void insertFixtures([{
-      competition_id: competitionId,
-      tournament_id: tournamentId,
-      matchday: nextMatchday,
-      home_team_id: homeFinalist.team_id,
-      away_team_id: awayFinalist.team_id,
-      kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      status: "Scheduled",
-      notes: "Automatically created from the completed league standings.",
-    }]).then(() => {
-      void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
-      toast.success(`${homeFinalist.team_name} vs ${awayFinalist.team_name} added to the final bracket.`);
-    }).catch((error) => {
-      finalFixtureCreationKey.current = null;
-      toast.error(error instanceof Error ? error.message : "Could not create the final fixture");
-    });
-  }, [leagueComplete, homeFinalist, awayFinalist, competitionId, isCurrentTournamentCreated, tournamentId, tournamentFixturesQuery.data, tournamentFixturesQuery.isLoading, queryClient]);
+    const nextMatchday =
+      Math.max(0, ...(tournamentFixturesQuery.data ?? []).map((fixture) => fixture.matchday)) + 1;
+    void insertFixtures([
+      {
+        competition_id: competitionId,
+        tournament_id: tournamentId,
+        matchday: nextMatchday,
+        home_team_id: homeFinalist.team_id,
+        away_team_id: awayFinalist.team_id,
+        kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        status: "Scheduled",
+        notes: "Automatically created from the completed league standings.",
+      },
+    ])
+      .then(() => {
+        void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
+        toast.success(
+          `${homeFinalist.team_name} vs ${awayFinalist.team_name} added to the final bracket.`,
+        );
+      })
+      .catch((error) => {
+        finalFixtureCreationKey.current = null;
+        toast.error(error instanceof Error ? error.message : "Could not create the final fixture");
+      });
+  }, [
+    leagueComplete,
+    homeFinalist,
+    awayFinalist,
+    competitionId,
+    isCurrentTournamentCreated,
+    tournamentId,
+    tournamentFixturesQuery.data,
+    tournamentFixturesQuery.isLoading,
+    queryClient,
+  ]);
 
   const selectTournamentForFixtures = (tournament: Tournament) => {
     setTournamentId(tournament.id);
@@ -882,7 +1052,7 @@ export function FinalMatchScorecard() {
       ...current,
       name: tournament.tournamentName,
       type: tournament.type,
-        status: tournament.status,
+      status: tournament.status,
     }));
     toast.success(`Now creating fixtures for ${tournament.tournamentName}`);
   };
@@ -890,18 +1060,22 @@ export function FinalMatchScorecard() {
   const loadTournamentFinalForEditing = async (tournament: Tournament) => {
     try {
       const fixtures = await fetchFixtures(undefined, tournament.id);
-      const notedFinal = fixtures.find((fixture) =>
-        fixture.notes?.includes("completed league standings") ||
-        fixture.notes?.includes("Final teams selected manually"),
+      const notedFinal = fixtures.find(
+        (fixture) =>
+          fixture.notes?.includes("completed league standings") ||
+          fixture.notes?.includes("Final teams selected manually"),
       );
       const homeTeam = teamsQuery.data?.find((team) => team.name === tournament.homeTeam);
       const awayTeam = teamsQuery.data?.find((team) => team.name === tournament.awayTeam);
-      const finalFixture = notedFinal ?? fixtures.find((fixture) =>
-        fixture.home_team_id === homeTeam?.id &&
-        fixture.away_team_id === awayTeam?.id &&
-        fixture.home_score != null &&
-        fixture.away_score != null,
-      );
+      const finalFixture =
+        notedFinal ??
+        fixtures.find(
+          (fixture) =>
+            fixture.home_team_id === homeTeam?.id &&
+            fixture.away_team_id === awayTeam?.id &&
+            fixture.home_score != null &&
+            fixture.away_score != null,
+        );
       if (!finalFixture) {
         toast.error("No final fixture was found for this tournament.");
         return;
@@ -913,43 +1087,71 @@ export function FinalMatchScorecard() {
       ]);
       const homePlayers = allPlayers
         .filter((player) => player.team_id === finalFixture.home_team_id)
-        .map((player) => ({ id: player.id, name: player.name, isGK: player.position?.toLowerCase().includes("goalkeeper") ?? false }));
+        .map((player) => ({
+          id: player.id,
+          name: player.name,
+          isGK: player.position?.toLowerCase().includes("goalkeeper") ?? false,
+        }));
       const awayPlayers = allPlayers
         .filter((player) => player.team_id === finalFixture.away_team_id)
-        .map((player) => ({ id: player.id, name: player.name, isGK: player.position?.toLowerCase().includes("goalkeeper") ?? false }));
+        .map((player) => ({
+          id: player.id,
+          name: player.name,
+          isGK: player.position?.toLowerCase().includes("goalkeeper") ?? false,
+        }));
       const playerNames = new Map(allPlayers.map((player) => [player.id, player.name]));
-      const goalsFor = (teamId: string) => finalEvents
-        .filter((event) => event.event_type === "goal" && event.team_id === teamId && event.player_id)
-        .map((event, index) => ({
-          id: event.id || `goal-${teamId}-${index}`,
-          playerId: event.player_id ?? "",
-          playerName: playerNames.get(event.player_id ?? "") ?? "",
-          minute: event.minute,
-        }));
-      const savesFor = (teamId: string) => finalEvents
-        .filter((event) => event.event_type === "save" && event.team_id === teamId && event.player_id)
-        .map((event, index) => ({
-          id: event.id || `save-${teamId}-${index}`,
-          playerId: event.player_id ?? "",
-          playerName: playerNames.get(event.player_id ?? "") ?? "",
-          minute: event.minute,
-        }));
+      const goalsFor = (teamId: string) =>
+        finalEvents
+          .filter(
+            (event) => event.event_type === "goal" && event.team_id === teamId && event.player_id,
+          )
+          .map((event, index) => ({
+            id: event.id || `goal-${teamId}-${index}`,
+            playerId: event.player_id ?? "",
+            playerName: playerNames.get(event.player_id ?? "") ?? "",
+            minute: event.minute,
+          }));
+      const savesFor = (teamId: string) =>
+        finalEvents
+          .filter(
+            (event) => event.event_type === "save" && event.team_id === teamId && event.player_id,
+          )
+          .map((event, index) => ({
+            id: event.id || `save-${teamId}-${index}`,
+            playerId: event.player_id ?? "",
+            playerName: playerNames.get(event.player_id ?? "") ?? "",
+            minute: event.minute,
+          }));
 
       setTournamentId(tournament.id);
       localStorage.setItem("current-tournament-id", tournament.id);
       setSelectedHomeTeam(finalFixture.home_team_id);
       setSelectedAwayTeam(finalFixture.away_team_id);
-      setHome({ name: tournament.homeTeam, players: homePlayers, goals: goalsFor(finalFixture.home_team_id), assists: [], saves: savesFor(finalFixture.home_team_id) });
-      setAway({ name: tournament.awayTeam, players: awayPlayers, goals: goalsFor(finalFixture.away_team_id), assists: [], saves: savesFor(finalFixture.away_team_id) });
+      setHome({
+        name: tournament.homeTeam,
+        players: homePlayers,
+        goals: goalsFor(finalFixture.home_team_id),
+        assists: [],
+        saves: savesFor(finalFixture.home_team_id),
+      });
+      setAway({
+        name: tournament.awayTeam,
+        players: awayPlayers,
+        goals: goalsFor(finalFixture.away_team_id),
+        assists: [],
+        saves: savesFor(finalFixture.away_team_id),
+      });
       setTournamentForm((current) => ({
         ...current,
         name: tournament.tournamentName,
         type: tournament.type,
         manager: tournament.manager,
         participants: tournament.participants,
-        topScorerName: tournament.stats.topScorer.name === "None" ? "" : tournament.stats.topScorer.name,
+        topScorerName:
+          tournament.stats.topScorer.name === "None" ? "" : tournament.stats.topScorer.name,
         topScorerGoals: String(tournament.stats.topScorer.goals),
-        topSaverName: tournament.stats.topSaver.name === "None" ? "" : tournament.stats.topSaver.name,
+        topSaverName:
+          tournament.stats.topSaver.name === "None" ? "" : tournament.stats.topSaver.name,
         topSaverSaves: String(tournament.stats.topSaver.saves),
       }));
       setActiveTab("tournament");
@@ -1211,10 +1413,13 @@ export function FinalMatchScorecard() {
   const calculateStats = (): TournamentStats => {
     const allGoals = [...home.goals, ...away.goals];
     const allSaves = [...home.saves, ...away.saves];
-    const finalFixture = (fixturesQuery.data ?? []).find((fixture) =>
-      fixture.home_team_id === selectedHomeTeam && fixture.away_team_id === selectedAwayTeam,
+    const finalFixture = (fixturesQuery.data ?? []).find(
+      (fixture) =>
+        fixture.home_team_id === selectedHomeTeam && fixture.away_team_id === selectedAwayTeam,
     );
-    const playerNames = new Map((playersQuery.data ?? []).map((player) => [player.id, player.name]));
+    const playerNames = new Map(
+      (playersQuery.data ?? []).map((player) => [player.id, player.name]),
+    );
     const historicalEvents = (tournamentEventStatsQuery.data ?? []).filter(
       (event) => event.fixture_id !== finalFixture?.id,
     );
@@ -1241,14 +1446,8 @@ export function FinalMatchScorecard() {
       saveCounts.set(s.playerName, (saveCounts.get(s.playerName) || 0) + 1);
     });
 
-    const topScorer = [...goalCounts.entries()].sort((a, b) => b[1] - a[1])[0] || [
-      "None",
-      0,
-    ];
-    const topSaver = [...saveCounts.entries()].sort((a, b) => b[1] - a[1])[0] || [
-      "None",
-      0,
-    ];
+    const topScorer = [...goalCounts.entries()].sort((a, b) => b[1] - a[1])[0] || ["None", 0];
+    const topSaver = [...saveCounts.entries()].sort((a, b) => b[1] - a[1])[0] || ["None", 0];
 
     return {
       topScorer: { name: topScorer[0], goals: topScorer[1] },
@@ -1265,14 +1464,20 @@ export function FinalMatchScorecard() {
     const stats = calculateStats();
     const topScorerName = tournamentForm.topScorerName.trim() || stats.topScorer.name;
     const topSaverName = tournamentForm.topSaverName.trim() || stats.topSaver.name;
-    const topScorerGoals = tournamentForm.topScorerGoals === "" ? stats.topScorer.goals : Number(tournamentForm.topScorerGoals);
-    const topSaverSaves = tournamentForm.topSaverSaves === "" ? stats.topSaver.saves : Number(tournamentForm.topSaverSaves);
+    const topScorerGoals =
+      tournamentForm.topScorerGoals === ""
+        ? stats.topScorer.goals
+        : Number(tournamentForm.topScorerGoals);
+    const topSaverSaves =
+      tournamentForm.topSaverSaves === ""
+        ? stats.topSaver.saves
+        : Number(tournamentForm.topSaverSaves);
 
     const newTournament = {
       id: tournamentId,
       tournament_name: tournamentForm.name.trim() || `${home.name} vs ${away.name}`,
       type: tournamentForm.type,
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split("T")[0],
       home_team: home.name,
       away_team: away.name,
       home_score: homeScore,
@@ -1289,10 +1494,11 @@ export function FinalMatchScorecard() {
       status: "completed" as const,
     };
 
-    const finalFixture = (fixturesQuery.data ?? []).find((fixture) =>
-      (fixture.home_team_id === selectedHomeTeam && fixture.away_team_id === selectedAwayTeam) ||
-      fixture.notes?.includes("completed league standings") ||
-      fixture.notes?.includes("Final teams selected manually"),
+    const finalFixture = (fixturesQuery.data ?? []).find(
+      (fixture) =>
+        (fixture.home_team_id === selectedHomeTeam && fixture.away_team_id === selectedAwayTeam) ||
+        fixture.notes?.includes("completed league standings") ||
+        fixture.notes?.includes("Final teams selected manually"),
     );
     if (!finalFixture) {
       toast.error("Save the final teams before recording the final result.");
@@ -1337,7 +1543,9 @@ export function FinalMatchScorecard() {
       await queryClient.invalidateQueries({ queryKey: ["saves"] });
       await queryClient.invalidateQueries({ queryKey: ["tournaments"] });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save the final goals and saves");
+      toast.error(
+        error instanceof Error ? error.message : "Could not save the final goals and saves",
+      );
       return;
     }
 
@@ -1348,7 +1556,9 @@ export function FinalMatchScorecard() {
         await saveTournamentMutation.mutateAsync({ id: tournamentId, changes });
       } else {
         const { id: _id, ...newTournamentWithoutLocalId } = newTournament;
-        const createdTournament = await createTournamentMutation.mutateAsync(newTournamentWithoutLocalId);
+        const createdTournament = await createTournamentMutation.mutateAsync(
+          newTournamentWithoutLocalId,
+        );
         savedTournamentId = createdTournament?.id ?? tournamentId;
       }
     } catch {
@@ -1376,9 +1586,28 @@ export function FinalMatchScorecard() {
       },
     };
 
-    setTournaments((prevTournaments) => [localTournament, ...prevTournaments.filter((t) => t.id !== savedTournamentId)]);
+    setTournaments((prevTournaments) => [
+      localTournament,
+      ...prevTournaments.filter((t) => t.id !== savedTournamentId),
+    ]);
     setSaveTournamentOpen(false);
-    setTournamentForm({ name: "", type: "League", status: "draft", manager: "", participants: 12, topScorerName: "", topScorerGoals: "", topSaverName: "", topSaverSaves: "" });
+    const nextTournamentId = createLocalTournamentId();
+    setTournamentId(nextTournamentId);
+    localStorage.setItem("current-tournament-id", nextTournamentId);
+    setSelectedHomeTeam("");
+    setSelectedAwayTeam("");
+    setTournamentForm({
+      name: "",
+      type: "League",
+      status: "draft",
+      manager: "",
+      participants: 12,
+      topScorerName: "",
+      topScorerGoals: "",
+      topSaverName: "",
+      topSaverSaves: "",
+    });
+    resetMatch();
   };
 
   // Reset match
@@ -1403,21 +1632,37 @@ export function FinalMatchScorecard() {
   const outfieldPlayers = (players: Player[]) => players.filter((p) => !p.isGK);
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="min-h-screen bg-linear-to-br from-[#102a3a] via-[#145b62] to-[#287f72]">
+    <Tabs
+      value={activeTab}
+      onValueChange={setActiveTab}
+      className="min-h-screen bg-linear-to-br from-[#102a3a] via-[#145b62] to-[#287f72]"
+    >
       <TabsList className="sticky top-0 z-10 w-full justify-start rounded-none border-b-2 border-pitch-foreground/20 bg-card/95 backdrop-blur-xl p-0 shadow-lg">
-        <TabsTrigger value="tournament" className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary">
+        <TabsTrigger
+          value="tournament"
+          className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+        >
           <Trophy className="h-4 w-4 mr-2" />
           <span className="text-base sm:text-lg">Create Tournament</span>
         </TabsTrigger>
-        <TabsTrigger value="match" className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary">
+        <TabsTrigger
+          value="match"
+          className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+        >
           <Zap className="h-4 w-4 mr-2" />
           <span className="text-base sm:text-lg">Create Final</span>
         </TabsTrigger>
-        <TabsTrigger value="tournaments" className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary">
+        <TabsTrigger
+          value="tournaments"
+          className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+        >
           <Trophy className="h-4 w-4 mr-2" />
           <span className="text-base sm:text-lg">Tournaments</span>
         </TabsTrigger>
-        <TabsTrigger value="stats" className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary">
+        <TabsTrigger
+          value="stats"
+          className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary"
+        >
           <BarChart3 className="h-4 w-4 mr-2" />
           <span className="text-base sm:text-lg">Statistics</span>
         </TabsTrigger>
@@ -1435,7 +1680,9 @@ export function FinalMatchScorecard() {
             competitionId={competitionId ?? null}
             tournamentId={tournamentId}
             fixtures={fixturesQuery.data ?? []}
-            onFixturesSaved={() => void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] })}
+            onFixturesSaved={() =>
+              void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] })
+            }
             tournaments={tournaments}
             onCreateTournament={createTournament}
             onSelectTournament={selectTournamentForFixtures}
@@ -1459,7 +1706,9 @@ export function FinalMatchScorecard() {
               </h1>
               <Zap className="h-8 w-8 text-pitch-foreground" />
             </div>
-            <p className="text-pitch-foreground/70 text-sm sm:text-base">Create, manage, and save championship matches</p>
+            <p className="text-pitch-foreground/70 text-sm sm:text-base">
+              Create, manage, and save championship matches
+            </p>
           </div>
 
           <Card className="mb-8 border-2 border-primary/30 bg-card/95">
@@ -1494,7 +1743,9 @@ export function FinalMatchScorecard() {
                 </Select>
               </div>
               <p className="text-sm text-muted-foreground">
-                {isCurrentTournamentCreated ? `Saving for ${tournamentForm.name || "selected tournament"}` : "Create a tournament in the first tab before recording a final."}
+                {isCurrentTournamentCreated
+                  ? `Saving for ${tournamentForm.name || "selected tournament"}`
+                  : "Create a tournament in the first tab before recording a final."}
               </p>
             </CardContent>
           </Card>
@@ -1507,15 +1758,22 @@ export function FinalMatchScorecard() {
                     {leagueComplete ? "Finalists confirmed" : "Current final places"}
                   </p>
                   <p className="mt-1 font-semibold text-slate-800">
-                    {leagueComplete ? "The final has been prepared from the top two teams." : "The top two teams currently lead the standings."}
+                    {leagueComplete
+                      ? "The final has been prepared from the top two teams."
+                      : "The top two teams currently lead the standings."}
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
-                    1st {homeFinalist.team_name} <span className="px-1">vs</span> 2nd {awayFinalist.team_name}
+                    1st {homeFinalist.team_name} <span className="px-1">vs</span> 2nd{" "}
+                    {awayFinalist.team_name}
                   </p>
                 </div>
                 <div className="shrink-0 rounded-lg bg-slate-50 px-4 py-3 text-center shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{leagueComplete ? "Final status" : "Qualification"}</p>
-                  <p className="mt-1 text-sm font-bold text-primary">{leagueComplete ? "TO BE PLAYED" : "Top two currently qualify"}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    {leagueComplete ? "Final status" : "Qualification"}
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-primary">
+                    {leagueComplete ? "TO BE PLAYED" : "Top two currently qualify"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -1534,7 +1792,10 @@ export function FinalMatchScorecard() {
                 {/* Team 1 Selection */}
                 <div className="space-y-3">
                   <Label className="text-base font-semibold text-foreground">Team 1</Label>
-                  <Select value={selectedHomeTeam} onValueChange={(teamId) => loadTeamPlayers(teamId, "home")}>
+                  <Select
+                    value={selectedHomeTeam}
+                    onValueChange={(teamId) => loadTeamPlayers(teamId, "home")}
+                  >
                     <SelectTrigger className="bg-background border-2 hover:border-primary/50 transition-colors">
                       <SelectValue placeholder="Select team 1..." />
                     </SelectTrigger>
@@ -1556,7 +1817,10 @@ export function FinalMatchScorecard() {
                 {/* Team 2 Selection */}
                 <div className="space-y-3">
                   <Label className="text-base font-semibold text-foreground">Team 2</Label>
-                  <Select value={selectedAwayTeam} onValueChange={(teamId) => loadTeamPlayers(teamId, "away")}>
+                  <Select
+                    value={selectedAwayTeam}
+                    onValueChange={(teamId) => loadTeamPlayers(teamId, "away")}
+                  >
                     <SelectTrigger className="bg-background border-2 hover:border-primary/50 transition-colors">
                       <SelectValue placeholder="Select team 2..." />
                     </SelectTrigger>
@@ -1576,13 +1840,20 @@ export function FinalMatchScorecard() {
                 </div>
               </div>
               <div className="flex flex-col gap-3 border-t border-[#f28c5b]/20 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-muted-foreground">Choose both finalists, then save them to the tournament bracket and home page.</p>
+                <p className="text-sm text-muted-foreground">
+                  Choose both finalists, then save them to the tournament bracket and home page.
+                </p>
                 <Button
                   type="button"
                   variant="secondary"
                   className="shrink-0 bg-[#16756b] text-white hover:bg-[#105d55]"
                   onClick={() => void saveSelectedFinalTeams()}
-                  disabled={savingFinalTeams || !isCurrentTournamentCreated || !selectedHomeTeam || !selectedAwayTeam}
+                  disabled={
+                    savingFinalTeams ||
+                    !isCurrentTournamentCreated ||
+                    !selectedHomeTeam ||
+                    !selectedAwayTeam
+                  }
                 >
                   {savingFinalTeams ? "Saving final teams..." : "Save final teams"}
                 </Button>
@@ -1591,7 +1862,7 @@ export function FinalMatchScorecard() {
           </Card>
 
           {/* Main Match Display */}
-          <Card className="mb-8 overflow-hidden border-3 border-[#f28c5b]/35 shadow-2xl bg-linear-to-b from-[#fffaf5] to-[#e9f5f1] backdrop-blur-sm">
+          <Card className="mb-8 overflow-hidden border-3 border-[#f28c5b]/35 bg-linear-to-b from-[#fffaf5] to-[#e9f5f1] text-foreground shadow-2xl backdrop-blur-sm dark:from-[#18212d] dark:to-[#1b2a2c]">
             <CardContent className="p-6 sm:p-8">
               {/* Match Header with Editable Team Names */}
               <div className="mb-8">
@@ -1609,11 +1880,15 @@ export function FinalMatchScorecard() {
 
                   {/* VS and Score - More Prominent */}
                   <div className="flex flex-col items-center gap-3 px-4 sm:px-8 flex-shrink-0">
-                    <div className="text-sm sm:text-lg font-bold text-muted-foreground tracking-wider">VS</div>
-                    <div className="font-display text-5xl sm:text-7xl font-black text-pitch-foreground tabular-nums drop-shadow-[0_0_18px_color-mix(in_oklab,var(--accent)_35%,transparent)] dark:text-[#fff7e6] dark:drop-shadow-[0_0_18px_rgba(255,214,102,0.6)]">
+                    <div className="text-sm sm:text-lg font-bold text-muted-foreground tracking-wider">
+                      VS
+                    </div>
+                    <div className="font-display text-5xl sm:text-7xl font-black text-foreground tabular-nums drop-shadow-[0_0_18px_color-mix(in_oklab,var(--accent)_35%,transparent)] dark:text-[#fff7e6] dark:drop-shadow-[0_0_18px_rgba(255,214,102,0.6)]">
                       {home.goals.length} — {away.goals.length}
                     </div>
-                    <div className="text-xs sm:text-sm text-muted-foreground font-medium">Final Score</div>
+                    <div className="text-xs sm:text-sm text-muted-foreground font-medium">
+                      Final Score
+                    </div>
                   </div>
 
                   {/* Team 2 */}
@@ -1634,12 +1909,16 @@ export function FinalMatchScorecard() {
                     <DialogTrigger asChild>
                       <Button className="gap-2 bg-linear-to-r from-[#e66f51] to-[#2f8f83] text-white hover:from-[#d95f43] hover:to-[#26776d] shadow-lg">
                         <Crown className="h-4 w-4" />
-                        {isCurrentTournamentCreated ? "Save Final" : "Create Tournament & Save Final"}
+                        {isCurrentTournamentCreated
+                          ? "Save Final"
+                          : "Create Tournament & Save Final"}
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>{isCurrentTournamentCreated ? "Save Final" : "Create Tournament"}</DialogTitle>
+                        <DialogTitle>
+                          {isCurrentTournamentCreated ? "Save Final" : "Create Tournament"}
+                        </DialogTitle>
                         <DialogDescription>
                           {isCurrentTournamentCreated
                             ? `Save this final to ${tournamentForm.name || "the selected tournament"}.`
@@ -1651,7 +1930,9 @@ export function FinalMatchScorecard() {
                           <Label>Tournament Name</Label>
                           <Input
                             value={tournamentForm.name}
-                            onChange={(e) => setTournamentForm({ ...tournamentForm, name: e.target.value })}
+                            onChange={(e) =>
+                              setTournamentForm({ ...tournamentForm, name: e.target.value })
+                            }
                             placeholder="e.g. Summer Cup 2026"
                           />
                         </div>
@@ -1696,19 +1977,26 @@ export function FinalMatchScorecard() {
                               })
                             }
                             min="2"
+                            className="text-foreground"
                           />
                         </div>
                         <div className="border-t pt-4">
                           <p className="mb-3 text-sm font-semibold">Whole-tournament leaders</p>
                           <p className="mb-3 text-xs text-muted-foreground">
-                            The final teams and score above are saved as the final. Add the leaders from all tournament matches here.
+                            The final teams and score above are saved as the final. Add the leaders
+                            from all tournament matches here.
                           </p>
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div>
                               <Label>Top goal scorer</Label>
                               <Input
                                 value={tournamentForm.topScorerName}
-                                onChange={(e) => setTournamentForm({ ...tournamentForm, topScorerName: e.target.value })}
+                                onChange={(e) =>
+                                  setTournamentForm({
+                                    ...tournamentForm,
+                                    topScorerName: e.target.value,
+                                  })
+                                }
                                 placeholder="Player name"
                               />
                             </div>
@@ -1718,15 +2006,26 @@ export function FinalMatchScorecard() {
                                 type="number"
                                 min="0"
                                 value={tournamentForm.topScorerGoals}
-                                onChange={(e) => setTournamentForm({ ...tournamentForm, topScorerGoals: e.target.value })}
+                                onChange={(e) =>
+                                  setTournamentForm({
+                                    ...tournamentForm,
+                                    topScorerGoals: e.target.value,
+                                  })
+                                }
                                 placeholder={`${calculateStats().topScorer.goals}`}
+                                className="text-foreground"
                               />
                             </div>
                             <div>
                               <Label>Top saves</Label>
                               <Input
                                 value={tournamentForm.topSaverName}
-                                onChange={(e) => setTournamentForm({ ...tournamentForm, topSaverName: e.target.value })}
+                                onChange={(e) =>
+                                  setTournamentForm({
+                                    ...tournamentForm,
+                                    topSaverName: e.target.value,
+                                  })
+                                }
                                 placeholder="Goalkeeper name"
                               />
                             </div>
@@ -1736,8 +2035,14 @@ export function FinalMatchScorecard() {
                                 type="number"
                                 min="0"
                                 value={tournamentForm.topSaverSaves}
-                                onChange={(e) => setTournamentForm({ ...tournamentForm, topSaverSaves: e.target.value })}
+                                onChange={(e) =>
+                                  setTournamentForm({
+                                    ...tournamentForm,
+                                    topSaverSaves: e.target.value,
+                                  })
+                                }
                                 placeholder={`${calculateStats().topSaver.saves}`}
+                                className="text-foreground"
                               />
                             </div>
                           </div>
@@ -1763,7 +2068,8 @@ export function FinalMatchScorecard() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>🔄 Reset Match?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will clear all teams, players, goals, and match data. This action cannot be undone.
+                          This will clear all teams, players, goals, and match data. This action
+                          cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogAction
@@ -2159,7 +2465,9 @@ export function FinalMatchScorecard() {
                             title={player.isGK ? "Goalkeeper" : "Outfield"}
                           >
                             <span className="font-medium">{player.name}</span>
-                            {player.isGK && <span className="text-xs text-muted-foreground ml-2">(GK)</span>}
+                            {player.isGK && (
+                              <span className="text-xs text-muted-foreground ml-2">(GK)</span>
+                            )}
                           </span>
                           <Button
                             size="sm"
@@ -2241,7 +2549,9 @@ export function FinalMatchScorecard() {
                             title={player.isGK ? "Goalkeeper" : "Outfield"}
                           >
                             <span className="font-medium">{player.name}</span>
-                            {player.isGK && <span className="text-xs text-muted-foreground ml-2">(GK)</span>}
+                            {player.isGK && (
+                              <span className="text-xs text-muted-foreground ml-2">(GK)</span>
+                            )}
                           </span>
                           <Button
                             size="sm"
@@ -2298,7 +2608,9 @@ export function FinalMatchScorecard() {
             <Card className="border-3 border-pitch-foreground/20 bg-gradient-to-br from-card/98 via-card/96 to-card/94">
               <CardContent className="py-12 text-center">
                 <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
-                <p className="text-muted-foreground text-lg">No tournaments saved yet. Play a match and save it!</p>
+                <p className="text-muted-foreground text-lg">
+                  No tournaments saved yet. Play a match and save it!
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -2309,33 +2621,48 @@ export function FinalMatchScorecard() {
                   className="border-2 border-primary/30 bg-gradient-to-br from-card/98 via-card/96 to-card/94 hover:shadow-lg transition-shadow"
                   role="button"
                   tabIndex={0}
-                  onClick={() => setExpandedTournamentId((current) => current === tournament.id ? null : tournament.id)}
+                  onClick={() =>
+                    setExpandedTournamentId((current) =>
+                      current === tournament.id ? null : tournament.id,
+                    )
+                  }
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      setExpandedTournamentId((current) => current === tournament.id ? null : tournament.id);
+                      setExpandedTournamentId((current) =>
+                        current === tournament.id ? null : tournament.id,
+                      );
                     }
                   }}
                 >
                   <CardContent className="p-6">
                     <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2 border-b pb-4">
-                      <h2 className="font-display text-2xl font-bold">{tournament.tournamentName}</h2>
+                      <h2 className="font-display text-2xl font-bold">
+                        {tournament.tournamentName}
+                      </h2>
                     </div>
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                       <div>
                         <p className="text-sm text-muted-foreground mb-1 font-semibold">Match</p>
                         <p className="font-bold text-lg">
-                          {tournament.homeTeam} <span className="text-muted-foreground">vs</span> {tournament.awayTeam}
+                          {tournament.homeTeam} <span className="text-muted-foreground">vs</span>{" "}
+                          {tournament.awayTeam}
                         </p>
                         <p className="text-3xl font-display font-bold mt-2 text-primary">
                           {tournament.homeScore} — {tournament.awayScore}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground mb-1 font-semibold">Tournament Info</p>
+                        <p className="text-sm text-muted-foreground mb-1 font-semibold">
+                          Tournament Info
+                        </p>
                         <p className="font-semibold">{tournament.type}</p>
-                        <p className="text-sm text-muted-foreground">Participants: {tournament.participants}</p>
-                        <p className="text-sm text-muted-foreground">Manager: {tournament.manager || "N/A"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Participants: {tournament.participants}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Manager: {tournament.manager || "N/A"}
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground mb-1 font-semibold">Winner</p>
@@ -2345,11 +2672,27 @@ export function FinalMatchScorecard() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground mb-1 font-semibold">Top Stats</p>
+                        <p className="text-sm text-muted-foreground mb-1 font-semibold">
+                          Top Stats
+                        </p>
                         <div className="space-y-1 text-sm">
-                          <p>⚽ Scorer: <span className="font-semibold">{tournament.stats.topScorer.name}</span> ({tournament.stats.topScorer.goals})</p>
-                          <p>🎯 Assister: <span className="font-semibold">{tournament.stats.topAssister.name}</span> ({tournament.stats.topAssister.assists})</p>
-                          <p>🥅 Saver: <span className="font-semibold">{tournament.stats.topSaver.name}</span> ({tournament.stats.topSaver.saves})</p>
+                          <p>
+                            ⚽ Scorer:{" "}
+                            <span className="font-semibold">{tournament.stats.topScorer.name}</span>{" "}
+                            ({tournament.stats.topScorer.goals})
+                          </p>
+                          <p>
+                            🎯 Assister:{" "}
+                            <span className="font-semibold">
+                              {tournament.stats.topAssister.name}
+                            </span>{" "}
+                            ({tournament.stats.topAssister.assists})
+                          </p>
+                          <p>
+                            🥅 Saver:{" "}
+                            <span className="font-semibold">{tournament.stats.topSaver.name}</span>{" "}
+                            ({tournament.stats.topSaver.saves})
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -2375,11 +2718,19 @@ export function FinalMatchScorecard() {
                           className="gap-2"
                           onClick={(event) => {
                             event.stopPropagation();
-                            setExpandedTournamentId((current) => current === tournament.id ? null : tournament.id);
+                            setExpandedTournamentId((current) =>
+                              current === tournament.id ? null : tournament.id,
+                            );
                           }}
                         >
-                          {expandedTournamentId === tournament.id ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-                          {expandedTournamentId === tournament.id ? "Hide fixtures" : "View fixtures"}
+                          {expandedTournamentId === tournament.id ? (
+                            <ChevronUp className="size-4" />
+                          ) : (
+                            <ChevronDown className="size-4" />
+                          )}
+                          {expandedTournamentId === tournament.id
+                            ? "Hide fixtures"
+                            : "View fixtures"}
                         </Button>
                       </div>
                       {expandedTournamentId === tournament.id && (
@@ -2388,27 +2739,48 @@ export function FinalMatchScorecard() {
                             <p className="text-sm text-muted-foreground">Loading fixtures...</p>
                           ) : tournamentFixturesQuery.isError ? (
                             <p className="text-sm text-destructive">
-                              Could not load this tournament&apos;s fixtures. Apply the tournament fixture migration in Supabase, then refresh.
+                              Could not load this tournament&apos;s fixtures. Apply the tournament
+                              fixture migration in Supabase, then refresh.
                             </p>
                           ) : (tournamentFixturesQuery.data ?? []).length === 0 ? (
-                            <p className="text-sm text-muted-foreground">No fixtures created for this tournament yet.</p>
+                            <p className="text-sm text-muted-foreground">
+                              No fixtures created for this tournament yet.
+                            </p>
                           ) : (
                             <div className="divide-y rounded-md border">
                               {(tournamentFixturesQuery.data ?? []).map((fixture) => {
-                                const homeTeam = teamsQuery.data?.find((team) => team.id === fixture.home_team_id);
-                                const awayTeam = teamsQuery.data?.find((team) => team.id === fixture.away_team_id);
+                                const homeTeam = teamsQuery.data?.find(
+                                  (team) => team.id === fixture.home_team_id,
+                                );
+                                const awayTeam = teamsQuery.data?.find(
+                                  (team) => team.id === fixture.away_team_id,
+                                );
                                 return (
-                                  <div key={fixture.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
-                                    <span className="w-20 text-xs text-muted-foreground">Matchday {fixture.matchday}</span>
+                                  <div
+                                    key={fixture.id}
+                                    className="flex flex-wrap items-center gap-3 p-3 text-sm"
+                                  >
+                                    <span className="w-20 text-xs text-muted-foreground">
+                                      Matchday {fixture.matchday}
+                                    </span>
                                     <span className="min-w-50 flex-1 font-medium">
-                                      {homeTeam?.name ?? "Home team"} <span className="text-muted-foreground">vs</span> {awayTeam?.name ?? "Away team"}
+                                      {homeTeam?.name ?? "Home team"}{" "}
+                                      <span className="text-muted-foreground">vs</span>{" "}
+                                      {awayTeam?.name ?? "Away team"}
                                     </span>
                                     <span className="rounded bg-muted px-2 py-1 font-semibold tabular-nums">
                                       {fixture.home_score ?? "-"} - {fixture.away_score ?? "-"}
                                     </span>
-                                    <span className="text-xs text-muted-foreground">{fixture.status}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {fixture.status}
+                                    </span>
                                     <Button asChild variant="ghost" size="sm">
-                                      <Link to="/match/$fixtureId" params={{ fixtureId: fixture.id }}>Edit</Link>
+                                      <Link
+                                        to="/match/$fixtureId"
+                                        params={{ fixtureId: fixture.id }}
+                                      >
+                                        Edit
+                                      </Link>
                                     </Button>
                                   </div>
                                 );
@@ -2430,7 +2802,9 @@ export function FinalMatchScorecard() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete Tournament?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete this tournament record for {tournament.homeTeam} vs {tournament.awayTeam}? This action cannot be undone.
+                              Are you sure you want to delete this tournament record for{" "}
+                              {tournament.homeTeam} vs {tournament.awayTeam}? This action cannot be
+                              undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogAction

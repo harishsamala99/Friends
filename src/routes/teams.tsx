@@ -12,7 +12,10 @@ export const Route = createFileRoute("/teams")({
       { title: "Teams — FRIENDS LEAGUE" },
       { name: "description", content: "All clubs in the competition with squads and managers." },
       { property: "og:title", content: "Teams — FRIENDS LEAGUE" },
-      { property: "og:description", content: "All clubs in the competition with squads and details." },
+      {
+        property: "og:description",
+        content: "All clubs in the competition with squads and details.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -77,46 +80,49 @@ function TeamsPage() {
             ))}
           </div>
         )}
-        {selectedTeamId && (() => {
-          const selectedTeam = (teams.data ?? []).find((team) => team.id === selectedTeamId);
-          const squad = (players.data ?? []).filter(
-            (player) => player.team_id === selectedTeamId && player.status === "Active",
-          );
-          if (!selectedTeam) return null;
-          return (
-            <section className="mt-8" aria-label={`${selectedTeam.name} squad`}>
-              <div className="mb-4 flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-primary">Squad</p>
-                  <h2 className="font-display text-3xl font-bold">{selectedTeam.name}</h2>
+        {selectedTeamId &&
+          (() => {
+            const selectedTeam = (teams.data ?? []).find((team) => team.id === selectedTeamId);
+            const squad = (players.data ?? []).filter(
+              (player) => player.team_id === selectedTeamId && player.status === "Active",
+            );
+            if (!selectedTeam) return null;
+            return (
+              <section className="mt-8" aria-label={`${selectedTeam.name} squad`}>
+                <div className="mb-4 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+                      Squad
+                    </p>
+                    <h2 className="font-display text-3xl font-bold">{selectedTeam.name}</h2>
+                  </div>
+                  <span className="text-sm text-muted-foreground">{squad.length} players</span>
                 </div>
-                <span className="text-sm text-muted-foreground">{squad.length} players</span>
-              </div>
-              {squad.length === 0 ? (
-                <EmptyState message="No players have been added to this squad yet." />
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {squad.map((player) => (
-                    <Card key={player.id}>
-                      <CardContent className="flex items-center gap-3 p-4">
-                        <span className="grid size-10 shrink-0 place-items-center rounded-sm bg-secondary font-display text-lg font-bold tabular-nums">
-                          {player.jersey_number ?? "-"}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold">{player.name}</p>
-                          <p className="truncate text-sm text-muted-foreground">
-                            {player.position}
-                            {player.nationality ? ` · ${player.nationality}` : ""}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </section>
-          );
-        })()}
+                {squad.length === 0 ? (
+                  <EmptyState message="No players have been added to this squad yet." />
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {squad.map((player) => (
+                      <Card key={player.id}>
+                        <CardContent className="flex items-center gap-3 p-4">
+                          <span className="grid size-10 shrink-0 place-items-center rounded-sm bg-secondary font-display text-lg font-bold tabular-nums">
+                            {player.jersey_number ?? "-"}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold">{player.name}</p>
+                            <p className="truncate text-sm text-muted-foreground">
+                              {player.position}
+                              {player.nationality ? ` · ${player.nationality}` : ""}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })()}
         <p className="mt-8 text-center text-sm text-muted-foreground">
           Manage teams in the{" "}
           <Link to="/admin" className="font-medium text-primary underline-offset-4 hover:underline">

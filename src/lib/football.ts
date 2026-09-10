@@ -189,12 +189,13 @@ export const EVENT_TYPES = [
 
 export const GOAL_TYPES = ["Open Play", "Penalty", "Free Kick", "Header", "Own Goal"] as const;
 
-const db = supabase as unknown as {
-  from: (t: string) => any;
-};
+const db = supabase;
 
 export async function fetchCompetitions(): Promise<Competition[]> {
-  const { data, error } = await db.from("competitions").select("*").order("created_at", { ascending: false });
+  const { data, error } = await db
+    .from("competitions")
+    .select("*")
+    .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as Competition[];
 }
@@ -215,7 +216,10 @@ export async function fetchPlayers(teamId?: string): Promise<Player[]> {
   return (data ?? []) as Player[];
 }
 
-export async function fetchFixtures(competitionId?: string, tournamentId?: string): Promise<Fixture[]> {
+export async function fetchFixtures(
+  competitionId?: string,
+  tournamentId?: string,
+): Promise<Fixture[]> {
   let q = db.from("fixtures").select("*").order("kickoff");
   if (tournamentId) q = q.eq("tournament_id", tournamentId);
   else if (competitionId) q = q.eq("competition_id", competitionId);
@@ -231,7 +235,11 @@ export async function fetchFixture(id: string): Promise<Fixture | null> {
 }
 
 export async function fetchEvents(fixtureId: string): Promise<MatchEvent[]> {
-  const { data, error } = await db.from("match_events").select("*").eq("fixture_id", fixtureId).order("minute");
+  const { data, error } = await db
+    .from("match_events")
+    .select("*")
+    .eq("fixture_id", fixtureId)
+    .order("minute");
   if (error) throw error;
   return (data ?? []) as MatchEvent[];
 }
@@ -244,7 +252,10 @@ export async function fetchStandings(competitionId?: string): Promise<StandingRo
   return sortStandings((data ?? []) as StandingRow[]);
 }
 
-export async function fetchTournamentStandings(tournamentId: string, competitionId?: string): Promise<StandingRow[]> {
+export async function fetchTournamentStandings(
+  tournamentId: string,
+  competitionId?: string,
+): Promise<StandingRow[]> {
   const [teams, fixtures, competitions] = await Promise.all([
     fetchTeams(competitionId),
     fetchFixtures(undefined, tournamentId),
@@ -276,7 +287,8 @@ export async function fetchTournamentStandings(tournamentId: string, competition
   }
 
   for (const fixture of fixtures) {
-    if (fixture.status !== "Full Time" || fixture.home_score == null || fixture.away_score == null) continue;
+    if (fixture.status !== "Full Time" || fixture.home_score == null || fixture.away_score == null)
+      continue;
     const home = rows.get(fixture.home_team_id);
     const away = rows.get(fixture.away_team_id);
     if (!home || !away) continue;
@@ -423,7 +435,9 @@ export async function updateTeam(id: string, changes: Partial<Team>) {
   return data as Team;
 }
 
-export async function insertTeams(rows: { competition_id: string | null; name: string; crest_color: string }[]) {
+export async function insertTeams(
+  rows: { competition_id: string | null; name: string; crest_color: string }[],
+) {
   const { data, error } = await db.from("teams").insert(rows).select();
   if (error) throw error;
   return (data ?? []) as Team[];
@@ -499,7 +513,9 @@ export async function insertFixtures(rows: Partial<Fixture>[]) {
   if (error) {
     const message = String(error.message ?? "");
     if (/tournament_id.*column|permission denied|row-level security|policy/i.test(message)) {
-      throw new Error("Fixtures are not enabled in Supabase yet. Apply the latest fixture migration, then try again.");
+      throw new Error(
+        "Fixtures are not enabled in Supabase yet. Apply the latest fixture migration, then try again.",
+      );
     }
     throw error;
   }
@@ -532,10 +548,7 @@ export async function deleteEvent(id: string) {
   if (error) throw error;
 }
 
-export async function replaceFixtureEvents(
-  fixtureId: string,
-  events: Array<Partial<MatchEvent>>,
-) {
+export async function replaceFixtureEvents(fixtureId: string, events: Array<Partial<MatchEvent>>) {
   const { error: deleteError } = await db
     .from("match_events")
     .delete()
@@ -544,9 +557,9 @@ export async function replaceFixtureEvents(
   if (deleteError) throw deleteError;
   if (events.length === 0) return;
 
-  const { error: insertError } = await db.from("match_events").insert(
-    events.map((event) => ({ ...event, fixture_id: fixtureId })),
-  );
+  const { error: insertError } = await db
+    .from("match_events")
+    .insert(events.map((event) => ({ ...event, fixture_id: fixtureId })));
   if (insertError) throw insertError;
 }
 
@@ -583,7 +596,10 @@ export async function fetchLatestTournament(): Promise<Tournament | null> {
 }
 
 export async function saveTournament(
-  tournament: Omit<Tournament, "id" | "created_at" | "status"> & { id?: string; status?: Tournament["status"] },
+  tournament: Omit<Tournament, "id" | "created_at" | "status"> & {
+    id?: string;
+    status?: Tournament["status"];
+  },
 ) {
   const payload: Record<string, unknown> = {
     ...(tournament.id ? { id: tournament.id } : {}),
@@ -625,22 +641,25 @@ export async function saveTournament(
   let lastError: Error | null = null;
 
   for (const insertPayload of insertPayloads) {
-    const { data, error } = await db
-      .from("tournaments")
-      .insert([insertPayload])
-      .select()
-      .single();
+    const { data, error } = await db.from("tournaments").insert([insertPayload]).select().single();
 
     if (!error) {
       return {
         ...(data as Tournament),
-        tournament_name: (data as Partial<Tournament> & Record<string, unknown>)?.["tournament_name"] ?? tournament.tournament_name ?? tournament.type,
-        status: ((data as Partial<Tournament> & Record<string, unknown>)?.["status"] as Tournament["status"]) ?? "completed",
+        tournament_name:
+          (data as Partial<Tournament> & Record<string, unknown>)?.["tournament_name"] ??
+          tournament.tournament_name ??
+          tournament.type,
+        status:
+          ((data as Partial<Tournament> & Record<string, unknown>)?.[
+            "status"
+          ] as Tournament["status"]) ?? "completed",
       } as Tournament;
     }
 
     const message = String(error.message ?? "");
-    const isMissingStatusColumn = /status.*column|schema cache|does not exist|missing.*status/i.test(message);
+    const isMissingStatusColumn =
+      /status.*column|schema cache|does not exist|missing.*status/i.test(message);
     if (!isMissingStatusColumn) {
       throw error;
     }
@@ -652,8 +671,16 @@ export async function saveTournament(
   throw new Error("Unable to create tournament");
 }
 
-export async function updateTournament(id: string, changes: Partial<Omit<Tournament, "id" | "created_at">>) {
-  const { data, error } = await db.from("tournaments").update(changes).eq("id", id).select().single();
+export async function updateTournament(
+  id: string,
+  changes: Partial<Omit<Tournament, "id" | "created_at">>,
+) {
+  const { data, error } = await db
+    .from("tournaments")
+    .update(changes)
+    .eq("id", id)
+    .select()
+    .single();
   if (error) throw error;
   return data as Tournament;
 }

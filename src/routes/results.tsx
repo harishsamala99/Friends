@@ -11,7 +11,10 @@ export const Route = createFileRoute("/results")({
       { title: "Results — FRIENDS LEAGUE" },
       { name: "description", content: "Final scores from every completed FRIENDS LEAGUE match." },
       { property: "og:title", content: "Results — FRIENDS LEAGUE" },
-      { property: "og:description", content: "Final scores from every completed match this season." },
+      {
+        property: "og:description",
+        content: "Final scores from every completed match this season.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

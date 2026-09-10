@@ -3,13 +3,21 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
-import { fetchCompetitions, fetchTournamentStandings, fetchTournaments, type Tournament } from "@/lib/football";
+import {
+  fetchCompetitions,
+  fetchTournamentStandings,
+  fetchTournaments,
+  type Tournament,
+} from "@/lib/football";
 
 export const Route = createFileRoute("/standings")({
   head: () => ({
     meta: [
       { title: "League Table — FRIENDS LEAGUE" },
-      { name: "description", content: "Live league standings: played, won, drawn, lost, goal difference and points." },
+      {
+        name: "description",
+        content: "Live league standings: played, won, drawn, lost, goal difference and points.",
+      },
       { property: "og:title", content: "League Table — FRIENDS LEAGUE" },
       { property: "og:description", content: "Auto-calculated standings for the FRIENDS LEAGUE." },
       { property: "og:type", content: "website" },
@@ -35,7 +43,9 @@ function StandingsPage() {
   useEffect(() => {
     const storedId = localStorage.getItem("current-tournament-id");
     const firstTournament = tournamentList[0];
-    const selectedId = tournamentList.some((tournament) => tournament.id === storedId) ? storedId : firstTournament?.id ?? "";
+    const selectedId = tournamentList.some((tournament) => tournament.id === storedId)
+      ? storedId
+      : (firstTournament?.id ?? "");
     setTournamentId(selectedId);
   }, [tournamentList]);
 
@@ -50,7 +60,9 @@ function StandingsPage() {
       <div className="page-content mx-auto max-w-5xl px-4 py-10">
         {tournamentList.length > 0 && (
           <div className="tournament-switcher mb-6">
-            <label htmlFor="standings-tournament" className="text-sm font-medium">Tournament</label>
+            <label htmlFor="standings-tournament" className="text-sm font-medium">
+              Tournament
+            </label>
             <select
               id="standings-tournament"
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
@@ -61,7 +73,9 @@ function StandingsPage() {
               }}
             >
               {tournamentList.map((tournament) => (
-                <option key={tournament.id} value={tournament.id}>{tournament.tournament_name}</option>
+                <option key={tournament.id} value={tournament.id}>
+                  {tournament.tournament_name}
+                </option>
               ))}
             </select>
           </div>
@@ -92,7 +106,11 @@ function StandingsPage() {
               <tbody>
                 {(standings.data ?? []).map((r, i) => (
                   <tr key={r.team_id} className="border-t border-border/60">
-                    <td className="p-3 text-muted-foreground"><span className={`rank-badge ${i === 0 ? "rank-badge--gold" : ""}`}>{i + 1}</span></td>
+                    <td className="p-3 text-muted-foreground">
+                      <span className={`rank-badge ${i === 0 ? "rank-badge--gold" : ""}`}>
+                        {i + 1}
+                      </span>
+                    </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <TeamBadge
@@ -114,7 +132,9 @@ function StandingsPage() {
                     <td className="p-3 text-center tabular-nums">{r.goals_for}</td>
                     <td className="p-3 text-center tabular-nums">{r.goals_against}</td>
                     <td className="p-3 text-center tabular-nums">{r.goal_difference}</td>
-                    <td className="p-3 text-center font-bold tabular-nums text-primary">{r.points}</td>
+                    <td className="p-3 text-center font-bold tabular-nums text-primary">
+                      {r.points}
+                    </td>
                   </tr>
                 ))}
               </tbody>

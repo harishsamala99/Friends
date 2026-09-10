@@ -4,7 +4,13 @@ import { useEffect, useState } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent } from "@/components/ui/card";
-import { fetchFixtures, fetchTeams, fetchTournaments, type Team, type Tournament } from "@/lib/football";
+import {
+  fetchFixtures,
+  fetchTeams,
+  fetchTournaments,
+  type Team,
+  type Tournament,
+} from "@/lib/football";
 
 export const Route = createFileRoute("/fixtures")({
   head: () => ({
@@ -12,7 +18,10 @@ export const Route = createFileRoute("/fixtures")({
       { title: "Fixtures & Results — FRIENDS LEAGUE" },
       { name: "description", content: "Scheduled fixtures and completed results by tournament." },
       { property: "og:title", content: "Fixtures & Results — FRIENDS LEAGUE" },
-      { property: "og:description", content: "Scheduled fixtures and completed results by tournament." },
+      {
+        property: "og:description",
+        content: "Scheduled fixtures and completed results by tournament.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -38,14 +47,21 @@ function FixturesPage() {
   useEffect(() => {
     const storedId = localStorage.getItem("current-tournament-id");
     const firstTournament = tournamentList[0];
-    const selectedId = tournamentList.some((tournament) => tournament.id === storedId) ? storedId : firstTournament?.id ?? "";
+    const selectedId = tournamentList.some((tournament) => tournament.id === storedId)
+      ? storedId
+      : (firstTournament?.id ?? "");
     setTournamentId(selectedId);
   }, [tournamentList]);
 
   const played = (fixtures.data ?? [])
-    .filter((fixture) => fixture.status === "Full Time" || fixture.home_score != null || fixture.away_score != null)
+    .filter(
+      (fixture) =>
+        fixture.status === "Full Time" || fixture.home_score != null || fixture.away_score != null,
+    )
     .sort((a, b) => +new Date(b.kickoff) - +new Date(a.kickoff));
-  const upcoming = (fixtures.data ?? []).filter((fixture) => !played.some((match) => match.id === fixture.id));
+  const upcoming = (fixtures.data ?? []).filter(
+    (fixture) => !played.some((match) => match.id === fixture.id),
+  );
   const groups = new Map<number, typeof upcoming>();
   for (const f of upcoming) {
     const list = groups.get(f.matchday) ?? [];
@@ -62,7 +78,9 @@ function FixturesPage() {
       <div className="page-content mx-auto max-w-4xl space-y-8 px-4 py-10">
         {tournamentList.length > 0 && (
           <div className="tournament-switcher">
-            <label htmlFor="fixtures-tournament" className="text-sm font-medium">Tournament</label>
+            <label htmlFor="fixtures-tournament" className="text-sm font-medium">
+              Tournament
+            </label>
             <select
               id="fixtures-tournament"
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
@@ -73,7 +91,9 @@ function FixturesPage() {
               }}
             >
               {tournamentList.map((tournament) => (
-                <option key={tournament.id} value={tournament.id}>{tournament.tournament_name}</option>
+                <option key={tournament.id} value={tournament.id}>
+                  {tournament.tournament_name}
+                </option>
               ))}
             </select>
           </div>
@@ -92,13 +112,19 @@ function FixturesPage() {
                 <div className="space-y-6">
                   {[...groups.entries()].map(([matchday, list]) => (
                     <div key={matchday}>
-                      <h3 className="mb-3 text-sm font-semibold text-muted-foreground">Matchday {matchday}</h3>
+                      <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+                        Matchday {matchday}
+                      </h3>
                       <div className="space-y-3">
                         {list.map((fixture) => {
                           const home = byId.get(fixture.home_team_id);
                           const away = byId.get(fixture.away_team_id);
                           return (
-                            <Link key={fixture.id} to="/match/$fixtureId" params={{ fixtureId: fixture.id }}>
+                            <Link
+                              key={fixture.id}
+                              to="/match/$fixtureId"
+                              params={{ fixtureId: fixture.id }}
+                            >
                               <Card className="fixture-card">
                                 <CardContent className="flex flex-wrap items-center gap-3 p-4">
                                   <div className="fixture-card__teams flex flex-1 items-center gap-2">
@@ -128,7 +154,11 @@ function FixturesPage() {
                     const home = byId.get(fixture.home_team_id);
                     const away = byId.get(fixture.away_team_id);
                     return (
-                      <Link key={fixture.id} to="/match/$fixtureId" params={{ fixtureId: fixture.id }}>
+                      <Link
+                        key={fixture.id}
+                        to="/match/$fixtureId"
+                        params={{ fixtureId: fixture.id }}
+                      >
                         <Card className="fixture-card">
                           <CardContent className="flex items-center gap-3 p-4">
                             <div className="fixture-card__teams flex flex-1 items-center gap-2">
@@ -136,7 +166,9 @@ function FixturesPage() {
                               <span className="truncate font-medium">{home?.name}</span>
                             </div>
                             <div className="fixture-card__score shrink-0 text-center">
-                              <div className="rounded-md bg-secondary px-3 py-1 font-semibold tabular-nums">{fixture.home_score ?? 0} - {fixture.away_score ?? 0}</div>
+                              <div className="rounded-md bg-secondary px-3 py-1 font-semibold tabular-nums">
+                                {fixture.home_score ?? 0} - {fixture.away_score ?? 0}
+                              </div>
                             </div>
                             <div className="fixture-card__teams fixture-card__teams--away flex flex-1 items-center justify-end gap-2">
                               <span className="truncate font-medium">{away?.name}</span>

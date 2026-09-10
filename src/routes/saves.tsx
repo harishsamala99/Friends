@@ -4,16 +4,27 @@ import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, ListSkeleton, EmptyState } from "@/components/football-ui";
-import { fetchTopSaves, fetchTournaments, deletePlayerSaves, type Tournament } from "@/lib/football";
+import {
+  fetchTopSaves,
+  fetchTournaments,
+  deletePlayerSaves,
+  type Tournament,
+} from "@/lib/football";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/saves")({
   head: () => ({
     meta: [
       { title: "Top Saves — FRIENDS LEAGUE" },
-      { name: "description", content: "Golden gloves race: saves and clean sheets for every goalkeeper." },
+      {
+        name: "description",
+        content: "Golden gloves race: saves and clean sheets for every goalkeeper.",
+      },
       { property: "og:title", content: "Top Saves — FRIENDS LEAGUE" },
-      { property: "og:description", content: "Golden gloves race: saves, clean sheets and goalkeeper stats." },
+      {
+        property: "og:description",
+        content: "Golden gloves race: saves, clean sheets and goalkeeper stats.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -39,7 +50,9 @@ function SavesPage() {
   useEffect(() => {
     const storedId = localStorage.getItem("current-tournament-id");
     const firstTournament = tournamentList[0];
-    const selectedId = tournamentList.some((tournament) => tournament.id === storedId) ? storedId : firstTournament?.id ?? "";
+    const selectedId = tournamentList.some((tournament) => tournament.id === storedId)
+      ? storedId
+      : (firstTournament?.id ?? "");
     setTournamentId(selectedId);
   }, [tournamentList]);
 
@@ -53,11 +66,16 @@ function SavesPage() {
 
   return (
     <SiteLayout>
-      <PageHeader title="Top Saves" subtitle={`Ranked by saves, then clean sheets${selectedTournament ? ` in ${selectedTournament.tournament_name}` : ""}.`} />
+      <PageHeader
+        title="Top Saves"
+        subtitle={`Ranked by saves, then clean sheets${selectedTournament ? ` in ${selectedTournament.tournament_name}` : ""}.`}
+      />
       <div className="page-content mx-auto max-w-4xl px-4 py-10">
         {tournamentList.length > 0 && (
           <div className="tournament-switcher mb-6">
-            <label htmlFor="saves-tournament" className="text-sm font-medium">Tournament</label>
+            <label htmlFor="saves-tournament" className="text-sm font-medium">
+              Tournament
+            </label>
             <select
               id="saves-tournament"
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
@@ -68,7 +86,9 @@ function SavesPage() {
               }}
             >
               {tournamentList.map((tournament) => (
-                <option key={tournament.id} value={tournament.id}>{tournament.tournament_name}</option>
+                <option key={tournament.id} value={tournament.id}>
+                  {tournament.tournament_name}
+                </option>
               ))}
             </select>
           </div>
@@ -98,14 +118,24 @@ function SavesPage() {
               <tbody>
                 {(saves.data ?? []).map((s, i) => (
                   <tr key={s.player_id} className="border-t border-border/60">
-                    <td className="p-3 text-muted-foreground"><span className={`rank-badge ${i === 0 ? "rank-badge--gold" : ""}`}>{i + 1}</span></td>
-                    <td className={`p-3 ${s.saves === leadingSaves ? "font-bold text-primary" : "font-medium"}`}>
+                    <td className="p-3 text-muted-foreground">
+                      <span className={`rank-badge ${i === 0 ? "rank-badge--gold" : ""}`}>
+                        {i + 1}
+                      </span>
+                    </td>
+                    <td
+                      className={`p-3 ${s.saves === leadingSaves ? "font-bold text-primary" : "font-medium"}`}
+                    >
                       {s.player_name}
                     </td>
                     <td className="p-3 text-muted-foreground">{s.team_name}</td>
                     <td className="p-3 text-center tabular-nums">{s.matches}</td>
                     <td className="p-3 text-center tabular-nums">{s.clean_sheets}</td>
-                    <td className={`p-3 text-center tabular-nums ${s.saves === leadingSaves ? "font-bold text-primary" : "font-semibold"}`}>{s.saves}</td>
+                    <td
+                      className={`p-3 text-center tabular-nums ${s.saves === leadingSaves ? "font-bold text-primary" : "font-semibold"}`}
+                    >
+                      {s.saves}
+                    </td>
                     <td className="p-3 text-right">
                       <Button
                         variant="ghost"

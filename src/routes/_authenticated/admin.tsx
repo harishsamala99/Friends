@@ -10,7 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 import {
   POSITIONS,
   deleteFixture,
@@ -33,9 +38,15 @@ export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
       { title: "League Editor — FRIENDS LEAGUE" },
-      { name: "description", content: "Update FRIENDS LEAGUE teams, players, fixtures and results." },
+      {
+        name: "description",
+        content: "Update FRIENDS LEAGUE teams, players, fixtures and results.",
+      },
       { property: "og:title", content: "League Editor — FRIENDS LEAGUE" },
-      { property: "og:description", content: "Update teams, players, fixtures and results for FRIENDS LEAGUE." },
+      {
+        property: "og:description",
+        content: "Update teams, players, fixtures and results for FRIENDS LEAGUE.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex" },
@@ -101,25 +112,33 @@ function AdminPage() {
             ) : (
               <Card>
                 <CardContent className="p-0">
-                  <Accordion type="multiple" defaultValue={[(teams.data ?? [])[0]?.id ?? ""].filter(Boolean)}>
+                  <Accordion
+                    type="multiple"
+                    defaultValue={[(teams.data ?? [])[0]?.id ?? ""].filter(Boolean)}
+                  >
                     {(teams.data ?? []).map((team) => {
                       const teamPlayers = (players.data ?? []).filter(
                         (p) => p.team_id === team.id && p.status === "Active",
                       );
                       if (teamPlayers.length === 0) return null;
-                      
+
                       return (
                         <AccordionItem key={team.id} value={team.id} className="border-b-0">
                           <AccordionTrigger className="px-3 py-2 hover:no-underline">
                             <div className="flex items-center gap-2">
                               <TeamBadge team={team} size={24} />
                               <span className="font-medium">{team.name}</span>
-                              <span className="text-xs text-muted-foreground">({teamPlayers.length})</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({teamPlayers.length})
+                              </span>
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="px-0 py-0">
                             {teamPlayers.map((p) => (
-                              <div key={p.id} className="flex items-center gap-3 border-t border-border/50 p-3">
+                              <div
+                                key={p.id}
+                                className="flex items-center gap-3 border-t border-border/50 p-3"
+                              >
                                 <span className="w-8 text-center text-sm text-muted-foreground tabular-nums">
                                   {p.jersey_number ?? "-"}
                                 </span>
@@ -161,11 +180,13 @@ function AdminPage() {
             <FixtureTools
               competitionId={competition?.id ?? null}
               teams={teams.data ?? []}
-                tournamentId={
-                  (typeof window !== "undefined" ? localStorage.getItem("current-tournament-id") : null) ??
-                  tournaments.data?.[0]?.id ??
-                  null
-                }
+              tournamentId={
+                (typeof window !== "undefined"
+                  ? localStorage.getItem("current-tournament-id")
+                  : null) ??
+                tournaments.data?.[0]?.id ??
+                null
+              }
               onSaved={invalidate}
             />
             {(fixtures.data ?? []).length === 0 ? (
@@ -234,10 +255,21 @@ function TeamRow({ team, onSaved }: { team: Team; onSaved: () => void }) {
               value={manager}
               onChange={(event) => setManager(event.target.value)}
             />
-            <Button type="submit" size="icon" aria-label={`Save manager for ${team.name}`} disabled={save.isPending}>
+            <Button
+              type="submit"
+              size="icon"
+              aria-label={`Save manager for ${team.name}`}
+              disabled={save.isPending}
+            >
               <Check className="size-4" />
             </Button>
-            <Button type="button" variant="ghost" size="icon" aria-label={`Cancel editing ${team.name}`} onClick={cancelEditing}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={`Cancel editing ${team.name}`}
+              onClick={cancelEditing}
+            >
               <X className="size-4" />
             </Button>
           </form>
@@ -283,7 +315,13 @@ function FixtureRow({
   awayName,
   onSaved,
 }: {
-  fixture: { id: string; matchday: number; home_score: number | null; away_score: number | null; status: string };
+  fixture: {
+    id: string;
+    matchday: number;
+    home_score: number | null;
+    away_score: number | null;
+    status: string;
+  };
   homeName?: string;
   awayName?: string;
   onSaved: () => void;
@@ -331,7 +369,13 @@ function Field({ id, label, children }: { id: string; label: string; children: R
   );
 }
 
-function TeamForm({ competitionId, onSaved }: { competitionId: string | null; onSaved: () => void }) {
+function TeamForm({
+  competitionId,
+  onSaved,
+}: {
+  competitionId: string | null;
+  onSaved: () => void;
+}) {
   const [teams, setTeams] = useState([{ name: "", color: "#e4573d", manager: "" }]);
 
   const save = useMutation({
@@ -375,7 +419,11 @@ function TeamForm({ competitionId, onSaved }: { competitionId: string | null; on
               placeholder={`Team ${index + 1}`}
               value={team.name}
               onChange={(e) =>
-                setTeams((current) => current.map((item, i) => (i === index ? { ...item, name: e.target.value } : item)))
+                setTeams((current) =>
+                  current.map((item, i) =>
+                    i === index ? { ...item, name: e.target.value } : item,
+                  ),
+                )
               }
             />
             <Input
@@ -383,7 +431,11 @@ function TeamForm({ competitionId, onSaved }: { competitionId: string | null; on
               placeholder="Manager name"
               value={team.manager}
               onChange={(e) =>
-                setTeams((current) => current.map((item, i) => (i === index ? { ...item, manager: e.target.value } : item)))
+                setTeams((current) =>
+                  current.map((item, i) =>
+                    i === index ? { ...item, manager: e.target.value } : item,
+                  ),
+                )
               }
             />
             <Input
@@ -392,7 +444,11 @@ function TeamForm({ competitionId, onSaved }: { competitionId: string | null; on
               type="color"
               value={team.color}
               onChange={(e) =>
-                setTeams((current) => current.map((item, i) => (i === index ? { ...item, color: e.target.value } : item)))
+                setTeams((current) =>
+                  current.map((item, i) =>
+                    i === index ? { ...item, color: e.target.value } : item,
+                  ),
+                )
               }
             />
             <Button
@@ -408,7 +464,13 @@ function TeamForm({ competitionId, onSaved }: { competitionId: string | null; on
           </div>
         ))}
         <div className="flex flex-wrap gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={() => setTeams((current) => [...current, { name: "", color: "#e4573d", manager: "" }])}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setTeams((current) => [...current, { name: "", color: "#e4573d", manager: "" }])
+            }
+          >
             Add another team
           </Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
@@ -488,7 +550,12 @@ function PlayerForm({
           </select>
         </Field>
         <Field id="p-jersey" label="Jersey #">
-          <Input id="p-jersey" type="number" value={jersey} onChange={(e) => setJersey(e.target.value)} />
+          <Input
+            id="p-jersey"
+            type="number"
+            value={jersey}
+            onChange={(e) => setJersey(e.target.value)}
+          />
         </Field>
         <div className="sm:col-span-4">
           <Button onClick={() => save.mutate()} disabled={!name || !teamId || save.isPending}>
@@ -576,7 +643,14 @@ function FixtureTools({
             </select>
           </Field>
           <Field id="f-count" label="Number of matches">
-            <Input id="f-count" type="number" min="1" max="50" value={matchCount} onChange={(e) => setMatchCount(e.target.value)} />
+            <Input
+              id="f-count"
+              type="number"
+              min="1"
+              max="50"
+              value={matchCount}
+              onChange={(e) => setMatchCount(e.target.value)}
+            />
           </Field>
           <div className="sm:col-span-3">
             <Button onClick={scheduleMatches} disabled={!homeId || !awayId}>

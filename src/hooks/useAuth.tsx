@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!session?.user) return;
     let active = true;
-    (supabase as any)
+    supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", session.user.id)

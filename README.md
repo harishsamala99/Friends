@@ -34,8 +34,6 @@ Public Website
 
 Admin Dashboard
 
-
-
 2. Public Website
 
 Create a public-facing football competition website with:
@@ -88,8 +86,6 @@ Competition Info
 
 About
 
-
-
 3. Competition Management
 
 Admin should be able to create multiple competitions.
@@ -141,8 +137,6 @@ Duplicate a previous season
 Switch between seasons
 
 Publish/unpublish competition
-
-
 
 4. Team Management
 
@@ -208,8 +202,6 @@ Previous results
 
 Team statistics
 
-
-
 5. Player Management
 
 Create a complete player management system.
@@ -271,8 +263,6 @@ Shots
 Shots on target
 
 Player rating
-
-
 
 6. Fixture Creation
 
@@ -385,8 +375,6 @@ Postponed
 
 Rescheduled
 
-
-
 7. Match Management
 
 Create a detailed Match Center.
@@ -462,8 +450,6 @@ Example:
 72’ ⚽ John Smith
 Assist: Michael Brown
 
-
-
 8. Goal Scorer Management
 
 Create a dedicated Goal Scorer Entry System.
@@ -509,8 +495,6 @@ Player statistics
 Team statistics
 
 Do not require the admin to manually update these totals.
-
-
 
 9. Top Goal Scorer Leaderboard
 
@@ -565,8 +549,6 @@ Assists
 Matches played
 
 Minutes played
-
-
 
 10. League Standings
 
@@ -628,8 +610,6 @@ Relegation
 
 Make these rules configurable by competition.
 
-
-
 11. Results Page
 
 Create a results page showing completed matches.
@@ -655,8 +635,6 @@ Away Team
 Team Logo
 
 Clicking a result opens the full Match Center.
-
-
 
 12. Fixtures Page
 
@@ -698,8 +676,6 @@ Month
 
 Matchday
 
-
-
 13. Player Statistics
 
 Create a statistics dashboard.
@@ -735,8 +711,6 @@ Starts
 Minutes played
 
 Create sortable ranking tables.
-
-
 
 14. Team Statistics
 
@@ -775,8 +749,6 @@ Goals conceded
 Form
 
 Points progression
-
-
 
 15. Dashboard
 
@@ -820,8 +792,6 @@ Goal Statistics
 
 Display a chart showing goals scored over time.
 
-
-
 16. Admin Authentication
 
 Create secure authentication.
@@ -860,8 +830,6 @@ Read-only access.
 
 Implement proper role-based permissions.
 
-
-
 17. Search
 
 Add global search.
@@ -879,8 +847,6 @@ Results
 Competitions
 
 Show grouped search results.
-
-
 
 18. Notifications
 
@@ -910,8 +876,6 @@ Match starting soon
 
 Fixture changed
 
-
-
 19. Data Validation
 
 Implement strong validation.
@@ -935,8 +899,6 @@ Duplicate fixtures should be detected.
 A team cannot have conflicting fixtures.
 
 Show clear error messages.
-
-
 
 20. Automatic Calculations
 
@@ -990,8 +952,6 @@ Statistics
 
 Never require duplicate manual data entry.
 
-
-
 21. Reports
 
 Create a Reports section.
@@ -1019,8 +979,6 @@ PDF
 CSV
 
 Excel
-
-
 
 22. Public Match Page
 
@@ -1055,8 +1013,6 @@ Statistics
 
 Players
 
-
-
 23. Responsive Mobile Design
 
 The website must work perfectly on:
@@ -1078,8 +1034,6 @@ Make tables horizontally scrollable where necessary
 Convert fixture cards into compact mobile cards
 
 Make the admin dashboard mobile friendly
-
-
 
 24. Database Design
 
@@ -1129,8 +1083,6 @@ Use proper relationships and foreign keys.
 
 Make the database structure scalable for multiple competitions and seasons.
 
-
-
 25. API / Backend
 
 Create a clean backend/API architecture.
@@ -1166,8 +1118,6 @@ Top scorers
 Reports
 
 Use server-side validation and authorization.
-
-
 
 26. Fixture Generator UX
 
@@ -1217,8 +1167,6 @@ Click Publish Fixtures.
 
 Show a confirmation before publishing.
 
-
-
 27. Dashboard Charts
 
 Use charts for:
@@ -1239,8 +1187,6 @@ Clean sheets
 
 Charts should be interactive.
 
-
-
 28. Theme
 
 Use a premium football aesthetic.
@@ -1260,8 +1206,6 @@ Accent green
 Use large team crests and football imagery sparingly.
 
 The UI should feel similar to a professional football league platform rather than a basic CRUD application.
-
-
 
 29. Sample Data
 
@@ -1292,8 +1236,6 @@ Standings
 Top scorers
 
 Make sure the demo data is internally consistent.
-
-
 
 30. Important UX Requirements
 
@@ -1332,8 +1274,6 @@ Breadcrumbs
 Avoid unnecessary page reloads.
 
 Use optimistic UI updates where safe.
-
-
 
 31. Technical Requirements
 
@@ -1390,8 +1330,6 @@ Forms
 Filters
 
 Navigation
-
-
 
 32. Final Acceptance Criteria
 

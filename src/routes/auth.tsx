@@ -12,9 +12,15 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Sign in — FRIENDS LEAGUE" },
-      { name: "description", content: "Sign in to manage competitions, teams, players, fixtures and results." },
+      {
+        name: "description",
+        content: "Sign in to manage competitions, teams, players, fixtures and results.",
+      },
       { property: "og:title", content: "Sign in — FRIENDS LEAGUE" },
-      { property: "og:description", content: "Administrator access to the league management dashboard." },
+      {
+        property: "og:description",
+        content: "Administrator access to the league management dashboard.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -48,9 +54,7 @@ function AuthPage() {
       <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-16">
         <Card>
           <CardHeader>
-            <CardTitle className="font-display text-2xl">
-              Admin sign in
-            </CardTitle>
+            <CardTitle className="font-display text-2xl">Admin sign in</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">

@@ -8,13 +8,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { EVENT_TYPES, addEvent, fetchEvents, fetchFixture, fetchPlayers, fetchTeams, updateFixture } from "@/lib/football";
+import {
+  EVENT_TYPES,
+  addEvent,
+  fetchEvents,
+  fetchFixture,
+  fetchPlayers,
+  fetchTeams,
+  updateFixture,
+} from "@/lib/football";
 
 export const Route = createFileRoute("/match/$fixtureId")({
   head: () => ({
     meta: [
       { title: "Match Centre — FRIENDS LEAGUE" },
-      { name: "description", content: "Live match centre with score, timeline of goals and cards." },
+      {
+        name: "description",
+        content: "Live match centre with score, timeline of goals and cards.",
+      },
       { property: "og:title", content: "Match Centre — FRIENDS LEAGUE" },
       { property: "og:description", content: "Score, goals, assists and cards for this fixture." },
       { property: "og:type", content: "website" },
@@ -41,10 +52,16 @@ export const Route = createFileRoute("/match/$fixtureId")({
 function MatchPage() {
   const queryClient = useQueryClient();
   const { fixtureId } = Route.useParams();
-  const fixture = useQuery({ queryKey: ["fixture", fixtureId], queryFn: () => fetchFixture(fixtureId) });
+  const fixture = useQuery({
+    queryKey: ["fixture", fixtureId],
+    queryFn: () => fetchFixture(fixtureId),
+  });
   const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
   const players = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
-  const events = useQuery({ queryKey: ["events", fixtureId], queryFn: () => fetchEvents(fixtureId) });
+  const events = useQuery({
+    queryKey: ["events", fixtureId],
+    queryFn: () => fetchEvents(fixtureId),
+  });
 
   const f = fixture.data;
   const byId = new Map((teams.data ?? []).map((t) => [t.id, t]));
@@ -80,9 +97,7 @@ function MatchPage() {
                   <span className="text-sm font-semibold sm:text-lg">{away?.name}</span>
                 </div>
               </div>
-              <p className="mt-6 text-sm opacity-80">
-                Matchday {f.matchday}
-              </p>
+              <p className="mt-6 text-sm opacity-80">Matchday {f.matchday}</p>
             </div>
           </section>
 
@@ -91,7 +106,9 @@ function MatchPage() {
               fixture={f}
               homeTeamId={f.home_team_id}
               awayTeamId={f.away_team_id}
-              players={(players.data ?? []).filter((p) => p.team_id === f.home_team_id || p.team_id === f.away_team_id)}
+              players={(players.data ?? []).filter(
+                (p) => p.team_id === f.home_team_id || p.team_id === f.away_team_id,
+              )}
               events={events.data ?? []}
               onSaved={() => {
                 void fixture.refetch();
@@ -112,14 +129,19 @@ function MatchPage() {
                     const player = e.player_id ? playerById.get(e.player_id) : undefined;
                     const team = e.team_id ? byId.get(e.team_id) : undefined;
                     return (
-                      <div key={e.id} className="flex items-center gap-3 border-b border-border/50 p-3 last:border-0">
+                      <div
+                        key={e.id}
+                        className="flex items-center gap-3 border-b border-border/50 p-3 last:border-0"
+                      >
                         <span className="w-10 text-sm font-semibold tabular-nums text-muted-foreground">
                           {e.minute}'
                         </span>
                         <span aria-hidden>{meta?.icon ?? "•"}</span>
                         <span className="flex-1 truncate">
                           <span className="font-medium">{player?.name ?? meta?.label}</span>
-                          {player && <span className="text-muted-foreground"> — {meta?.label}</span>}
+                          {player && (
+                            <span className="text-muted-foreground"> — {meta?.label}</span>
+                          )}
                         </span>
                         <span className="truncate text-sm text-muted-foreground">{team?.name}</span>
                       </div>
@@ -373,14 +395,27 @@ function MatchEditor({
         <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-end">
           <label className="space-y-2 text-sm font-medium">
             Home score
-            <Input type="number" min="0" value={homeScore} onChange={(event) => setHomeScore(event.target.value)} />
+            <Input
+              type="number"
+              min="0"
+              value={homeScore}
+              onChange={(event) => setHomeScore(event.target.value)}
+            />
           </label>
           <span className="hidden pb-2 text-muted-foreground sm:block">-</span>
           <label className="space-y-2 text-sm font-medium">
             Away score
-            <Input type="number" min="0" value={awayScore} onChange={(event) => setAwayScore(event.target.value)} />
+            <Input
+              type="number"
+              min="0"
+              value={awayScore}
+              onChange={(event) => setAwayScore(event.target.value)}
+            />
           </label>
-          <Button onClick={saveScore} disabled={savingScore || homeScore === "" || awayScore === ""}>
+          <Button
+            onClick={saveScore}
+            disabled={savingScore || homeScore === "" || awayScore === ""}
+          >
             {savingScore ? "Saving…" : "Save score"}
           </Button>
         </div>
@@ -391,7 +426,9 @@ function MatchEditor({
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Home Team Section */}
             <div className="space-y-3 rounded-lg border border-border/40 p-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Home Team</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Home Team
+              </h4>
               <label className="space-y-2 text-sm font-medium">
                 Player
                 <select
@@ -409,7 +446,9 @@ function MatchEditor({
                 </select>
               </label>
               {homeTeamPlayers.length === 0 && (
-                <span className="text-xs text-muted-foreground">No players available for home team</span>
+                <span className="text-xs text-muted-foreground">
+                  No players available for home team
+                </span>
               )}
               {homeTeamPlayers.length > 0 && (
                 <>
@@ -437,7 +476,9 @@ function MatchEditor({
 
             {/* Away Team Section */}
             <div className="space-y-3 rounded-lg border border-border/40 p-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Away Team</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Away Team
+              </h4>
               <label className="space-y-2 text-sm font-medium">
                 Player
                 <select
@@ -455,7 +496,9 @@ function MatchEditor({
                 </select>
               </label>
               {awayTeamPlayers.length === 0 && (
-                <span className="text-xs text-muted-foreground">No players available for away team</span>
+                <span className="text-xs text-muted-foreground">
+                  No players available for away team
+                </span>
               )}
               {awayTeamPlayers.length > 0 && (
                 <>
@@ -489,7 +532,9 @@ function MatchEditor({
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Home Team Section */}
             <div className="space-y-3 rounded-lg border border-border/40 p-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Home Team Goalkeeper</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Home Team Goalkeeper
+              </h4>
               <label className="space-y-2 text-sm font-medium">
                 Goalkeeper
                 <select
@@ -507,7 +552,9 @@ function MatchEditor({
                 </select>
               </label>
               {homeGKs.length === 0 && (
-                <span className="text-xs text-muted-foreground">No goalkeepers available for home team</span>
+                <span className="text-xs text-muted-foreground">
+                  No goalkeepers available for home team
+                </span>
               )}
               {homeGKs.length > 0 && (
                 <>
@@ -535,7 +582,9 @@ function MatchEditor({
 
             {/* Away Team Section */}
             <div className="space-y-3 rounded-lg border border-border/40 p-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Away Team Goalkeeper</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Away Team Goalkeeper
+              </h4>
               <label className="space-y-2 text-sm font-medium">
                 Goalkeeper
                 <select
@@ -553,7 +602,9 @@ function MatchEditor({
                 </select>
               </label>
               {awayGKs.length === 0 && (
-                <span className="text-xs text-muted-foreground">No goalkeepers available for away team</span>
+                <span className="text-xs text-muted-foreground">
+                  No goalkeepers available for away team
+                </span>
               )}
               {awayGKs.length > 0 && (
                 <>
@@ -589,15 +640,22 @@ function MatchEditor({
               {/* Home Team Scorers */}
               {homeScorers.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Home Team</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Home Team
+                  </h4>
                   <div className="space-y-1">
                     {homeScorers.map((player) => {
                       const key = `${player.id}-${homeTeamId}`;
                       const goalCount = goalsByPlayerAndTeam[key];
                       return (
-                        <div key={player.id} className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm">
+                        <div
+                          key={player.id}
+                          className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm"
+                        >
                           <span className="font-medium">{player.name}</span>
-                          <span className="font-semibold tabular-nums text-foreground">{goalCount} goal{goalCount !== 1 ? "s" : ""}</span>
+                          <span className="font-semibold tabular-nums text-foreground">
+                            {goalCount} goal{goalCount !== 1 ? "s" : ""}
+                          </span>
                         </div>
                       );
                     })}
@@ -608,15 +666,22 @@ function MatchEditor({
               {/* Away Team Scorers */}
               {awayScorers.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Away Team</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Away Team
+                  </h4>
                   <div className="space-y-1">
                     {awayScorers.map((player) => {
                       const key = `${player.id}-${awayTeamId}`;
                       const goalCount = goalsByPlayerAndTeam[key];
                       return (
-                        <div key={player.id} className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm">
+                        <div
+                          key={player.id}
+                          className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm"
+                        >
                           <span className="font-medium">{player.name}</span>
-                          <span className="font-semibold tabular-nums text-foreground">{goalCount} goal{goalCount !== 1 ? "s" : ""}</span>
+                          <span className="font-semibold tabular-nums text-foreground">
+                            {goalCount} goal{goalCount !== 1 ? "s" : ""}
+                          </span>
                         </div>
                       );
                     })}
@@ -635,15 +700,22 @@ function MatchEditor({
               {/* Home Team Saves */}
               {homeGKSaves.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Home Team</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Home Team
+                  </h4>
                   <div className="space-y-1">
                     {homeGKSaves.map((gk) => {
                       const key = `${gk.id}-${homeTeamId}`;
                       const saveCount = savesByPlayerAndTeam[key];
                       return (
-                        <div key={gk.id} className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm">
+                        <div
+                          key={gk.id}
+                          className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm"
+                        >
                           <span className="font-medium">{gk.name}</span>
-                          <span className="font-semibold tabular-nums text-foreground">{saveCount} save{saveCount !== 1 ? "s" : ""}</span>
+                          <span className="font-semibold tabular-nums text-foreground">
+                            {saveCount} save{saveCount !== 1 ? "s" : ""}
+                          </span>
                         </div>
                       );
                     })}
@@ -654,15 +726,22 @@ function MatchEditor({
               {/* Away Team Saves */}
               {awayGKSaves.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Away Team</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Away Team
+                  </h4>
                   <div className="space-y-1">
                     {awayGKSaves.map((gk) => {
                       const key = `${gk.id}-${awayTeamId}`;
                       const saveCount = savesByPlayerAndTeam[key];
                       return (
-                        <div key={gk.id} className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm">
+                        <div
+                          key={gk.id}
+                          className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm"
+                        >
                           <span className="font-medium">{gk.name}</span>
-                          <span className="font-semibold tabular-nums text-foreground">{saveCount} save{saveCount !== 1 ? "s" : ""}</span>
+                          <span className="font-semibold tabular-nums text-foreground">
+                            {saveCount} save{saveCount !== 1 ? "s" : ""}
+                          </span>
                         </div>
                       );
                     })}
