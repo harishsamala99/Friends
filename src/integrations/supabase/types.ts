@@ -79,6 +79,7 @@ export type Database = {
           notes: string | null;
           referee: string | null;
           status: string;
+          tournament_id: string | null;
           venue: string | null;
         };
         Insert: {
@@ -94,6 +95,7 @@ export type Database = {
           notes?: string | null;
           referee?: string | null;
           status?: string;
+          tournament_id?: string | null;
           venue?: string | null;
         };
         Update: {
@@ -109,6 +111,7 @@ export type Database = {
           notes?: string | null;
           referee?: string | null;
           status?: string;
+          tournament_id?: string | null;
           venue?: string | null;
         };
         Relationships: [
@@ -436,6 +439,69 @@ export type Database = {
           },
         ];
       };
+      tournaments: {
+        Row: {
+          away_score: number;
+          away_team: string;
+          created_at: string;
+          date: string;
+          home_score: number;
+          home_team: string;
+          id: string;
+          manager: string | null;
+          participants: number | null;
+          status: string;
+          top_assister_assists: number | null;
+          top_assister_name: string | null;
+          top_saver_name: string | null;
+          top_saver_saves: number | null;
+          top_scorer_goals: number | null;
+          top_scorer_name: string | null;
+          type: string;
+          winner: string;
+        };
+        Insert: {
+          away_score: number;
+          away_team: string;
+          created_at?: string;
+          date?: string;
+          home_score: number;
+          home_team: string;
+          id?: string;
+          manager?: string | null;
+          participants?: number | null;
+          status?: string;
+          top_assister_assists?: number | null;
+          top_assister_name?: string | null;
+          top_saver_name?: string | null;
+          top_saver_saves?: number | null;
+          top_scorer_goals?: number | null;
+          top_scorer_name?: string | null;
+          type: string;
+          winner: string;
+        };
+        Update: {
+          away_score?: number;
+          away_team?: string;
+          created_at?: string;
+          date?: string;
+          home_score?: number;
+          home_team?: string;
+          id?: string;
+          manager?: string | null;
+          participants?: number | null;
+          status?: string;
+          top_assister_assists?: number | null;
+          top_assister_name?: string | null;
+          top_saver_name?: string | null;
+          top_saver_saves?: number | null;
+          top_scorer_goals?: number | null;
+          top_scorer_name?: string | null;
+          type?: string;
+          winner?: string;
+        };
+        Relationships: [];
+      };
       user_roles: {
         Row: {
           id: string;
@@ -529,6 +595,7 @@ export type Database = {
           short_name: string | null;
           team_id: string | null;
           team_name: string | null;
+          tournament_id: string | null;
         };
         Relationships: [
           {
@@ -539,6 +606,25 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      top_saves: {
+        Row: {
+          clean_sheets: number | null;
+          competition_id: string | null;
+          crest_color: string | null;
+          jersey_number: number | null;
+          matches: number | null;
+          photo_url: string | null;
+          player_id: string | null;
+          player_name: string | null;
+          position: string | null;
+          saves: number | null;
+          short_name: string | null;
+          team_id: string | null;
+          team_name: string | null;
+          tournament_id: string | null;
+        };
+        Relationships: [];
       };
     };
     Functions: {
