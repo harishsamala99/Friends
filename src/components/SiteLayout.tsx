@@ -43,7 +43,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
+      <header className="glass-nav sticky top-0 z-40">
         <div className="mx-auto flex min-h-16 max-w-6xl items-center gap-3 px-4 py-2 sm:gap-4">
           <Link to="/" className="flex items-center gap-2">
             <img src="/friendsleague.jpeg" alt="FRIENDS LEAGUE logo" className="size-9 rounded-sm object-cover" />
@@ -51,13 +51,13 @@ export function SiteLayout({ children }: { children: ReactNode }) {
               FRIENDS LEAGUE
             </span>
           </Link>
-          <nav className="ml-auto hidden items-center gap-1 md:flex">
+          <nav className="ml-auto hidden items-center gap-1 rounded-2xl border border-white/50 bg-white/55 p-1 shadow-sm backdrop-blur-xl md:flex dark:border-white/10 dark:bg-white/10">
             {NAV.map((n) => (
               <Link
                 key={n.to}
                 to={n.to}
-                className="rounded-md bg-[#fff1d6] px-3 py-2 text-sm font-medium text-[#182235] transition-colors hover:bg-[#ffe5bd] hover:text-[#182235]"
-                activeProps={{ className: "rounded-md bg-[#ffe5bd] px-3 py-2 text-sm font-semibold text-[#182235]" }}
+                className="rounded-xl px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-white/70 hover:text-foreground dark:hover:bg-white/15"
+                activeProps={{ className: "rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm" }}
                 activeOptions={{ exact: n.to === "/" }}
               >
                 {n.label}
@@ -69,7 +69,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
               <Button
                 variant="default"
                 size="sm"
-                className="hidden gap-2 bg-[#fff1d6] text-[#182235] shadow-sm hover:bg-[#ffe5bd] hover:text-[#182235] sm:flex dark:bg-[#fff1d6] dark:text-[#182235] dark:hover:bg-[#ffe5bd] dark:hover:text-[#182235]"
+                className="hidden gap-2 bg-accent text-accent-foreground shadow-sm hover:bg-accent/80 sm:flex"
                 aria-label="Create Tournament"
               >
                 <Zap className="size-4" />
@@ -80,7 +80,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             <Button
               variant="ghost"
               size="icon"
-              className="bg-[#fff1d6] text-[#182235] hover:bg-[#ffe5bd] hover:text-[#182235] md:hidden"
+              className="bg-white/60 text-foreground shadow-sm hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/20 md:hidden"
               aria-label="Menu"
               onClick={() => setOpen((v) => !v)}
             >
@@ -89,13 +89,13 @@ export function SiteLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
         {open && (
-          <nav className="grid gap-1 border-t border-border/60 px-4 py-2 md:hidden">
+          <nav className="grid gap-1 border-t border-white/40 bg-white/40 px-4 py-2 backdrop-blur-xl md:hidden dark:border-white/10 dark:bg-white/5">
             {NAV.map((n) => (
               <Link
                 key={n.to}
                 to={n.to}
                 onClick={() => setOpen(false)}
-                className="rounded-md bg-[#fff1d6] px-3 py-2 text-sm font-medium text-[#182235] hover:bg-[#ffe5bd] hover:text-[#182235]"
+                className="rounded-xl px-3 py-2 text-sm font-medium text-foreground/75 hover:bg-white/70 hover:text-foreground dark:hover:bg-white/15"
               >
                 {n.label}
               </Link>
@@ -103,7 +103,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             <Link
               to="/final"
               onClick={() => setOpen(false)}
-              className="rounded-md bg-[#fff1d6] px-3 py-2 text-sm font-medium text-[#182235] hover:bg-[#ffe5bd] hover:text-[#182235]"
+              className="rounded-xl bg-accent px-3 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/80"
             >
               <div className="flex items-center gap-2">
                 <Zap className="size-4" />

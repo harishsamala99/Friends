@@ -54,9 +54,9 @@ function SavesPage() {
   return (
     <SiteLayout>
       <PageHeader title="Top Saves" subtitle={`Ranked by saves, then clean sheets${selectedTournament ? ` in ${selectedTournament.tournament_name}` : ""}.`} />
-      <div className="mx-auto max-w-4xl px-4 py-10">
+      <div className="page-content mx-auto max-w-4xl px-4 py-10">
         {tournamentList.length > 0 && (
-          <div className="mb-6 flex items-center gap-3">
+          <div className="tournament-switcher mb-6">
             <label htmlFor="saves-tournament" className="text-sm font-medium">Tournament</label>
             <select
               id="saves-tournament"
@@ -82,9 +82,9 @@ function SavesPage() {
         ) : (saves.data ?? []).length === 0 ? (
           <EmptyState message="No saves recorded yet." />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-140 text-sm">
-              <thead className="bg-muted/60 text-muted-foreground">
+          <div className="data-table-wrap overflow-x-auto">
+            <table className="data-table w-full min-w-140 text-sm">
+              <thead>
                 <tr>
                   <th className="p-3 text-left font-medium">#</th>
                   <th className="p-3 text-left font-medium">Player</th>
@@ -98,14 +98,14 @@ function SavesPage() {
               <tbody>
                 {(saves.data ?? []).map((s, i) => (
                   <tr key={s.player_id} className="border-t border-border/60">
-                    <td className="p-3 text-muted-foreground">{i + 1}</td>
-                    <td className={`p-3 ${s.saves === leadingSaves ? "text-[#D4AF37] text-[1.02em] font-bold" : "font-medium"}`}>
+                    <td className="p-3 text-muted-foreground"><span className={`rank-badge ${i === 0 ? "rank-badge--gold" : ""}`}>{i + 1}</span></td>
+                    <td className={`p-3 ${s.saves === leadingSaves ? "font-bold text-primary" : "font-medium"}`}>
                       {s.player_name}
                     </td>
                     <td className="p-3 text-muted-foreground">{s.team_name}</td>
                     <td className="p-3 text-center tabular-nums">{s.matches}</td>
                     <td className="p-3 text-center tabular-nums">{s.clean_sheets}</td>
-                    <td className={`p-3 text-center tabular-nums ${s.saves === leadingSaves ? "text-[#D4AF37] text-[1.02em] font-bold" : "font-semibold"}`}>{s.saves}</td>
+                    <td className={`p-3 text-center tabular-nums ${s.saves === leadingSaves ? "font-bold text-primary" : "font-semibold"}`}>{s.saves}</td>
                     <td className="p-3 text-right">
                       <Button
                         variant="ghost"

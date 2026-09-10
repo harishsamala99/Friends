@@ -183,6 +183,162 @@
   background-size: 28px 28px;
 }
 
+.glass-nav {
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 65%, transparent);
+  background: color-mix(in oklab, var(--background) 72%, transparent);
+  box-shadow: 0 10px 30px rgb(25 35 45 / 7%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+
+.page-header {
+  overflow: hidden;
+  border-bottom: 1px solid color-mix(in oklab, var(--primary) 18%, var(--border));
+  background: radial-gradient(circle at 88% 20%, color-mix(in oklab, var(--accent) 32%, transparent), transparent 26%), linear-gradient(120deg, color-mix(in oklab, var(--primary) 13%, var(--background)), var(--background) 58%);
+}
+
+.tournament-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--primary) 20%, var(--border));
+  border-radius: 1rem;
+  background: color-mix(in oklab, var(--card) 72%, transparent);
+  padding: 0.7rem 0.85rem;
+  box-shadow: 0 8px 24px rgb(25 35 45 / 6%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.tournament-switcher select {
+  min-width: 0;
+  flex: 1 1 12rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: color-mix(in oklab, var(--accent) 20%, var(--card));
+  padding: 0.45rem 0.7rem;
+  color: var(--foreground);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  outline: none;
+}
+
+.fixture-card {
+  border-color: color-mix(in oklab, var(--primary) 17%, var(--border));
+  background: linear-gradient(105deg, color-mix(in oklab, var(--card) 94%, var(--primary)), var(--card));
+  box-shadow: 0 8px 22px rgb(25 35 45 / 6%);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.fixture-card:hover {
+  border-color: color-mix(in oklab, var(--primary) 48%, var(--border));
+  box-shadow: 0 14px 28px rgb(25 35 45 / 12%);
+  transform: translateY(-2px);
+}
+
+.data-table-wrap {
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--border));
+  border-radius: 1rem;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  box-shadow: 0 12px 28px rgb(25 35 45 / 7%);
+}
+
+.data-table thead {
+  background: linear-gradient(90deg, color-mix(in oklab, var(--pitch) 92%, var(--primary)), color-mix(in oklab, var(--pitch) 72%, var(--primary)));
+  color: var(--pitch-foreground);
+}
+
+.data-table tbody tr { transition: background-color 160ms ease; }
+.data-table tbody tr:hover { background: color-mix(in oklab, var(--accent) 9%, transparent); }
+.data-table tbody tr:nth-child(even) { background: color-mix(in oklab, var(--primary) 3%, transparent); }
+
+.rank-badge {
+  display: inline-grid;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--muted) 72%, transparent);
+  font-weight: 800;
+}
+
+.rank-badge--gold {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 20%, transparent);
+}
+
+.leaderboard-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid color-mix(in oklab, var(--accent) 48%, var(--border));
+  border-radius: 1rem;
+  background: linear-gradient(110deg, color-mix(in oklab, var(--accent) 24%, var(--card)), var(--card));
+  padding: 1rem 1.1rem;
+  box-shadow: 0 8px 22px rgb(25 35 45 / 7%);
+}
+
+@media (max-width: 640px) {
+  .page-header .mx-auto {
+    padding-top: 1.75rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .page-header h1 {
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .page-header p:last-child {
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+
+  .tournament-switcher {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .tournament-switcher select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .fixture-card .fixture-card__teams {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+
+  .fixture-card .fixture-card__teams--away {
+    justify-content: flex-start;
+    padding-left: 2.25rem;
+  }
+
+  .fixture-card .fixture-card__score {
+    order: -1;
+    margin-left: auto;
+  }
+
+  .data-table-wrap {
+    margin-right: -0.25rem;
+    margin-left: -0.25rem;
+    border-radius: 0.85rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.7rem 0.6rem;
+  }
+
+  .leaderboard-summary {
+    padding: 0.85rem 1rem;
+  }
+}
+
 .latest-final-card {
   border-top: 4px solid var(--primary);
   background-image: linear-gradient(135deg, color-mix(in oklab, var(--card) 96%, var(--primary)) 0%, var(--card) 48%, color-mix(in oklab, var(--card) 91%, var(--accent)) 100%);

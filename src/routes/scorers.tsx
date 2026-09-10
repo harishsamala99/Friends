@@ -64,9 +64,9 @@ function ScorersPage() {
   return (
     <SiteLayout>
       <PageHeader title="Top Scorers" subtitle={`Ranked by goals, then assists${selectedTournament ? ` in ${selectedTournament.tournament_name}` : ""}.`} />
-      <div className="mx-auto max-w-4xl px-4 py-10">
+      <div className="page-content mx-auto max-w-4xl px-4 py-10">
         {tournamentList.length > 0 && (
-          <div className="mb-6 flex items-center gap-3">
+          <div className="tournament-switcher mb-6">
             <label htmlFor="scorers-tournament" className="text-sm font-medium">Tournament</label>
             <select
               id="scorers-tournament"
@@ -93,12 +93,13 @@ function ScorersPage() {
           <EmptyState message="No goals recorded yet." />
         ) : (
           <div className="space-y-4">
-            <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm">
-              Tournament goals: <span className="font-semibold tabular-nums">{totalGoals}</span>
+            <div className="leaderboard-summary">
+              <span className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Tournament goals</span>
+              <span className="font-display text-3xl font-bold tabular-nums text-primary">{totalGoals}</span>
             </div>
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full min-w-140 text-sm">
-              <thead className="bg-muted/60 text-muted-foreground">
+            <div className="data-table-wrap overflow-x-auto">
+              <table className="data-table w-full min-w-140 text-sm">
+              <thead>
                 <tr>
                   <th className="p-3 text-left font-medium">#</th>
                   <th className="p-3 text-left font-medium">Player</th>
@@ -112,14 +113,14 @@ function ScorersPage() {
               <tbody>
                 {(scorers.data ?? []).map((s, i) => (
                   <tr key={s.player_id} className="border-t border-border/60">
-                    <td className="p-3 text-muted-foreground">{i + 1}</td>
-                    <td className={`p-3 ${s.goals === leadingGoals ? "text-[#D4AF37] text-[1.02em] font-bold" : "font-medium"}`}>
+                    <td className="p-3 text-muted-foreground"><span className={`rank-badge ${i === 0 ? "rank-badge--gold" : ""}`}>{i + 1}</span></td>
+                    <td className={`p-3 ${s.goals === leadingGoals ? "font-bold text-primary" : "font-medium"}`}>
                       {s.player_name}
                     </td>
                     <td className="p-3 text-muted-foreground">{s.team_name}</td>
                     <td className="p-3 text-center tabular-nums">{s.matches}</td>
                     <td className="p-3 text-center tabular-nums">{s.assists}</td>
-                    <td className={`p-3 text-center tabular-nums ${s.goals === leadingGoals ? "text-[#D4AF37] text-[1.02em] font-bold" : "font-semibold"}`}>{s.goals}</td>
+                    <td className={`p-3 text-center tabular-nums ${s.goals === leadingGoals ? "font-bold text-primary" : "font-semibold"}`}>{s.goals}</td>
                     <td className="p-3 text-right">
                       <Button
                         variant="ghost"

@@ -31,7 +31,7 @@ function ResultsPage() {
   return (
     <SiteLayout>
       <PageHeader title="Results" subtitle="Completed matches with final scores." />
-      <div className="mx-auto max-w-4xl px-4 py-10">
+      <div className="page-content mx-auto max-w-4xl px-4 py-10">
         {fixtures.isLoading ? (
           <ListSkeleton rows={8} />
         ) : played.length === 0 ? (
@@ -43,18 +43,18 @@ function ResultsPage() {
               const away = byId.get(f.away_team_id);
               return (
                 <Link key={f.id} to="/match/$fixtureId" params={{ fixtureId: f.id }}>
-                  <Card className="transition-shadow hover:shadow-md">
+                  <Card className="fixture-card">
                     <CardContent className="flex items-center gap-3 p-4">
-                      <div className="flex flex-1 items-center gap-2">
+                      <div className="fixture-card__teams flex flex-1 items-center gap-2">
                         {home && <TeamBadge team={home} size={30} />}
                         <span className="truncate font-medium">{home?.name}</span>
                       </div>
-                      <div className="shrink-0 text-center">
+                      <div className="fixture-card__score shrink-0 text-center">
                         <div className="rounded-md bg-secondary px-3 py-1 font-semibold tabular-nums">
                           {f.home_score} - {f.away_score}
                         </div>
                       </div>
-                      <div className="flex flex-1 items-center justify-end gap-2">
+                      <div className="fixture-card__teams fixture-card__teams--away flex flex-1 items-center justify-end gap-2">
                         <span className="truncate font-medium">{away?.name}</span>
                         {away && <TeamBadge team={away} size={30} />}
                       </div>

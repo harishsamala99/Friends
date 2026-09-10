@@ -47,9 +47,9 @@ function StandingsPage() {
         title={selectedTournament?.tournament_name ?? "League Table"}
         subtitle="Standings update automatically from recorded results."
       />
-      <div className="mx-auto max-w-5xl px-4 py-10">
+      <div className="page-content mx-auto max-w-5xl px-4 py-10">
         {tournamentList.length > 0 && (
-          <div className="mb-6 flex items-center gap-3">
+          <div className="tournament-switcher mb-6">
             <label htmlFor="standings-tournament" className="text-sm font-medium">Tournament</label>
             <select
               id="standings-tournament"
@@ -73,9 +73,9 @@ function StandingsPage() {
         ) : (standings.data ?? []).length === 0 ? (
           <EmptyState message="No standings available yet." />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead className="bg-muted/60 text-muted-foreground">
+          <div className="data-table-wrap overflow-x-auto">
+            <table className="data-table w-full min-w-[640px] text-sm">
+              <thead>
                 <tr>
                   <th className="p-3 text-left font-medium">#</th>
                   <th className="p-3 text-left font-medium">Team</th>
@@ -92,7 +92,7 @@ function StandingsPage() {
               <tbody>
                 {(standings.data ?? []).map((r, i) => (
                   <tr key={r.team_id} className="border-t border-border/60">
-                    <td className="p-3 text-muted-foreground">{i + 1}</td>
+                    <td className="p-3 text-muted-foreground"><span className={`rank-badge ${i === 0 ? "rank-badge--gold" : ""}`}>{i + 1}</span></td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <TeamBadge
@@ -114,7 +114,7 @@ function StandingsPage() {
                     <td className="p-3 text-center tabular-nums">{r.goals_for}</td>
                     <td className="p-3 text-center tabular-nums">{r.goals_against}</td>
                     <td className="p-3 text-center tabular-nums">{r.goal_difference}</td>
-                    <td className="p-3 text-center font-semibold tabular-nums">{r.points}</td>
+                    <td className="p-3 text-center font-bold tabular-nums text-primary">{r.points}</td>
                   </tr>
                 ))}
               </tbody>
