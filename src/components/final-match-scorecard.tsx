@@ -343,8 +343,8 @@ function TournamentSetup({
   const teamNames = new Map(teams.map((team) => [team.id, team.name]));
 
   return (
-    <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] text-foreground shadow-lg">
-      <CardHeader className="border-b border-[#f28c5b]/25 bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10">
+    <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] text-foreground shadow-lg dark:from-[#18212d] dark:via-card dark:to-[#1b2a2c]">
+      <CardHeader className="border-b border-[#f28c5b]/25 bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10 dark:from-[#3b2932] dark:to-[#173d3d]">
         <CardTitle className="flex items-center gap-2">🏆 Create your tournament</CardTitle>
         <p className="text-sm text-muted-foreground">
           Name it, schedule fixtures, then create the final below.
@@ -1751,24 +1751,24 @@ export function FinalMatchScorecard() {
           </Card>
 
           {homeFinalist && awayFinalist && !finalHasBeenPosted && (
-            <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-white text-slate-900 shadow-lg">
+            <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-white text-slate-900 shadow-lg dark:bg-[#18212d] dark:text-foreground">
               <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-bold uppercase tracking-wider text-[#16756b]">
                     {leagueComplete ? "Finalists confirmed" : "Current final places"}
                   </p>
-                  <p className="mt-1 font-semibold text-slate-800">
+                  <p className="mt-1 font-semibold text-slate-800 dark:text-foreground">
                     {leagueComplete
                       ? "The final has been prepared from the top two teams."
                       : "The top two teams currently lead the standings."}
                   </p>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm text-slate-600 dark:text-muted-foreground">
                     1st {homeFinalist.team_name} <span className="px-1">vs</span> 2nd{" "}
                     {awayFinalist.team_name}
                   </p>
                 </div>
-                <div className="shrink-0 rounded-lg bg-slate-50 px-4 py-3 text-center shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <div className="shrink-0 rounded-lg bg-slate-50 px-4 py-3 text-center shadow-sm dark:bg-muted/40">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
                     {leagueComplete ? "Final status" : "Qualification"}
                   </p>
                   <p className="mt-1 text-sm font-bold text-primary">
@@ -1780,8 +1780,8 @@ export function FinalMatchScorecard() {
           )}
 
           {/* Current Teams Selection */}
-          <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] backdrop-blur-sm shadow-lg">
-            <CardHeader className="bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10 border-b border-[#f28c5b]/25">
+          <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] backdrop-blur-sm shadow-lg dark:from-[#18212d] dark:via-card dark:to-[#1b2a2c]">
+            <CardHeader className="bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10 border-b border-[#f28c5b]/25 dark:from-[#3b2932] dark:to-[#173d3d]">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 📋 Select Current Teams

@@ -272,7 +272,8 @@
 }
 
 .data-table-wrap {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--border));
   border-radius: 1rem;
   background: color-mix(in oklab, var(--card) 88%, transparent);
