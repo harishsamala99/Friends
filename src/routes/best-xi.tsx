@@ -9,9 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   fetchBestXI,
   fetchPlayers,
+  fetchTeams,
   fetchTournaments,
   saveBestXI,
   type BestXI,
+  type Team,
   type Tournament,
 } from "@/lib/football";
 
@@ -54,10 +56,16 @@ function BestXIPage() {
   const queryClient = useQueryClient();
   const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: fetchTournaments });
   const players = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
-  const tournamentList: Tournament[] = tournaments.data ?? EMPTY_TOURNAMENTS;
-  const [tournamentId, setTournamentId] = useState(getStoredTournamentId);
+  const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
+  const tournamentList: Tournament[] = Array.isArray(tournaments.data)
+    ? tournaments.data
+    : EMPTY_TOURNAMENTS;
+  const playerList = Array.isArray(players.data) ? players.data : [];
+  const teamList = Array.isArray(teams.data) ? teams.data : [];
+  const [tournamentId, setTournamentId] = useState("");
   const [selection, setSelection] = useState<Selection>(emptySelection);
   const selectedTournament = tournamentList.find((tournament) => tournament.id === tournamentId);
+  const teamById = new Map(teamList.map((team: Team) => [team.id, team.name]));
   const bestXI = useQuery({
     queryKey: ["best-xi", tournamentId],
     queryFn: () => fetchBestXI(tournamentId),
@@ -143,7 +151,9 @@ function BestXIPage() {
           <EmptyState message="Unable to load this tournament's Best XI. Refresh the page and try again." />
         ) : players.isError ? (
           <EmptyState message="Unable to load players. Refresh the page and try again." />
-        ) : bestXI.isLoading || players.isLoading ? (
+        ) : teams.isError ? (
+          <EmptyState message="Unable to load teams. Refresh the page and try again." />
+        ) : bestXI.isLoading || players.isLoading || teams.isLoading ? (
           <ListSkeleton rows={6} />
         ) : (
           <Card>
@@ -186,11 +196,12 @@ function BestXIPage() {
                             }
                           >
                             <option value="">Enter {slot.label}</option>
-                            {(players.data ?? [])
+                            {playerList
                               .filter((player) => player.status === "Active")
                               .map((player) => (
                                 <option key={player.id} value={player.id}>
-                                  {player.name} ({player.position})
+                                  {player.name} —{" "}
+                                  {teamById.get(player.team_id ?? "") ?? "Team unavailable"}
                                 </option>
                               ))}
                           </select>
