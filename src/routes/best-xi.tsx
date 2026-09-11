@@ -43,6 +43,10 @@ type SlotKey = (typeof slots)[number]["key"];
 type Selection = Record<SlotKey, string>;
 const EMPTY_TOURNAMENTS: Tournament[] = [];
 
+function getStoredTournamentId() {
+  return typeof window === "undefined" ? "" : (localStorage.getItem("current-tournament-id") ?? "");
+}
+
 const emptySelection = (): Selection =>
   Object.fromEntries(slots.map((slot) => [slot.key, ""])) as Selection;
 
@@ -51,7 +55,7 @@ function BestXIPage() {
   const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: fetchTournaments });
   const players = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
   const tournamentList: Tournament[] = tournaments.data ?? EMPTY_TOURNAMENTS;
-  const [tournamentId, setTournamentId] = useState("");
+  const [tournamentId, setTournamentId] = useState(getStoredTournamentId);
   const [selection, setSelection] = useState<Selection>(emptySelection);
   const selectedTournament = tournamentList.find((tournament) => tournament.id === tournamentId);
   const bestXI = useQuery({
@@ -61,14 +65,15 @@ function BestXIPage() {
   });
 
   useEffect(() => {
-    const storedId = localStorage.getItem("current-tournament-id");
+    const storedId = getStoredTournamentId();
     const firstTournament = tournamentList[0];
-    setTournamentId(
-      tournamentList.some((tournament) => tournament.id === storedId)
-        ? (storedId ?? "")
-        : (firstTournament?.id ?? ""),
-    );
-  }, [tournamentList]);
+    if (tournamentList.some((tournament) => tournament.id === tournamentId)) return;
+    const nextId = tournamentList.some((tournament) => tournament.id === storedId)
+      ? storedId
+      : (firstTournament?.id ?? "");
+    setTournamentId(nextId);
+    if (nextId) localStorage.setItem("current-tournament-id", nextId);
+  }, [tournamentId, tournamentList]);
 
   useEffect(() => {
     const saved = bestXI.data;
@@ -130,8 +135,14 @@ function BestXIPage() {
 
         {tournaments.isError ? (
           <EmptyState message="Unable to load tournaments. Refresh the page and try again." />
+        ) : tournaments.isLoading ? (
+          <ListSkeleton rows={6} />
         ) : tournamentList.length === 0 ? (
           <EmptyState message="No tournaments are available yet." />
+        ) : bestXI.isError ? (
+          <EmptyState message="Unable to load this tournament's Best XI. Refresh the page and try again." />
+        ) : players.isError ? (
+          <EmptyState message="Unable to load players. Refresh the page and try again." />
         ) : bestXI.isLoading || players.isLoading ? (
           <ListSkeleton rows={6} />
         ) : (

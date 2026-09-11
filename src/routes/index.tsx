@@ -392,14 +392,14 @@ function Home() {
 
                   <div className="latest-final-card__rail border-t border-border/70 bg-muted/25 p-5 sm:p-8 lg:border-l lg:border-t-0">
                     {!finalIsToBePlayed && (
-                      <div className="mb-4 grid gap-2 sm:grid-cols-3">
-                        <div className="latest-final-card__award golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3 dark:shadow-[0_0_18px_rgba(255,214,102,0.35)]">
-                          <div className="latest-final-card__award-heading flex items-center gap-2">
+                      <div className="mb-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+                        <div className="latest-final-card__award golden-award min-w-0 rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3 dark:shadow-[0_0_18px_rgba(255,214,102,0.35)]">
+                          <div className="latest-final-card__award-heading flex min-w-0 items-center gap-2">
                             <Trophy
                               className="latest-final-card__award-icon size-4 shrink-0"
                               aria-hidden="true"
                             />
-                            <p className="text-[10px] font-black uppercase tracking-[0.16em]">
+                            <p className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.16em]">
                               Golden Boot
                             </p>
                           </div>
@@ -413,13 +413,13 @@ function Home() {
                             {goldenBootPlayer?.team_name || "Team not recorded"}
                           </p>
                         </div>
-                        <div className="latest-final-card__award golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3">
-                          <div className="latest-final-card__award-heading flex items-center gap-2">
+                        <div className="latest-final-card__award golden-award min-w-0 rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3">
+                          <div className="latest-final-card__award-heading flex min-w-0 items-center gap-2">
                             <ShieldCheck
                               className="latest-final-card__award-icon size-4 shrink-0"
                               aria-hidden="true"
                             />
-                            <p className="text-[10px] font-black uppercase tracking-[0.16em]">
+                            <p className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.16em]">
                               Golden Gloves
                             </p>
                           </div>
@@ -433,13 +433,13 @@ function Home() {
                             {goldenGlovesPlayer?.team_name || "Team not recorded"}
                           </p>
                         </div>
-                        <div className="latest-final-card__award golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3">
-                          <div className="latest-final-card__award-heading flex items-center gap-2">
+                        <div className="latest-final-card__award golden-award min-w-0 rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3">
+                          <div className="latest-final-card__award-heading flex min-w-0 items-center gap-2">
                             <Crown
                               className="latest-final-card__award-icon size-4 shrink-0"
                               aria-hidden="true"
                             />
-                            <p className="text-[10px] font-black uppercase tracking-[0.16em]">
+                            <p className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.16em]">
                               Winning Manager
                             </p>
                           </div>
