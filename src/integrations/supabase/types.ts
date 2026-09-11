@@ -8,6 +8,57 @@ export type Database = {
   };
   public: {
     Tables: {
+      best_xi: {
+        Row: {
+          id: string;
+          tournament_id: string;
+          forward_1: string;
+          forward_2: string;
+          forward_3: string;
+          midfielder_1: string;
+          midfielder_2: string;
+          midfielder_3: string;
+          defender_1: string;
+          defender_2: string;
+          defender_3: string;
+          defender_4: string;
+          goalkeeper: string;
+          finalized_at: string;
+        };
+        Insert: {
+          id?: string;
+          tournament_id: string;
+          forward_1: string;
+          forward_2: string;
+          forward_3: string;
+          midfielder_1: string;
+          midfielder_2: string;
+          midfielder_3: string;
+          defender_1: string;
+          defender_2: string;
+          defender_3: string;
+          defender_4: string;
+          goalkeeper: string;
+          finalized_at?: string;
+        };
+        Update: {
+          id?: string;
+          tournament_id?: string;
+          forward_1?: string;
+          forward_2?: string;
+          forward_3?: string;
+          midfielder_1?: string;
+          midfielder_2?: string;
+          midfielder_3?: string;
+          defender_1?: string;
+          defender_2?: string;
+          defender_3?: string;
+          defender_4?: string;
+          goalkeeper?: string;
+          finalized_at?: string;
+        };
+        Relationships: [];
+      };
       competitions: {
         Row: {
           archived: boolean;

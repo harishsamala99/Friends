@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BestXiRouteImport } from './routes/best-xi'
 import { Route as CodeOfConductRouteImport } from './routes/code-of-conduct'
 import { Route as FinalRouteImport } from './routes/final'
 import { Route as FixturesRouteImport } from './routes/fixtures'
@@ -36,6 +37,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BestXiRoute = BestXiRouteImport.update({
+  id: '/best-xi',
+  path: '/best-xi',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CodeOfConductRoute = CodeOfConductRouteImport.update({
@@ -97,6 +103,7 @@ const MatchFixtureIdRoute = MatchFixtureIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/best-xi': typeof BestXiRoute
   '/code-of-conduct': typeof CodeOfConductRoute
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/best-xi': typeof BestXiRoute
   '/code-of-conduct': typeof CodeOfConductRoute
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/best-xi': typeof BestXiRoute
   '/code-of-conduct': typeof CodeOfConductRoute
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/best-xi'
     | '/code-of-conduct'
     | '/final'
     | '/fixtures'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/best-xi'
     | '/code-of-conduct'
     | '/final'
     | '/fixtures'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/best-xi'
     | '/code-of-conduct'
     | '/final'
     | '/fixtures'
@@ -194,6 +206,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  BestXiRoute: typeof BestXiRoute
   CodeOfConductRoute: typeof CodeOfConductRoute
   FinalRoute: typeof FinalRoute
   FixturesRoute: typeof FixturesRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/best-xi': {
+      id: '/best-xi'
+      path: '/best-xi'
+      fullPath: '/best-xi'
+      preLoaderRoute: typeof BestXiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/code-of-conduct': {
@@ -324,6 +344,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  BestXiRoute: BestXiRoute,
   CodeOfConductRoute: CodeOfConductRoute,
   FinalRoute: FinalRoute,
   FixturesRoute: FixturesRoute,

@@ -9,6 +9,7 @@ const NAV = [
   { to: "/standings", label: "Standings" },
   { to: "/scorers", label: "Top Scorers" },
   { to: "/saves", label: "Top Saves" },
+  { to: "/best-xi", label: "THE BEST XI" },
   { to: "/teams", label: "Teams" },
   { to: "/code-of-conduct", label: "Code of Conduct" },
 ] as const;

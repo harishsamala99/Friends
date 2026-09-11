@@ -154,6 +154,23 @@ export type Tournament = {
   created_at: string;
 };
 
+export type BestXI = {
+  id: string;
+  tournament_id: string;
+  forward_1: string;
+  forward_2: string;
+  forward_3: string;
+  midfielder_1: string;
+  midfielder_2: string;
+  midfielder_3: string;
+  defender_1: string;
+  defender_2: string;
+  defender_3: string;
+  defender_4: string;
+  goalkeeper: string;
+  finalized_at: string;
+};
+
 export const MATCH_STATUSES = [
   "Scheduled",
   "Live",
@@ -478,6 +495,29 @@ export async function savePlayer(row: Partial<Player>) {
 export async function deletePlayer(id: string) {
   const { error } = await db.from("players").update({ status: "Inactive" }).eq("id", id);
   if (error) throw error;
+}
+
+export async function fetchBestXI(tournamentId: string): Promise<BestXI | null> {
+  const { data, error } = await db
+    .from("best_xi")
+    .select("*")
+    .eq("tournament_id", tournamentId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as BestXI | null;
+}
+
+export async function saveBestXI(
+  tournamentId: string,
+  players: Omit<BestXI, "id" | "tournament_id" | "finalized_at">,
+): Promise<BestXI> {
+  const { data, error } = await db
+    .from("best_xi")
+    .insert({ tournament_id: tournamentId, ...players })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as BestXI;
 }
 
 export async function deletePlayerGoals(playerId: string, tournamentId?: string) {

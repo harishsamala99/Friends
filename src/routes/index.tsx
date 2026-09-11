@@ -12,6 +12,7 @@ import {
   fetchStandings,
   fetchTeams,
   fetchTopScorers,
+  fetchTopSaves,
   fetchLatestTournament,
   type Team,
 } from "@/lib/football";
@@ -163,6 +164,10 @@ function Home() {
   const fixtures = useQuery({ queryKey: ["fixtures"], queryFn: () => fetchFixtures() });
   const standings = useQuery({ queryKey: ["standings"], queryFn: () => fetchStandings() });
   const scorers = useQuery({ queryKey: ["scorers"], queryFn: () => fetchTopScorers() });
+  const saves = useQuery({
+    queryKey: ["saves", latestTournament?.id],
+    queryFn: () => fetchTopSaves(latestTournament?.id),
+  });
 
   const byId = new Map((teams.data ?? []).map((t: Team) => [t.id, t]));
   const all = fixtures.data ?? [];
@@ -204,6 +209,12 @@ function Home() {
     !finalIsToBePlayed &&
     latestTournament.winner &&
     latestTournament.winner !== "TBD",
+  );
+  const goldenBootPlayer = (scorers.data ?? []).find(
+    (scorer) => scorer.player_name === latestTournament?.stats.topScorer.name,
+  );
+  const goldenGlovesPlayer = (saves.data ?? []).find(
+    (goalkeeper) => goalkeeper.player_name === latestTournament?.stats.topSaver.name,
   );
   const upcoming = all.filter((f) => f.status === "Scheduled").slice(0, 5);
   const recent = all
@@ -381,7 +392,7 @@ function Home() {
 
                   <div className="latest-final-card__rail border-t border-border/70 bg-muted/25 p-5 sm:p-8 lg:border-l lg:border-t-0">
                     {!finalIsToBePlayed && (
-                      <div className="mb-4 grid gap-2 sm:grid-cols-2">
+                      <div className="mb-4 grid gap-2 sm:grid-cols-3">
                         <div className="latest-final-card__award golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3 dark:shadow-[0_0_18px_rgba(255,214,102,0.35)]">
                           <div className="latest-final-card__award-heading flex items-center gap-2">
                             <Trophy
@@ -397,6 +408,9 @@ function Home() {
                           </p>
                           <p className="latest-final-card__award-value text-xs font-semibold">
                             {latestTournament?.stats.topScorer.goals ?? 0} goals
+                          </p>
+                          <p className="mt-1 truncate text-[10px] font-semibold text-muted-foreground">
+                            {goldenBootPlayer?.team_name || "Team not recorded"}
                           </p>
                         </div>
                         <div className="latest-final-card__award golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3">
@@ -415,37 +429,29 @@ function Home() {
                           <p className="latest-final-card__award-value text-xs font-semibold">
                             {latestTournament?.stats.topSaver.saves ?? 0} saves
                           </p>
+                          <p className="mt-1 truncate text-[10px] font-semibold text-muted-foreground">
+                            {goldenGlovesPlayer?.team_name || "Team not recorded"}
+                          </p>
+                        </div>
+                        <div className="latest-final-card__award golden-award rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3">
+                          <div className="latest-final-card__award-heading flex items-center gap-2">
+                            <Crown
+                              className="latest-final-card__award-icon size-4 shrink-0"
+                              aria-hidden="true"
+                            />
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em]">
+                              Winning Manager
+                            </p>
+                          </div>
+                          <p className="latest-final-card__award-name mt-1 truncate text-sm font-bold">
+                            {latestTournament?.manager || "Not recorded"}
+                          </p>
+                          <p className="mt-1 truncate text-[10px] font-semibold text-muted-foreground">
+                            {latestTournament?.winner || "Team not recorded"}
+                          </p>
                         </div>
                       </div>
                     )}
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-1">
-                      <div className="latest-final-card__stat latest-final-card__stat--gold rounded-xl border border-primary/25 bg-card p-3 text-center sm:p-4 lg:text-left">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          {finalIsToBePlayed ? "Final status" : "Top scorer"}
-                        </p>
-                        <p className="latest-final-card__stat-name mt-1 truncate text-sm font-bold">
-                          {finalIsToBePlayed
-                            ? "TO BE PLAYED"
-                            : latestTournament?.stats.topScorer.name}
-                        </p>
-                        <p className="latest-final-card__stat-value mt-1 font-display text-2xl font-black">
-                          {finalIsToBePlayed ? "-" : latestTournament?.stats.topScorer.goals}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">goals</p>
-                      </div>
-                      <div className="latest-final-card__stat latest-final-card__stat--gold rounded-xl border border-accent/50 bg-card p-3 text-center sm:p-4 lg:text-left">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          {finalIsToBePlayed ? "Next step" : "Top saver"}
-                        </p>
-                        <p className="latest-final-card__stat-name mt-1 truncate text-sm font-bold">
-                          {finalIsToBePlayed ? "Add goals" : latestTournament?.stats.topSaver.name}
-                        </p>
-                        <p className="latest-final-card__stat-value mt-1 font-display text-2xl font-black">
-                          {finalIsToBePlayed ? "-" : latestTournament?.stats.topSaver.saves}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">saves</p>
-                      </div>
-                    </div>
 
                     <div className="mt-5 grid grid-cols-3 gap-3 border-t border-border/70 pt-5 text-center lg:grid-cols-1 lg:gap-2 lg:text-left">
                       <div>
