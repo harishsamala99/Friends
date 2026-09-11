@@ -453,33 +453,6 @@ function Home() {
                       </div>
                     )}
 
-                    <div className="mt-5 grid grid-cols-3 gap-3 border-t border-border/70 pt-5 text-center lg:grid-cols-1 lg:gap-2 lg:text-left">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          Format
-                        </p>
-                        <p className="truncate text-sm font-semibold">
-                          {latestTournament?.type || "Final"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          Manager
-                        </p>
-                        <p className="truncate text-sm font-semibold">
-                          {latestTournament?.manager || "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          Players
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {latestTournament?.participants ?? "N/A"}
-                        </p>
-                      </div>
-                    </div>
-
                     <Button asChild className="mt-5 w-full gap-2" variant="default">
                       <Link to="/final">
                         <Trophy className="size-4" />
