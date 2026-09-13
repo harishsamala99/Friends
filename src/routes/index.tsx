@@ -175,45 +175,65 @@ function Home() {
 
   const byId = new Map((teams.data ?? []).map((t: Team) => [t.id, t]));
   const all = fixtures.data ?? [];
-  const scheduledFinal = all
+  const finalFixtures = all
     .filter(
       (fixture) =>
         fixture.tournament_id &&
         (!latestTournament?.id || fixture.tournament_id === latestTournament.id) &&
         (fixture.notes?.includes("completed league standings") ||
-          fixture.notes?.includes("Final teams selected manually")) &&
-        fixture.home_score == null &&
-        fixture.away_score == null,
+          fixture.notes?.includes("Final teams selected manually")),
     )
     .sort((a, b) => +new Date(a.kickoff) - +new Date(b.kickoff))[0];
+  const scheduledFinal =
+    finalFixtures?.home_score == null && finalFixtures?.away_score == null
+    ? finalFixtures
+    : undefined;
+  const savedFinal = finalFixtures;
   const finalistRows = (standings.data ?? []).slice(0, 2);
   const hasFinalists = finalistRows.length === 2;
+  const hasTournamentFinalTeams = Boolean(
+    latestTournament?.homeTeam &&
+      latestTournament.awayTeam &&
+      latestTournament.homeTeam !== "TBD" &&
+      latestTournament.awayTeam !== "TBD",
+  );
   const finalHomeName = scheduledFinal
     ? byId.get(scheduledFinal.home_team_id)?.name
-    : latestTournament
+    : savedFinal
+      ? byId.get(savedFinal.home_team_id)?.name
+    : hasTournamentFinalTeams
       ? latestTournament.homeTeam
       : finalistRows[0]?.team_name;
   const finalAwayName = scheduledFinal
     ? byId.get(scheduledFinal.away_team_id)?.name
-    : latestTournament
+    : savedFinal
+      ? byId.get(savedFinal.away_team_id)?.name
+    : hasTournamentFinalTeams
       ? latestTournament.awayTeam
       : finalistRows[1]?.team_name;
-  const finalIsToBePlayed = Boolean(scheduledFinal || (!latestTournament && hasFinalists));
+  const finalIsToBePlayed = Boolean(scheduledFinal || (!savedFinal && !latestTournament && hasFinalists));
   const finalScoreRecorded = Boolean(
-    latestTournament &&
-    latestTournament.homeScore != null &&
-    latestTournament.awayScore != null &&
-    typeof latestTournament.homeScore === "number" &&
-    typeof latestTournament.awayScore === "number",
+    (latestTournament?.homeScore != null && latestTournament?.awayScore != null) ||
+      (savedFinal?.home_score != null && savedFinal?.away_score != null),
   );
   const finalCompleted = Boolean(
-    latestTournament &&
-    latestTournament.status === "completed" &&
+    (latestTournament?.status === "completed" || savedFinal?.status === "Full Time") &&
     finalScoreRecorded &&
     !finalIsToBePlayed &&
-    latestTournament.winner &&
-    latestTournament.winner !== "TBD",
+    (latestTournament?.winner !== "TBD" || savedFinal),
   );
+  const finalHomeScore = latestTournament?.homeScore ?? savedFinal?.home_score;
+  const finalAwayScore = latestTournament?.awayScore ?? savedFinal?.away_score;
+  const finalWinner =
+    latestTournament?.winner && latestTournament.winner !== "TBD"
+      ? latestTournament.winner
+      : finalHomeScore != null && finalAwayScore != null
+        ? finalHomeScore > finalAwayScore
+          ? finalHomeName
+          : finalAwayScore > finalHomeScore
+            ? finalAwayName
+            : "Draw"
+        : "Not recorded";
   const goldenBootPlayer = (scorers.data ?? []).find(
     (scorer) => scorer.player_name === latestTournament?.stats.topScorer.name,
   );
@@ -295,7 +315,7 @@ function Home() {
       )}
 
       {/* Final Match Section */}
-      {(latestTournament || scheduledFinal || hasFinalists) && (
+      {(hasTournamentFinalTeams || scheduledFinal || (!latestTournament && hasFinalists)) && (
         <section className="relative overflow-hidden border-b border-border/60 bg-linear-to-br from-pitch via-pitch/95 to-[#173d35] py-10 sm:py-14">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,transparent_49.8%,currentColor_50%,transparent_50.2%),linear-gradient(currentColor_1px,transparent_1px)] bg-size-[50%_100%,100%_56px] opacity-20 text-pitch-foreground" />
           <div className="mx-auto max-w-6xl px-4">
@@ -356,11 +376,11 @@ function Home() {
                         </p>
                         <div className="latest-final-card__score-value mt-2 flex items-center gap-2 font-display text-5xl font-black tabular-nums text-primary drop-shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_35%,transparent)] dark:text-[#fff7e6] dark:drop-shadow-[0_0_18px_rgba(255,177,66,0.55)] sm:text-7xl sm:gap-3">
                           <span>
-                            {finalIsToBePlayed ? "-" : (latestTournament?.homeScore ?? 0)}
+                            {finalIsToBePlayed ? "-" : (finalHomeScore ?? 0)}
                           </span>
                           <span className="text-2xl text-muted-foreground sm:text-3xl">:</span>
                           <span>
-                            {finalIsToBePlayed ? "-" : (latestTournament?.awayScore ?? 0)}
+                            {finalIsToBePlayed ? "-" : (finalAwayScore ?? 0)}
                           </span>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -389,7 +409,7 @@ function Home() {
                       <strong className="latest-final-card__champion-name truncate text-base font-black sm:text-lg">
                         {finalIsToBePlayed
                           ? "TO BE PLAYED"
-                          : latestTournament?.winner || "Not recorded"}
+                          : finalWinner}
                       </strong>
                     </div>
                   </div>
