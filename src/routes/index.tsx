@@ -161,7 +161,11 @@ function Home() {
   }, [tournament.data]);
 
   const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
-  const fixtures = useQuery({ queryKey: ["fixtures"], queryFn: () => fetchFixtures() });
+  const fixtures = useQuery({
+    queryKey: ["fixtures", latestTournament?.id],
+    queryFn: () => fetchFixtures(undefined, latestTournament?.id),
+    enabled: Boolean(latestTournament?.id),
+  });
   const standings = useQuery({ queryKey: ["standings"], queryFn: () => fetchStandings() });
   const scorers = useQuery({ queryKey: ["scorers"], queryFn: () => fetchTopScorers() });
   const saves = useQuery({

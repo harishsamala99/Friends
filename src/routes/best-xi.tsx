@@ -20,7 +20,7 @@ import {
 export const Route = createFileRoute("/best-xi")({
   head: () => ({
     meta: [
-      { title: "The Best XI — FRIENDS LEAGUE" },
+      { title: "TEAM OF THE LEAGUE — FRIENDS LEAGUE" },
       { name: "description", content: "Select and preserve the Best XI for each tournament." },
     ],
   }),
@@ -116,7 +116,7 @@ function BestXIPage() {
 
   return (
     <SiteLayout>
-      <PageHeader title="THE BEST XI" subtitle="Finalize one Best XI for each tournament." />
+      <PageHeader title="TEAM OF THE LEAGUE" subtitle="Finalize one Best XI for each tournament." />
       <div className="page-content mx-auto max-w-4xl space-y-6 px-4 py-10">
         <div className="tournament-switcher space-y-2">
           <label
