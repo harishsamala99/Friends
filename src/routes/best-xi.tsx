@@ -13,6 +13,7 @@ import {
   fetchTournaments,
   saveBestXI,
   type BestXI,
+  type Player,
   type Team,
   type Tournament,
 } from "@/lib/football";
@@ -44,6 +45,12 @@ const slots = [
 type SlotKey = (typeof slots)[number]["key"];
 type Selection = Record<SlotKey, string>;
 const EMPTY_TOURNAMENTS: Tournament[] = [];
+const positionForGroup = {
+  FORWARDS: "Forward",
+  MIDFIELDERS: "Midfielder",
+  DEFENDERS: "Defender",
+  GOALKEEPER: "Goalkeeper",
+} as const;
 
 function getStoredTournamentId() {
   return typeof window === "undefined" ? "" : (localStorage.getItem("current-tournament-id") ?? "");
@@ -64,6 +71,7 @@ function BestXIPage() {
   const teamList = Array.isArray(teams.data) ? teams.data : [];
   const [tournamentId, setTournamentId] = useState("");
   const [selection, setSelection] = useState<Selection>(emptySelection);
+  const [savedBestXI, setSavedBestXI] = useState<BestXI | null>(null);
   const selectedTournament = tournamentList.find((tournament) => tournament.id === tournamentId);
   const teamById = new Map(teamList.map((team: Team) => [team.id, team.name]));
   const bestXI = useQuery({
@@ -84,32 +92,47 @@ function BestXIPage() {
   }, [tournamentId, tournamentList]);
 
   useEffect(() => {
-    const saved = bestXI.data;
-    setSelection(saved ? selectionFromBestXI(saved) : emptySelection());
+    setSelection(emptySelection());
+    setSavedBestXI(null);
+  }, [tournamentId]);
+
+  useEffect(() => {
+    if (!bestXI.data) return;
+    setSelection(selectionFromBestXI(bestXI.data));
+    setSavedBestXI(bestXI.data);
   }, [bestXI.data]);
 
   const save = useMutation({
     mutationFn: () => saveBestXI(tournamentId, selection),
-    onSuccess: () => {
+    onSuccess: (saved) => {
+      setSavedBestXI(saved);
       toast.success("Best XI saved and finalized");
       void queryClient.invalidateQueries({ queryKey: ["best-xi", tournamentId] });
     },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : "Unable to save Best XI"),
   });
-  const finalized = Boolean(bestXI.data);
   const allFilled = slots.every((slot) => selection[slot.key]);
+  const finalized = Boolean(savedBestXI);
+  const playerById = new Map(playerList.map((player) => [player.id, player]));
 
   function handleTournamentChange(nextId: string) {
     setTournamentId(nextId);
     localStorage.setItem("current-tournament-id", nextId);
   }
 
-  function handleSave() {
-    if (!tournamentId) return toast.error("Select a tournament first");
-    if (!allFilled) return toast.error("Fill all 11 player positions before saving");
+  function handleSave(): void {
+    if (!tournamentId) {
+      toast.error("Select a tournament first");
+      return;
+    }
+    if (!allFilled) {
+      toast.error("Fill all 11 player positions before saving");
+      return;
+    }
     if (new Set(Object.values(selection)).size !== slots.length) {
-      return toast.error("Each Best XI position must use a different player");
+      toast.error("Each Best XI position must use a different player");
+      return;
     }
     save.mutate();
   }
@@ -160,56 +183,68 @@ function BestXIPage() {
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
                 <CardTitle>{selectedTournament?.tournament_name ?? "Best XI"}</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {finalized
-                    ? "This selection is read-only."
-                    : "Choose existing players for every position."}
-                </p>
+                {!finalized && (
+                  <p className="mt-1 text-sm text-muted-foreground">Select your playing XI.</p>
+                )}
               </div>
-              {finalized && (
-                <span className="flex shrink-0 items-center gap-1 text-sm font-bold text-primary">
-                  <Check className="size-4" /> BEST XI FINALIZED
-                </span>
-              )}
+              <span className="flex shrink-0 items-center gap-1 text-sm font-bold text-primary">
+                <Check className="size-4" /> PLAYING XI
+              </span>
             </CardHeader>
             <CardContent className="space-y-7">
-              {["FORWARDS", "MIDFIELDERS", "DEFENDERS", "GOALKEEPER"].map((group) => (
-                <section key={group} className="space-y-3">
-                  <h2 className="flex items-center gap-2 text-xs font-black tracking-[0.18em] text-primary">
-                    <Shield className="size-4" /> {group}
-                  </h2>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {slots
-                      .filter((slot) => slot.group === group)
-                      .map((slot) => (
-                        <label key={slot.key} className="space-y-1 text-sm font-medium">
-                          {slot.label}
-                          <select
-                            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-normal"
-                            value={selection[slot.key]}
-                            disabled={finalized || save.isPending}
-                            onChange={(event) =>
-                              setSelection((current) => ({
-                                ...current,
-                                [slot.key]: event.target.value,
-                              }))
-                            }
-                          >
-                            <option value="">Enter {slot.label}</option>
-                            {playerList
-                              .filter((player) => player.status === "Active")
-                              .map((player) => (
-                                <option key={player.id} value={player.id}>
-                                  {player.name} —{" "}
-                                  {teamById.get(player.team_id ?? "") ?? "Team unavailable"}
-                                </option>
-                              ))}
-                          </select>
-                        </label>
-                      ))}
-                  </div>
-                </section>
-              ))}
+              {finalized ? (
+                <SavedPlayersList
+                  savedBestXI={savedBestXI}
+                  playerById={playerById}
+                  teamById={teamById}
+                />
+              ) : (
+                ["FORWARDS", "MIDFIELDERS", "DEFENDERS", "GOALKEEPER"].map((group) => (
+                  <section key={group} className="space-y-3">
+                    <h2 className="flex items-center gap-2 text-xs font-black tracking-[0.18em] text-primary">
+                      <Shield className="size-4" /> {group}
+                    </h2>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {slots
+                        .filter((slot) => slot.group === group)
+                        .map((slot) => (
+                          <label key={slot.key} className="space-y-1 text-sm font-medium">
+                            {slot.label}
+                            <select
+                              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-normal"
+                              value={selection[slot.key]}
+                              disabled={save.isPending}
+                              onChange={(event) =>
+                                setSelection((current) => ({
+                                  ...current,
+                                  [slot.key]: event.target.value,
+                                }))
+                              }
+                            >
+                              <option value="">Enter {slot.label}</option>
+                              {playerList
+                                .filter(
+                                  (player) =>
+                                    player.status === "Active" &&
+                                    player.position?.trim().toLowerCase() ===
+                                      positionForGroup[
+                                        group as keyof typeof positionForGroup
+                                      ].toLowerCase(),
+                                )
+                                .map((player) => (
+                                  <option key={player.id} value={player.id}>
+                                    {player.name} —{" "}
+                                    {teamById.get(player.team_id ?? "") ?? "Team unavailable"}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                        ))}
+                    </div>
+                  </section>
+                ))
+              )}
+              <PlayingXI selection={selection} playerById={playerById} teamById={teamById} />
               {!finalized && (
                 <button
                   type="button"
@@ -228,6 +263,98 @@ function BestXIPage() {
   );
 }
 
+function SavedPlayersList({
+  savedBestXI,
+  playerById,
+  teamById,
+}: {
+  savedBestXI: BestXI | null;
+  playerById: Map<string, Player>;
+  teamById: Map<string, string>;
+}) {
+  return (
+    <section className="space-y-3" aria-label="Saved Best XI players">
+      <h2 className="text-xs font-black tracking-[0.18em] text-primary">SELECTED PLAYERS</h2>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {slots.map((slot) => {
+          const player = playerById.get(savedBestXI?.[slot.key] ?? "");
+          return (
+            <div
+              key={slot.key}
+              className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2"
+            >
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground">{slot.label}</p>
+                <p className="font-semibold">{player?.name ?? "Player unavailable"}</p>
+              </div>
+              <span className="text-right text-xs text-muted-foreground">
+                {player ? (teamById.get(player.team_id ?? "") ?? "Team unavailable") : ""}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function selectionFromBestXI(saved: BestXI): Selection {
   return Object.fromEntries(slots.map((slot) => [slot.key, saved[slot.key]])) as Selection;
+}
+
+function PlayingXI({
+  selection,
+  playerById,
+  teamById,
+}: {
+  selection: Selection;
+  playerById: Map<string, Player>;
+  teamById: Map<string, string>;
+}) {
+  const rows = [
+    ["FORWARDS", ["forward_1", "forward_2", "forward_3"]],
+    ["MIDFIELDERS", ["midfielder_1", "midfielder_2", "midfielder_3"]],
+    ["DEFENDERS", ["defender_1", "defender_2", "defender_3", "defender_4"]],
+    ["GOALKEEPER", ["goalkeeper"]],
+  ] as const;
+
+  return (
+    <section className="space-y-3" aria-label="Playing XI preview">
+      <div>
+        <h2 className="text-xs font-black tracking-[0.18em] text-primary">PLAYING XI</h2>
+        <p className="mt-1 text-sm text-muted-foreground">4-3-3 formation</p>
+      </div>
+      <div className="overflow-x-auto rounded-xl">
+        <div className="pitch-gradient relative grid min-w-3xl gap-7 overflow-hidden rounded-xl border border-white/20 p-8 shadow-elevated">
+          <div className="pointer-events-none absolute inset-4 rounded-lg border border-white/35" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 size-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/35" />
+          {rows.map(([label, row]) => (
+            <div key={label} className="relative z-10 space-y-2 text-center">
+              <p className="text-[10px] font-black tracking-[0.18em] text-white/75">{label}</p>
+              <div className="flex flex-nowrap justify-center gap-4">
+                {row.map((slotKey) => {
+                  const player = playerById.get(selection[slotKey]);
+                  return (
+                    <div
+                      key={slotKey}
+                      className="flex min-h-16 w-36 shrink-0 flex-col items-center justify-center rounded-md border border-white/25 bg-black/25 px-2 py-2 text-white backdrop-blur-sm"
+                    >
+                      <span className="text-xs font-bold leading-tight">
+                        {player?.name ?? "Awaiting player"}
+                      </span>
+                      <span className="mt-1 text-[10px] leading-tight text-white/75">
+                        {player
+                          ? (teamById.get(player.team_id ?? "") ?? "Team unavailable")
+                          : "Select above"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }

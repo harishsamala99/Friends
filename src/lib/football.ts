@@ -513,7 +513,7 @@ export async function saveBestXI(
 ): Promise<BestXI> {
   const { data, error } = await db
     .from("best_xi")
-    .insert({ tournament_id: tournamentId, ...players })
+    .upsert({ tournament_id: tournamentId, ...players }, { onConflict: "tournament_id" })
     .select()
     .single();
   if (error) throw error;
