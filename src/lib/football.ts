@@ -366,8 +366,10 @@ export async function fetchTopSaves(tournamentId?: string): Promise<SavesRow[]> 
   const { data, error } = await q;
   if (error) throw error;
   return ((data ?? []) as SavesRow[])
-    .filter((r) => r.saves > 0)
-    .sort((a, b) => b.saves - a.saves || b.clean_sheets - a.clean_sheets || a.matches - b.matches);
+    .filter((row) => row.saves > 0)
+    .sort(
+      (a, b) => b.saves - a.saves || b.clean_sheets - a.clean_sheets || a.matches - b.matches,
+    );
 }
 
 export async function fetchPlayerStats(competitionId?: string): Promise<PlayerStatRow[]> {
@@ -581,6 +583,53 @@ export async function deleteFixture(id: string) {
 export async function addEvent(row: Partial<MatchEvent>) {
   const { error } = await db.from("match_events").insert(row);
   if (error) throw error;
+}
+
+async function replaceFixturePlayerEvents(
+  fixtureId: string,
+  teamId: string,
+  playerId: string,
+  eventType: "goal" | "save",
+  eventCount: number,
+) {
+  const { error: deleteError } = await db
+    .from("match_events")
+    .delete()
+    .eq("fixture_id", fixtureId)
+    .eq("team_id", teamId)
+    .eq("player_id", playerId)
+    .eq("event_type", eventType);
+  if (deleteError) throw deleteError;
+
+  const events = Array.from({ length: Math.max(0, Math.trunc(eventCount)) }, (_, index) => ({
+    fixture_id: fixtureId,
+    team_id: teamId,
+    player_id: playerId,
+    minute: index + 1,
+    event_type: eventType,
+  }));
+  if (events.length === 0) return;
+
+  const { error: insertError } = await db.from("match_events").insert(events);
+  if (insertError) throw insertError;
+}
+
+export async function replaceFixturePlayerGoals(
+  fixtureId: string,
+  teamId: string,
+  playerId: string,
+  goalCount: number,
+) {
+  await replaceFixturePlayerEvents(fixtureId, teamId, playerId, "goal", goalCount);
+}
+
+export async function replaceFixturePlayerSaves(
+  fixtureId: string,
+  teamId: string,
+  playerId: string,
+  saveCount: number,
+) {
+  await replaceFixturePlayerEvents(fixtureId, teamId, playerId, "save", saveCount);
 }
 
 export async function deleteEvent(id: string) {

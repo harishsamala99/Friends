@@ -13,7 +13,7 @@ import {
   fetchTeams,
   fetchTopScorers,
   fetchTopSaves,
-  fetchLatestTournament,
+  fetchTournaments,
   type Team,
 } from "@/lib/football";
 
@@ -109,37 +109,45 @@ function Home() {
   const [latestTournament, setLatestTournament] = useState<Tournament | null>(null);
   const tournament = useQuery({
     queryKey: ["tournaments"],
-    queryFn: () => fetchLatestTournament(),
+    queryFn: () => fetchTournaments(),
   });
 
   useEffect(() => {
     setLatestTournament(null);
-    if (tournament.data) {
+    const selectedTournament =
+      tournament.data?.find(
+        (item) =>
+          item.status === "completed" &&
+          (item.tournament_name ?? item.type).trim().toLowerCase() === "friends league -6",
+      ) ??
+      tournament.data?.find((item) => item.status === "completed") ??
+      tournament.data?.[0];
+    if (selectedTournament) {
       const dbTournament = normalizeTournament({
-        id: tournament.data.id,
-        tournament_name: tournament.data.tournament_name,
-        type: tournament.data.type,
-        date: tournament.data.date,
-        homeTeam: tournament.data.home_team,
-        awayTeam: tournament.data.away_team,
-        homeScore: tournament.data.home_score,
-        awayScore: tournament.data.away_score,
-        winner: tournament.data.winner,
-        status: tournament.data.status,
-        manager: tournament.data.manager,
-        participants: tournament.data.participants,
+        id: selectedTournament.id,
+        tournament_name: selectedTournament.tournament_name,
+        type: selectedTournament.type,
+        date: selectedTournament.date,
+        homeTeam: selectedTournament.home_team,
+        awayTeam: selectedTournament.away_team,
+        homeScore: selectedTournament.home_score,
+        awayScore: selectedTournament.away_score,
+        winner: selectedTournament.winner,
+        status: selectedTournament.status,
+        manager: selectedTournament.manager,
+        participants: selectedTournament.participants,
         stats: {
           topScorer: {
-            name: tournament.data.top_scorer_name || "None",
-            goals: tournament.data.top_scorer_goals || 0,
+            name: selectedTournament.top_scorer_name || "None",
+            goals: selectedTournament.top_scorer_goals || 0,
           },
           topAssister: {
-            name: tournament.data.top_assister_name || "None",
-            assists: tournament.data.top_assister_assists || 0,
+            name: selectedTournament.top_assister_name || "None",
+            assists: selectedTournament.top_assister_assists || 0,
           },
           topSaver: {
-            name: tournament.data.top_saver_name || "None",
-            saves: tournament.data.top_saver_saves || 0,
+            name: selectedTournament.top_saver_name || "None",
+            saves: selectedTournament.top_saver_saves || 0,
           },
         },
       });
@@ -167,10 +175,14 @@ function Home() {
     enabled: Boolean(latestTournament?.id),
   });
   const standings = useQuery({ queryKey: ["standings"], queryFn: () => fetchStandings() });
-  const scorers = useQuery({ queryKey: ["scorers"], queryFn: () => fetchTopScorers() });
+  const scorers = useQuery({
+    queryKey: ["scorers", latestTournament?.id],
+    queryFn: () => fetchTopScorers(latestTournament?.id),
+  });
   const saves = useQuery({
     queryKey: ["saves", latestTournament?.id],
     queryFn: () => fetchTopSaves(latestTournament?.id),
+    enabled: Boolean(latestTournament?.id),
   });
 
   const byId = new Map((teams.data ?? []).map((t: Team) => [t.id, t]));
@@ -184,8 +196,15 @@ function Home() {
           fixture.notes?.includes("Final teams selected manually")),
     )
     .sort((a, b) => +new Date(a.kickoff) - +new Date(b.kickoff))[0];
+  const tournamentHasFinalScore = Boolean(
+    latestTournament?.status === "completed" &&
+      latestTournament.homeScore != null &&
+      latestTournament.awayScore != null,
+  );
   const scheduledFinal =
-    finalFixtures?.home_score == null && finalFixtures?.away_score == null
+    !tournamentHasFinalScore &&
+    finalFixtures?.home_score == null &&
+    finalFixtures?.away_score == null
     ? finalFixtures
     : undefined;
   const savedFinal = finalFixtures;
@@ -235,10 +254,14 @@ function Home() {
             : "Draw"
         : "Not recorded";
   const goldenBootPlayer = (scorers.data ?? []).find(
-    (scorer) => scorer.player_name === latestTournament?.stats.topScorer.name,
+    (scorer) =>
+      scorer.player_name.trim().toLowerCase() ===
+      latestTournament?.stats.topScorer.name.trim().toLowerCase(),
   );
   const goldenGlovesPlayer = (saves.data ?? []).find(
-    (goalkeeper) => goalkeeper.player_name === latestTournament?.stats.topSaver.name,
+    (goalkeeper) =>
+      goalkeeper.player_name.trim().toLowerCase() ===
+      latestTournament?.stats.topSaver.name.trim().toLowerCase(),
   );
   const upcoming = all.filter((f) => f.status === "Scheduled").slice(0, 5);
   const recent = all

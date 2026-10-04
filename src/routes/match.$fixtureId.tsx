@@ -10,11 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   EVENT_TYPES,
-  addEvent,
   fetchEvents,
   fetchFixture,
   fetchPlayers,
   fetchTeams,
+  replaceFixturePlayerGoals,
+  replaceFixturePlayerSaves,
   updateFixture,
 } from "@/lib/football";
 
@@ -176,12 +177,12 @@ function MatchEditor({
   const [awayScore, setAwayScore] = useState(fixture.away_score?.toString() ?? "");
   const [homePlayerId, setHomePlayerId] = useState("");
   const [awayPlayerId, setAwayPlayerId] = useState("");
-  const [homeGoals, setHomeGoals] = useState("1");
-  const [awayGoals, setAwayGoals] = useState("1");
+  const [homeGoals, setHomeGoals] = useState("0");
+  const [awayGoals, setAwayGoals] = useState("0");
   const [homeGKId, setHomeGKId] = useState("");
   const [awayGKId, setAwayGKId] = useState("");
-  const [homeSaves, setHomeSaves] = useState("1");
-  const [awaySaves, setAwaySaves] = useState("1");
+  const [homeSaves, setHomeSaves] = useState("0");
+  const [awaySaves, setAwaySaves] = useState("0");
   const [savingScore, setSavingScore] = useState(false);
   const [savingHomeScorer, setSavingHomeScorer] = useState(false);
   const [savingAwayScorer, setSavingAwayScorer] = useState(false);
@@ -263,27 +264,16 @@ function MatchEditor({
 
   async function saveHomeScorer(): Promise<void> {
     const scorer = homeTeamPlayers.find((player) => player.id === homePlayerId);
-    const count = Math.max(1, Math.min(20, Number(homeGoals) || 1));
+    const count = Math.max(0, Math.min(20, Math.trunc(Number(homeGoals) || 0)));
     if (!scorer) {
       toast.error("Select a home team player");
       return;
     }
     setSavingHomeScorer(true);
     try {
-      await Promise.all(
-        Array.from({ length: count }, (_, index) =>
-          addEvent({
-            fixture_id: fixture.id,
-            team_id: scorer.team_id,
-            player_id: scorer.id,
-            minute: index + 1,
-            event_type: "goal",
-          }),
-        ),
-      );
-      toast.success(`${scorer.name} added to the score sheet`);
-      setHomePlayerId("");
-      setHomeGoals("1");
+      await replaceFixturePlayerGoals(fixture.id, homeTeamId, scorer.id, count);
+      toast.success(`${scorer.name}'s goals set to ${count}`);
+      setHomeGoals(String(count));
       onSaved();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save goal scorer");
@@ -294,27 +284,16 @@ function MatchEditor({
 
   async function saveAwayScorer(): Promise<void> {
     const scorer = awayTeamPlayers.find((player) => player.id === awayPlayerId);
-    const count = Math.max(1, Math.min(20, Number(awayGoals) || 1));
+    const count = Math.max(0, Math.min(20, Math.trunc(Number(awayGoals) || 0)));
     if (!scorer) {
       toast.error("Select an away team player");
       return;
     }
     setSavingAwayScorer(true);
     try {
-      await Promise.all(
-        Array.from({ length: count }, (_, index) =>
-          addEvent({
-            fixture_id: fixture.id,
-            team_id: scorer.team_id,
-            player_id: scorer.id,
-            minute: index + 1,
-            event_type: "goal",
-          }),
-        ),
-      );
-      toast.success(`${scorer.name} added to the score sheet`);
-      setAwayPlayerId("");
-      setAwayGoals("1");
+      await replaceFixturePlayerGoals(fixture.id, awayTeamId, scorer.id, count);
+      toast.success(`${scorer.name}'s goals set to ${count}`);
+      setAwayGoals(String(count));
       onSaved();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save goal scorer");
@@ -325,27 +304,16 @@ function MatchEditor({
 
   async function saveHomeGK(): Promise<void> {
     const gk = homeGKs.find((player) => player.id === homeGKId);
-    const count = Math.max(1, Math.min(30, Number(homeSaves) || 1));
+    const count = Math.max(0, Math.min(30, Math.trunc(Number(homeSaves) || 0)));
     if (!gk) {
       toast.error("Select a home team goalkeeper");
       return;
     }
     setSavingHomeGK(true);
     try {
-      await Promise.all(
-        Array.from({ length: count }, (_, index) =>
-          addEvent({
-            fixture_id: fixture.id,
-            team_id: gk.team_id,
-            player_id: gk.id,
-            minute: index + 1,
-            event_type: "save",
-          }),
-        ),
-      );
-      toast.success(`${gk.name} saves recorded`);
-      setHomeGKId("");
-      setHomeSaves("1");
+      await replaceFixturePlayerSaves(fixture.id, homeTeamId, gk.id, count);
+      toast.success(`${gk.name}'s saves set to ${count}`);
+      setHomeSaves(String(count));
       onSaved();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save goalkeeper saves");
@@ -356,27 +324,16 @@ function MatchEditor({
 
   async function saveAwayGK(): Promise<void> {
     const gk = awayGKs.find((player) => player.id === awayGKId);
-    const count = Math.max(1, Math.min(30, Number(awaySaves) || 1));
+    const count = Math.max(0, Math.min(30, Math.trunc(Number(awaySaves) || 0)));
     if (!gk) {
       toast.error("Select an away team goalkeeper");
       return;
     }
     setSavingAwayGK(true);
     try {
-      await Promise.all(
-        Array.from({ length: count }, (_, index) =>
-          addEvent({
-            fixture_id: fixture.id,
-            team_id: gk.team_id,
-            player_id: gk.id,
-            minute: index + 1,
-            event_type: "save",
-          }),
-        ),
-      );
-      toast.success(`${gk.name} saves recorded`);
-      setAwayGKId("");
-      setAwaySaves("1");
+      await replaceFixturePlayerSaves(fixture.id, awayTeamId, gk.id, count);
+      toast.success(`${gk.name}'s saves set to ${count}`);
+      setAwaySaves(String(count));
       onSaved();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save goalkeeper saves");
@@ -434,7 +391,11 @@ function MatchEditor({
                 <select
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                   value={homePlayerId}
-                  onChange={(event) => setHomePlayerId(event.target.value)}
+                  onChange={(event) => {
+                    const playerId = event.target.value;
+                    setHomePlayerId(playerId);
+                    setHomeGoals(String(goalsByPlayerAndTeam[`${playerId}-${homeTeamId}`] ?? 0));
+                  }}
                   disabled={homeTeamPlayers.length === 0}
                 >
                   <option value="">Select home player</option>
@@ -453,10 +414,10 @@ function MatchEditor({
               {homeTeamPlayers.length > 0 && (
                 <>
                   <label className="space-y-2 text-sm font-medium">
-                    Goals
+                    Total goals in this fixture
                     <Input
                       type="number"
-                      min="1"
+                      min="0"
                       max="20"
                       value={homeGoals}
                       onChange={(event) => setHomeGoals(event.target.value)}
@@ -468,7 +429,7 @@ function MatchEditor({
                     onClick={saveHomeScorer}
                     disabled={savingHomeScorer || !homePlayerId}
                   >
-                    {savingHomeScorer ? "Adding…" : "Add Goal"}
+                    {savingHomeScorer ? "Saving…" : "Save Total"}
                   </Button>
                 </>
               )}
@@ -484,7 +445,11 @@ function MatchEditor({
                 <select
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                   value={awayPlayerId}
-                  onChange={(event) => setAwayPlayerId(event.target.value)}
+                  onChange={(event) => {
+                    const playerId = event.target.value;
+                    setAwayPlayerId(playerId);
+                    setAwayGoals(String(goalsByPlayerAndTeam[`${playerId}-${awayTeamId}`] ?? 0));
+                  }}
                   disabled={awayTeamPlayers.length === 0}
                 >
                   <option value="">Select away player</option>
@@ -503,10 +468,10 @@ function MatchEditor({
               {awayTeamPlayers.length > 0 && (
                 <>
                   <label className="space-y-2 text-sm font-medium">
-                    Goals
+                    Total goals in this fixture
                     <Input
                       type="number"
-                      min="1"
+                      min="0"
                       max="20"
                       value={awayGoals}
                       onChange={(event) => setAwayGoals(event.target.value)}
@@ -518,7 +483,7 @@ function MatchEditor({
                     onClick={saveAwayScorer}
                     disabled={savingAwayScorer || !awayPlayerId}
                   >
-                    {savingAwayScorer ? "Adding…" : "Add Goal"}
+                    {savingAwayScorer ? "Saving…" : "Save Total"}
                   </Button>
                 </>
               )}
@@ -528,7 +493,7 @@ function MatchEditor({
 
         {/* Two-sided Goalkeeper Saves Widget */}
         <div className="border-t border-border/60 pt-4">
-          <h3 className="mb-4 text-sm font-semibold">Add Goalkeeper Saves</h3>
+          <h3 className="mb-4 text-sm font-semibold">Goalkeeper Saves</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Home Team Section */}
             <div className="space-y-3 rounded-lg border border-border/40 p-3">
@@ -540,7 +505,11 @@ function MatchEditor({
                 <select
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                   value={homeGKId}
-                  onChange={(event) => setHomeGKId(event.target.value)}
+                  onChange={(event) => {
+                    const playerId = event.target.value;
+                    setHomeGKId(playerId);
+                    setHomeSaves(String(savesByPlayerAndTeam[`${playerId}-${homeTeamId}`] ?? 0));
+                  }}
                   disabled={homeGKs.length === 0}
                 >
                   <option value="">Select home goalkeeper</option>
@@ -559,10 +528,10 @@ function MatchEditor({
               {homeGKs.length > 0 && (
                 <>
                   <label className="space-y-2 text-sm font-medium">
-                    Saves
+                    Total saves in this fixture
                     <Input
                       type="number"
-                      min="1"
+                      min="0"
                       max="30"
                       value={homeSaves}
                       onChange={(event) => setHomeSaves(event.target.value)}
@@ -574,7 +543,7 @@ function MatchEditor({
                     onClick={saveHomeGK}
                     disabled={savingHomeGK || !homeGKId}
                   >
-                    {savingHomeGK ? "Recording…" : "Record Saves"}
+                    {savingHomeGK ? "Saving…" : "Save Total"}
                   </Button>
                 </>
               )}
@@ -590,7 +559,11 @@ function MatchEditor({
                 <select
                   className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                   value={awayGKId}
-                  onChange={(event) => setAwayGKId(event.target.value)}
+                  onChange={(event) => {
+                    const playerId = event.target.value;
+                    setAwayGKId(playerId);
+                    setAwaySaves(String(savesByPlayerAndTeam[`${playerId}-${awayTeamId}`] ?? 0));
+                  }}
                   disabled={awayGKs.length === 0}
                 >
                   <option value="">Select away goalkeeper</option>
@@ -609,10 +582,10 @@ function MatchEditor({
               {awayGKs.length > 0 && (
                 <>
                   <label className="space-y-2 text-sm font-medium">
-                    Saves
+                    Total saves in this fixture
                     <Input
                       type="number"
-                      min="1"
+                      min="0"
                       max="30"
                       value={awaySaves}
                       onChange={(event) => setAwaySaves(event.target.value)}
@@ -624,7 +597,7 @@ function MatchEditor({
                     onClick={saveAwayGK}
                     disabled={savingAwayGK || !awayGKId}
                   >
-                    {savingAwayGK ? "Recording…" : "Record Saves"}
+                    {savingAwayGK ? "Saving…" : "Save Total"}
                   </Button>
                 </>
               )}

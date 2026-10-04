@@ -140,11 +140,15 @@ function SavesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Delete goalkeeper saves"
-                        aria-label={`Delete ${s.player_name} from top saves`}
+                        title={`Delete ${s.player_name}'s saves for ${s.team_name}`}
+                        aria-label={`Delete ${s.player_name} from ${s.team_name} top saves`}
                         disabled={removeSaves.isPending}
                         onClick={() => {
-                          if (window.confirm(`Remove all recorded saves for ${s.player_name}?`)) {
+                          if (
+                            window.confirm(
+                              `Remove all recorded saves for ${s.player_name} on ${s.team_name}?`,
+                            )
+                          ) {
                             removeSaves.mutate(s.player_id);
                           }
                         }}
