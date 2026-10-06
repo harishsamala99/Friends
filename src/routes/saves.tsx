@@ -18,12 +18,12 @@ export const Route = createFileRoute("/saves")({
       { title: "Top Saves — FRIENDS LEAGUE" },
       {
         name: "description",
-        content: "Golden gloves race: saves and clean sheets for every goalkeeper.",
+        content: "Golden gloves race: saves for every goalkeeper.",
       },
       { property: "og:title", content: "Top Saves — FRIENDS LEAGUE" },
       {
         property: "og:description",
-        content: "Golden gloves race: saves, clean sheets and goalkeeper stats.",
+        content: "Golden gloves race: saves for every goalkeeper.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -68,7 +68,7 @@ function SavesPage() {
     <SiteLayout>
       <PageHeader
         title="Top Saves"
-        subtitle={`Ranked by saves, then clean sheets${selectedTournament ? ` in ${selectedTournament.tournament_name}` : ""}.`}
+        subtitle={`Ranked by saves${selectedTournament ? ` in ${selectedTournament.tournament_name}` : ""}.`}
       />
       <div className="page-content mx-auto max-w-4xl px-4 py-10">
         {tournamentList.length > 0 && (
@@ -109,8 +109,6 @@ function SavesPage() {
                   <th className="p-3 text-left font-medium">#</th>
                   <th className="p-3 text-left font-medium">Player</th>
                   <th className="p-3 text-left font-medium">Team</th>
-                  <th className="p-3 text-center font-medium">Apps</th>
-                  <th className="p-3 text-center font-medium">Clean Sheets</th>
                   <th className="p-3 text-center font-medium">Saves</th>
                   <th className="p-3 text-right font-medium">Actions</th>
                 </tr>
@@ -129,8 +127,6 @@ function SavesPage() {
                       {s.player_name}
                     </td>
                     <td className="p-3 text-muted-foreground">{s.team_name}</td>
-                    <td className="p-3 text-center tabular-nums">{s.matches}</td>
-                    <td className="p-3 text-center tabular-nums">{s.clean_sheets}</td>
                     <td
                       className={`p-3 text-center tabular-nums ${s.saves === leadingSaves ? "font-bold text-primary" : "font-semibold"}`}
                     >

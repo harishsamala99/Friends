@@ -23,8 +23,9 @@ export function LeagueLoadingScreen() {
 
   useEffect(() => {
     const startedAt = performance.now();
+    const totalDuration = 3000;
     const progressTimer = window.setInterval(() => {
-      setProgress(Math.min(100, ((performance.now() - startedAt) / 7300) * 100));
+      setProgress(Math.min(100, ((performance.now() - startedAt) / totalDuration) * 100));
     }, 100);
     const messageTimer = window.setInterval(() => {
       setMessageIndex((index) => (index + 1) % MESSAGES.length);

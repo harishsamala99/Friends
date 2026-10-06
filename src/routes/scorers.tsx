@@ -19,10 +19,10 @@ export const Route = createFileRoute("/scorers")({
       { title: "Top Scorers — FRIENDS LEAGUE" },
       {
         name: "description",
-        content: "Golden boot race: goals, assists and appearances for every scorer.",
+        content: "Golden boot race: goals for every scorer.",
       },
       { property: "og:title", content: "Top Scorers — FRIENDS LEAGUE" },
-      { property: "og:description", content: "Golden boot race: goals, assists and appearances." },
+      { property: "og:description", content: "Golden boot race: goals for every scorer." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -79,7 +79,7 @@ function ScorersPage() {
     <SiteLayout>
       <PageHeader
         title="Top Scorers"
-        subtitle={`Ranked by goals, then assists${selectedTournament ? ` in ${selectedTournament.tournament_name}` : ""}.`}
+        subtitle={`Ranked by goals${selectedTournament ? ` in ${selectedTournament.tournament_name}` : ""}.`}
       />
       <div className="page-content mx-auto max-w-4xl px-4 py-10">
         {tournamentList.length > 0 && (
@@ -129,8 +129,6 @@ function ScorersPage() {
                     <th className="p-3 text-left font-medium">#</th>
                     <th className="p-3 text-left font-medium">Player</th>
                     <th className="p-3 text-left font-medium">Team</th>
-                    <th className="p-3 text-center font-medium">Apps</th>
-                    <th className="p-3 text-center font-medium">Assists</th>
                     <th className="p-3 text-center font-medium">Goals</th>
                     <th className="p-3 text-right font-medium">Actions</th>
                   </tr>
@@ -149,8 +147,6 @@ function ScorersPage() {
                         {s.player_name}
                       </td>
                       <td className="p-3 text-muted-foreground">{s.team_name}</td>
-                      <td className="p-3 text-center tabular-nums">{s.matches}</td>
-                      <td className="p-3 text-center tabular-nums">{s.assists}</td>
                       <td
                         className={`p-3 text-center tabular-nums ${s.goals === leadingGoals ? "font-bold text-primary" : "font-semibold"}`}
                       >
