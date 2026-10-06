@@ -50,11 +50,42 @@ export function LeagueLoadingScreen() {
         <div className="league-loading__pitchbox" aria-hidden="true">
           <div className="league-loading__shadow" />
           <div className="league-loading__ball">
-            <span className="league-loading__ball-patch league-loading__ball-patch--one" />
-            <span className="league-loading__ball-patch league-loading__ball-patch--two" />
-            <span className="league-loading__ball-patch league-loading__ball-patch--three" />
-            <span className="league-loading__ball-patch league-loading__ball-patch--four" />
-            <span className="league-loading__ball-patch league-loading__ball-patch--five" />
+            <svg className="league-loading__ball-art" viewBox="0 0 100 100" aria-hidden="true">
+              <defs>
+                <radialGradient id="football-surface" cx="31%" cy="23%" r="78%">
+                  <stop offset="0" stopColor="#fff" />
+                  <stop offset="0.48" stopColor="#f1f1ec" />
+                  <stop offset="0.82" stopColor="#d2d4d3" />
+                  <stop offset="1" stopColor="#8b9297" />
+                </radialGradient>
+                <radialGradient id="football-gloss" cx="28%" cy="20%" r="70%">
+                  <stop offset="0" stopColor="#fff" stopOpacity="0.72" />
+                  <stop offset="0.42" stopColor="#fff" stopOpacity="0.12" />
+                  <stop offset="1" stopColor="#17202a" stopOpacity="0.2" />
+                </radialGradient>
+                <clipPath id="football-clip">
+                  <circle cx="50" cy="50" r="48" />
+                </clipPath>
+              </defs>
+              <circle cx="50" cy="50" r="48" fill="url(#football-surface)" />
+              <g
+                clipPath="url(#football-clip)"
+                fill="#171b20"
+                stroke="#4d5358"
+                strokeLinejoin="round"
+                strokeWidth="1.5"
+              >
+                <path d="m50 35 13 9-5 16H42l-5-16 13-9Z" />
+                <path d="m50 3 12 8-3 14-9 6-9-6-3-14 12-8Z" />
+                <path d="m10 23 14-2 10 9-2 13-13 5-10-9 1-16Z" />
+                <path d="m76 30 10-9 14 2 1 16-10 9-13-5-2-13Z" />
+                <path d="m9 67 9-12 13 3 5 14-8 12-14-2-5-15Z" />
+                <path d="m69 58 13-3 9 12-5 15-14 2-8-12 5-14Z" />
+                <path d="m40 78 10-8 10 8 1 13-11 8-11-8 1-13Z" />
+              </g>
+              <circle cx="50" cy="50" r="48" fill="url(#football-gloss)" />
+              <circle cx="50" cy="50" r="47.5" fill="none" stroke="#fff" strokeOpacity="0.7" />
+            </svg>
           </div>
         </div>
         <h1 className="league-loading__title">
