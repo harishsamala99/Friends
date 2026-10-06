@@ -216,7 +216,9 @@
   --loading-gold: #ffc857;
   --loading-muted: #b6c6c4;
   --loading-muted-dim: #8aa09f;
-  position: relative;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
   display: grid;
   min-height: 100svh;
   place-items: center;

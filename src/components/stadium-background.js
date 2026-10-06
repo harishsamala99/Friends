@@ -5,10 +5,13 @@ export function drawStadium(canvas) {
   canvas.width = Math.round(cw * dpr);
   canvas.height = Math.round(ch * dpr);
 
-  // Design space is 1600 x 900, scaled to cover the canvas.
+  // Keep the full stadium visible on portrait phones; use a full-bleed crop elsewhere.
   const DW = 1600,
     DH = 900;
-  const k = Math.max(cw / DW, ch / DH);
+  const isPortraitMobile = cw <= 700 && ch > cw;
+  const k = isPortraitMobile
+    ? Math.min(cw / DW, ch / DH)
+    : Math.max(cw / DW, ch / DH);
   const ox = (cw - DW * k) / 2,
     oy = (ch - DH * k) / 2;
   const vx0 = -ox / k,
