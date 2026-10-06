@@ -136,6 +136,7 @@ export type Tournament = {
   id: string;
   tournament_name: string | null;
   status: "draft" | "completed";
+  fixture_status: "in_progress" | "fixtures_completed";
   type: string;
   date: string;
   home_team: string;
@@ -665,6 +666,8 @@ export async function fetchTournaments(): Promise<Tournament[]> {
     ...(row as Tournament),
     tournament_name: row["tournament_name"] ?? row["type"] ?? "Tournament",
     status: (row["status"] as Tournament["status"]) ?? "completed",
+    fixture_status:
+      (row["fixture_status"] as Tournament["fixture_status"]) ?? "in_progress",
   }));
 }
 
@@ -681,11 +684,13 @@ export async function fetchLatestTournament(): Promise<Tournament | null> {
     ...(row as Tournament),
     tournament_name: row["tournament_name"] ?? row["type"] ?? "Tournament",
     status: (row["status"] as Tournament["status"]) ?? "completed",
+    fixture_status:
+      (row["fixture_status"] as Tournament["fixture_status"]) ?? "in_progress",
   };
 }
 
 export async function saveTournament(
-  tournament: Omit<Tournament, "id" | "created_at" | "status"> & {
+  tournament: Omit<Tournament, "id" | "created_at" | "status" | "fixture_status"> & {
     id?: string;
     status?: Tournament["status"];
   },
@@ -743,6 +748,10 @@ export async function saveTournament(
           ((data as Partial<Tournament> & Record<string, unknown>)?.[
             "status"
           ] as Tournament["status"]) ?? "completed",
+        fixture_status:
+          ((data as Partial<Tournament> & Record<string, unknown>)?.[
+            "fixture_status"
+          ] as Tournament["fixture_status"]) ?? "in_progress",
       } as Tournament;
     }
 

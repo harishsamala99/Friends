@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { drawStadium } from "./stadium-background.js";
 
 const MESSAGES = [
   "Warming up the pitch",
@@ -9,33 +10,39 @@ const MESSAGES = [
 ];
 
 export function LeagueLoadingScreen() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
   const [dots, setDots] = useState("...");
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    return drawStadium(canvas);
+  }, []);
+
+  useEffect(() => {
+    const startedAt = performance.now();
     const progressTimer = window.setInterval(() => {
-      setProgress((current) => {
-        const next = current + Math.random() * 9 + 3;
-        if (next >= 100) {
-          setMessageIndex((index) => (index + 1) % MESSAGES.length);
-          return 0;
-        }
-        return next;
-      });
-    }, 480);
+      setProgress(Math.min(100, ((performance.now() - startedAt) / 7300) * 100));
+    }, 100);
+    const messageTimer = window.setInterval(() => {
+      setMessageIndex((index) => (index + 1) % MESSAGES.length);
+    }, 1500);
     const dotsTimer = window.setInterval(() => {
       setDots((current) => `${current}.`.replace(/\.{4,}/, "."));
     }, 450);
 
     return () => {
       window.clearInterval(progressTimer);
+      window.clearInterval(messageTimer);
       window.clearInterval(dotsTimer);
     };
   }, []);
 
   return (
     <main className="league-loading" aria-label="Loading E Football Friends League">
+      <canvas ref={canvasRef} className="absolute inset-0 size-full" aria-hidden="true" />
       <div className="league-loading__beams" aria-hidden="true" />
       <div className="league-loading__pitch" aria-hidden="true" />
       <div className="league-loading__pitch-lines" aria-hidden="true" />
@@ -78,7 +85,7 @@ export function LeagueLoadingScreen() {
               ))}
             </div>
           </div>
-          <p className="league-loading__status">
+          <p className="league-loading__status" role="status" aria-live="polite">
             <b>{MESSAGES[messageIndex]}</b>
             {dots}
           </p>

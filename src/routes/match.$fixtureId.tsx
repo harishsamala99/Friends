@@ -117,6 +117,7 @@ function MatchPage() {
                 void queryClient.invalidateQueries({ queryKey: ["scorers"] });
                 void queryClient.invalidateQueries({ queryKey: ["saves"] });
                 void queryClient.invalidateQueries({ queryKey: ["fixtures"] });
+                void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
               }}
             />
             <h2 className="mb-4 font-display text-2xl font-bold">Timeline</h2>

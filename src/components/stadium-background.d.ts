@@ -1,0 +1,1 @@
+export function drawStadium(canvas: HTMLCanvasElement): () => void;

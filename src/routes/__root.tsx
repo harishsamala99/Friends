@@ -127,13 +127,11 @@ function RootComponent() {
   const [isStarting, setIsStarting] = useState(true);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setIsStarting(false), 1800);
+    const timer = window.setTimeout(() => setIsStarting(false), 7300);
     return () => window.clearTimeout(timer);
   }, []);
 
-  if (isStarting) {
-    return <LeagueLoadingScreen />;
-  }
+  if (isStarting) return <LeagueLoadingScreen />;
 
   return (
     <QueryClientProvider client={queryClient}>
