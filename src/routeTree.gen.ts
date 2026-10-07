@@ -21,6 +21,7 @@ import { Route as SavesRouteImport } from './routes/saves'
 import { Route as ScorecardRouteImport } from './routes/scorecard'
 import { Route as ScorersRouteImport } from './routes/scorers'
 import { Route as StandingsRouteImport } from './routes/standings'
+import { Route as StatisticsRouteImport } from './routes/statistics'
 import { Route as TeamsRouteImport } from './routes/teams'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as MatchFixtureIdRouteImport } from './routes/match.$fixtureId'
@@ -84,6 +85,11 @@ const StandingsRoute = StandingsRouteImport.update({
   path: '/standings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StatisticsRoute = StatisticsRouteImport.update({
+  id: '/statistics',
+  path: '/statistics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TeamsRoute = TeamsRouteImport.update({
   id: '/teams',
   path: '/teams',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/scorecard': typeof ScorecardRoute
   '/scorers': typeof ScorersRoute
   '/standings': typeof StandingsRoute
+  '/statistics': typeof StatisticsRoute
   '/teams': typeof TeamsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/match/$fixtureId': typeof MatchFixtureIdRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/scorecard': typeof ScorecardRoute
   '/scorers': typeof ScorersRoute
   '/standings': typeof StandingsRoute
+  '/statistics': typeof StatisticsRoute
   '/teams': typeof TeamsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/match/$fixtureId': typeof MatchFixtureIdRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/scorecard': typeof ScorecardRoute
   '/scorers': typeof ScorersRoute
   '/standings': typeof StandingsRoute
+  '/statistics': typeof StatisticsRoute
   '/teams': typeof TeamsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/match/$fixtureId': typeof MatchFixtureIdRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/scorecard'
     | '/scorers'
     | '/standings'
+    | '/statistics'
     | '/teams'
     | '/admin'
     | '/match/$fixtureId'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/scorecard'
     | '/scorers'
     | '/standings'
+    | '/statistics'
     | '/teams'
     | '/admin'
     | '/match/$fixtureId'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/scorecard'
     | '/scorers'
     | '/standings'
+    | '/statistics'
     | '/teams'
     | '/_authenticated/admin'
     | '/match/$fixtureId'
@@ -215,6 +227,7 @@ export interface RootRouteChildren {
   ScorecardRoute: typeof ScorecardRoute
   ScorersRoute: typeof ScorersRoute
   StandingsRoute: typeof StandingsRoute
+  StatisticsRoute: typeof StatisticsRoute
   TeamsRoute: typeof TeamsRoute
   MatchFixtureIdRoute: typeof MatchFixtureIdRoute
 }
@@ -305,6 +318,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StandingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/statistics': {
+      id: '/statistics'
+      path: '/statistics'
+      fullPath: '/statistics'
+      preLoaderRoute: typeof StatisticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/teams': {
       id: '/teams'
       path: '/teams'
@@ -353,6 +373,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScorecardRoute: ScorecardRoute,
   ScorersRoute: ScorersRoute,
   StandingsRoute: StandingsRoute,
+  StatisticsRoute: StatisticsRoute,
   TeamsRoute: TeamsRoute,
   MatchFixtureIdRoute: MatchFixtureIdRoute,
 }

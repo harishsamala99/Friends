@@ -6,7 +6,6 @@ import {
   Trash2,
   RotateCcw,
   Trophy,
-  BarChart3,
   Save,
   Zap,
   Crown,
@@ -1817,13 +1816,6 @@ export function FinalMatchScorecard() {
           <Trophy className="h-4 w-4 mr-2" />
           <span className="text-base sm:text-lg">Tournaments</span>
         </TabsTrigger>
-        <TabsTrigger
-          value="stats"
-          className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary"
-        >
-          <BarChart3 className="h-4 w-4 mr-2" />
-          <span className="text-base sm:text-lg">Statistics</span>
-        </TabsTrigger>
       </TabsList>
 
       {/* TOURNAMENT SETUP TAB */}
@@ -2981,80 +2973,6 @@ export function FinalMatchScorecard() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
-          )}
-        </div>
-      </TabsContent>
-
-      {/* STATISTICS TAB */}
-      <TabsContent value="stats" className="py-8 sm:py-12 px-4">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-8 sm:mb-12">
-            <div className="flex items-center gap-3 mb-2">
-              <BarChart3 className="h-8 w-8 text-pitch-foreground" />
-              <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-pitch-foreground">
-                Tournament Statistics
-              </h1>
-            </div>
-            <p className="text-pitch-foreground/70">Overall tournament performance metrics</p>
-          </div>
-
-          {tournaments.length === 0 ? (
-            <Card className="border-3 border-pitch-foreground/20 bg-linear-to-br from-card/98 via-card/96 to-card/94">
-              <CardContent className="py-12 text-center">
-                <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
-                <p className="text-muted-foreground text-lg">No tournament data available yet.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-8 lg:grid-cols-3">
-              {/* Most Goals */}
-              <Card className="border-3 border-primary/40 bg-linear-to-br from-card/98 via-card/96 to-card/94 shadow-lg">
-                <CardHeader className="bg-linear-to-r from-primary/20 to-primary/5 border-b-2 border-primary/20">
-                  <CardTitle className="text-lg">⚽ Most Goals</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {tournaments.map((tournament) => (
-                      <div key={tournament.id} className="border-b pb-4 last:border-0">
-                        <p className="text-xs text-muted-foreground mb-2 font-medium">
-                          {tournament.homeTeam} vs {tournament.awayTeam}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold">{tournament.stats.topScorer.name}</span>
-                          <span className="bg-primary/20 text-primary font-bold px-3 py-1 rounded-full text-sm">
-                            {tournament.stats.topScorer.goals}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Most Saves */}
-              <Card className="border-3 border-accent/40 bg-linear-to-br from-card/98 via-card/96 to-card/94 shadow-lg">
-                <CardHeader className="bg-linear-to-r from-accent/20 to-accent/5 border-b-2 border-accent/20">
-                  <CardTitle className="text-lg">🥅 Most Saves</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {tournaments.map((tournament) => (
-                      <div key={tournament.id} className="border-b pb-4 last:border-0">
-                        <p className="text-xs text-muted-foreground mb-2 font-medium">
-                          {tournament.homeTeam} vs {tournament.awayTeam}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold">{tournament.stats.topSaver.name}</span>
-                          <span className="bg-accent/20 text-accent font-bold px-3 py-1 rounded-full text-sm">
-                            {tournament.stats.topSaver.saves}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           )}
         </div>

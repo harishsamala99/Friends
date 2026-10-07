@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, type CSSProperties } from "react";
-import { Crown, Trophy, ShieldCheck } from "lucide-react";
+import { Crown, Trophy } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { FinalFireworks } from "@/components/final-fireworks";
 import { TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
@@ -442,10 +442,7 @@ function Home() {
                       <div className="mb-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
                         <div className="latest-final-card__award golden-award min-w-0 rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3 dark:shadow-[0_0_18px_rgba(255,214,102,0.35)]">
                           <div className="latest-final-card__award-heading flex min-w-0 items-center gap-2">
-                            <Trophy
-                              className="latest-final-card__award-icon size-4 shrink-0"
-                              aria-hidden="true"
-                            />
+                            <GoldenBootIcon className="latest-final-card__award-icon size-4 shrink-0" />
                             <p className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.16em]">
                               Golden Boot
                             </p>
@@ -462,10 +459,7 @@ function Home() {
                         </div>
                         <div className="latest-final-card__award golden-award min-w-0 rounded-xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 px-3 py-3">
                           <div className="latest-final-card__award-heading flex min-w-0 items-center gap-2">
-                            <ShieldCheck
-                              className="latest-final-card__award-icon size-4 shrink-0"
-                              aria-hidden="true"
-                            />
+                            <GoldenGlovesIcon className="latest-final-card__award-icon size-4 shrink-0" />
                             <p className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.16em]">
                               Golden Gloves
                             </p>
@@ -640,5 +634,42 @@ function Home() {
         </section>
       </div>
     </SiteLayout>
+  );
+}
+
+function GoldenBootIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m8.2 4.5 3.2 1.2 1.8 5.1 6.1 1.8a2.6 2.6 0 0 1 1.8 2.5v1.4H3.2a1.7 1.7 0 0 1-1.7-1.7v-.4c0-.9.5-1.6 1.3-2l4-2.1 1.4-5.8Z" />
+      <path d="m7.3 11.3 4.6 1.6m-8.5.5 3.4.8m1.5 2.3v1.7m5.2-1.7v1.7m5-1.7v1.7" />
+      <path d="m13.4 9.2 2.1-.8" />
+    </svg>
+  );
+}
+
+function GoldenGlovesIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M7.1 11.4V5.2a1.6 1.6 0 0 1 3.2 0v4.1-5.1a1.6 1.6 0 0 1 3.2 0v5-4.1a1.6 1.6 0 0 1 3.2 0v5-2.5a1.6 1.6 0 0 1 3.2 0v7.1c0 4-2.8 6.7-6.7 6.7h-1.1a6 6 0 0 1-4.7-2.3l-4-5.2a1.8 1.8 0 0 1 2.7-2.4l2.3 2.1" />
+      <path d="M8.2 17.8h8.5m-6.4 0v2.1m4.3-2.1v2.1" />
+    </svg>
   );
 }
