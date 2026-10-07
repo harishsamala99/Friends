@@ -6,6 +6,7 @@ import {
   ChartNoAxesCombined,
   Crown,
   Goal,
+  Hand,
   Medal,
   Shield,
   Sparkles,
@@ -18,6 +19,7 @@ import { EmptyState, TeamBadge } from "@/components/football-ui";
 import {
   fetchFixtures,
   fetchTopScorers,
+  fetchTopSaves,
   fetchTournamentStandings,
   fetchTournaments,
   type Fixture,
@@ -64,6 +66,13 @@ function StatisticsPage() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
+  const saves = useQuery({
+    queryKey: ["saves", tournamentId],
+    queryFn: () => fetchTopSaves(tournamentId),
+    enabled: Boolean(tournamentId),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
   const standings = useQuery({
     queryKey: ["standings", tournamentId],
     queryFn: () => fetchTournamentStandings(tournamentId),
@@ -106,23 +115,10 @@ function StatisticsPage() {
         Math.abs((a.home_score ?? 0) - (a.away_score ?? 0)),
     )[0];
   const topScorer = scorers.data?.[0];
-  const topPlaymaker = [...(scorers.data ?? [])].sort(
-    (a, b) => b.assists - a.assists || b.goals - a.goals || a.matches - b.matches,
-  )[0];
-  const recordedPlaymakerName = tournament?.top_assister_name?.trim();
-  const recordedPlaymakerAssists = tournament?.top_assister_assists ?? 0;
-  const playmaker = topPlaymaker?.assists
-    ? { player_name: topPlaymaker.player_name, team_name: topPlaymaker.team_name }
-    : recordedPlaymakerName &&
-        !["none", "tbd"].includes(recordedPlaymakerName.toLowerCase()) &&
-        recordedPlaymakerAssists > 0
-      ? { player_name: recordedPlaymakerName, team_name: "" }
-      : undefined;
-  const playmakerStat = topPlaymaker?.assists
-    ? `${topPlaymaker.assists} assists`
-    : playmaker
-      ? `${recordedPlaymakerAssists} assists`
-      : undefined;
+  const topGoalkeeper = (saves.data ?? []).find((player) => {
+    const position = player.position.trim().toLowerCase();
+    return position === "gk" || position.includes("goalkeeper");
+  });
   const topContribution = [...(scorers.data ?? [])].sort(
     (a, b) => b.goals + b.assists - (a.goals + a.assists) || b.goals - a.goals,
   )[0];
@@ -143,9 +139,15 @@ function StatisticsPage() {
 
   const isLoading =
     tournaments.isLoading ||
-    (Boolean(tournamentId) && (fixtures.isLoading || scorers.isLoading || standings.isLoading)) ||
+    (Boolean(tournamentId) &&
+      (fixtures.isLoading || scorers.isLoading || saves.isLoading || standings.isLoading)) ||
     (tournamentList.length > 0 && !tournamentId);
-  const hasError = tournaments.isError || fixtures.isError || scorers.isError || standings.isError;
+  const hasError =
+    tournaments.isError ||
+    fixtures.isError ||
+    scorers.isError ||
+    saves.isError ||
+    standings.isError;
 
   return (
     <SiteLayout>
@@ -323,10 +325,10 @@ function StatisticsPage() {
                   accent="bg-amber-100 text-amber-800 dark:bg-amber-300/15 dark:text-amber-200"
                 />
                 <AwardCard
-                  icon={Sparkles}
-                  title="Playmaker"
-                  player={playmaker}
-                  stat={playmakerStat}
+                  icon={Hand}
+                  title="Most Saves · Goalkeeper"
+                  player={topGoalkeeper}
+                  stat={topGoalkeeper ? `${topGoalkeeper.saves} saves` : undefined}
                   accent="bg-sky-100 text-sky-800 dark:bg-sky-300/15 dark:text-sky-200"
                 />
                 <AwardCard
