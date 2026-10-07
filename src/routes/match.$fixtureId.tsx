@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PlayerPicker } from "@/components/player-picker";
 import {
   EVENT_TYPES,
   fetchEvents,
@@ -58,7 +59,12 @@ function MatchPage() {
     queryFn: () => fetchFixture(fixtureId),
   });
   const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
-  const players = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
+  const players = useQuery({
+    queryKey: ["players"],
+    queryFn: () => fetchPlayers(),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
   const events = useQuery({
     queryKey: ["events", fixtureId],
     queryFn: () => fetchEvents(fixtureId),
@@ -108,7 +114,9 @@ function MatchPage() {
               homeTeamId={f.home_team_id}
               awayTeamId={f.away_team_id}
               players={(players.data ?? []).filter(
-                (p) => p.team_id === f.home_team_id || p.team_id === f.away_team_id,
+                (p) =>
+                  p.status === "Active" &&
+                  (p.team_id === f.home_team_id || p.team_id === f.away_team_id),
               )}
               events={events.data ?? []}
               onSaved={() => {
@@ -389,23 +397,17 @@ function MatchEditor({
               </h4>
               <label className="space-y-2 text-sm font-medium">
                 Player
-                <select
-                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                <PlayerPicker
+                  className="w-full"
+                  players={homeTeamPlayers}
                   value={homePlayerId}
-                  onChange={(event) => {
-                    const playerId = event.target.value;
+                  onValueChange={(playerId) => {
                     setHomePlayerId(playerId);
                     setHomeGoals(String(goalsByPlayerAndTeam[`${playerId}-${homeTeamId}`] ?? 0));
                   }}
                   disabled={homeTeamPlayers.length === 0}
-                >
-                  <option value="">Select home player</option>
-                  {homeTeamPlayers.map((player) => (
-                    <option key={player.id} value={player.id}>
-                      {player.name}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Search or select home player"
+                />
               </label>
               {homeTeamPlayers.length === 0 && (
                 <span className="text-xs text-muted-foreground">
@@ -443,23 +445,17 @@ function MatchEditor({
               </h4>
               <label className="space-y-2 text-sm font-medium">
                 Player
-                <select
-                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                <PlayerPicker
+                  className="w-full"
+                  players={awayTeamPlayers}
                   value={awayPlayerId}
-                  onChange={(event) => {
-                    const playerId = event.target.value;
+                  onValueChange={(playerId) => {
                     setAwayPlayerId(playerId);
                     setAwayGoals(String(goalsByPlayerAndTeam[`${playerId}-${awayTeamId}`] ?? 0));
                   }}
                   disabled={awayTeamPlayers.length === 0}
-                >
-                  <option value="">Select away player</option>
-                  {awayTeamPlayers.map((player) => (
-                    <option key={player.id} value={player.id}>
-                      {player.name}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Search or select away player"
+                />
               </label>
               {awayTeamPlayers.length === 0 && (
                 <span className="text-xs text-muted-foreground">
@@ -503,23 +499,17 @@ function MatchEditor({
               </h4>
               <label className="space-y-2 text-sm font-medium">
                 Goalkeeper
-                <select
-                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                <PlayerPicker
+                  className="w-full"
+                  players={homeGKs}
                   value={homeGKId}
-                  onChange={(event) => {
-                    const playerId = event.target.value;
+                  onValueChange={(playerId) => {
                     setHomeGKId(playerId);
                     setHomeSaves(String(savesByPlayerAndTeam[`${playerId}-${homeTeamId}`] ?? 0));
                   }}
                   disabled={homeGKs.length === 0}
-                >
-                  <option value="">Select home goalkeeper</option>
-                  {homeGKs.map((gk) => (
-                    <option key={gk.id} value={gk.id}>
-                      {gk.name}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Search or select home goalkeeper"
+                />
               </label>
               {homeGKs.length === 0 && (
                 <span className="text-xs text-muted-foreground">
@@ -557,23 +547,17 @@ function MatchEditor({
               </h4>
               <label className="space-y-2 text-sm font-medium">
                 Goalkeeper
-                <select
-                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                <PlayerPicker
+                  className="w-full"
+                  players={awayGKs}
                   value={awayGKId}
-                  onChange={(event) => {
-                    const playerId = event.target.value;
+                  onValueChange={(playerId) => {
                     setAwayGKId(playerId);
                     setAwaySaves(String(savesByPlayerAndTeam[`${playerId}-${awayTeamId}`] ?? 0));
                   }}
                   disabled={awayGKs.length === 0}
-                >
-                  <option value="">Select away goalkeeper</option>
-                  {awayGKs.map((gk) => (
-                    <option key={gk.id} value={gk.id}>
-                      {gk.name}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Search or select away goalkeeper"
+                />
               </label>
               {awayGKs.length === 0 && (
                 <span className="text-xs text-muted-foreground">

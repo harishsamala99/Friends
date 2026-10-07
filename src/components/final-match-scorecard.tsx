@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PlayerPicker } from "@/components/player-picker";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -582,7 +583,12 @@ export function FinalMatchScorecard() {
   const navigate = useNavigate();
   // Fetch teams and players
   const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
-  const playersQuery = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
+  const playersQuery = useQuery({
+    queryKey: ["players"],
+    queryFn: () => fetchPlayers(),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
   const competitionsQuery = useQuery({ queryKey: ["competitions"], queryFn: fetchCompetitions });
   const competitionId =
     competitionsQuery.data?.[0]?.id ??
@@ -777,24 +783,61 @@ export function FinalMatchScorecard() {
         name: p.name,
         isGK: p.position?.toLowerCase().includes("goalkeeper") ?? false,
       }));
+      const isChangingTeam =
+        side === "home" ? selectedHomeTeam !== teamId : selectedAwayTeam !== teamId;
 
       if (side === "home") {
-        setHome({
-          ...home,
+        setHome((current) => ({
+          ...current,
           name: team.name,
-          players: players.length > 0 ? players : home.players,
-        });
+          players,
+          ...(isChangingTeam ? { goals: [], assists: [], saves: [] } : {}),
+        }));
         setSelectedHomeTeam(teamId);
       } else {
-        setAway({
-          ...away,
+        setAway((current) => ({
+          ...current,
           name: team.name,
-          players: players.length > 0 ? players : away.players,
-        });
+          players,
+          ...(isChangingTeam ? { goals: [], assists: [], saves: [] } : {}),
+        }));
         setSelectedAwayTeam(teamId);
       }
     }
   };
+
+  useEffect(() => {
+    if (!playersQuery.data) return;
+
+    for (const [side, teamId] of [
+      ["home", selectedHomeTeam],
+      ["away", selectedAwayTeam],
+    ] as const) {
+      const team = teamsQuery.data?.find((item) => item.id === teamId);
+      if (!teamId || !team) continue;
+      const roster = playersQuery.data
+        .filter((player) => player.team_id === teamId && player.status === "Active")
+        .map((player) => ({
+          id: player.id,
+          name: player.name,
+          isGK: player.position?.toLowerCase().includes("goalkeeper") ?? false,
+        }));
+      const setTeam = side === "home" ? setHome : setAway;
+      setTeam((current) => {
+        const isSameRoster =
+          current.players.length === roster.length &&
+          current.players.every(
+            (player, index) =>
+              player.id === roster[index]?.id &&
+              player.name === roster[index]?.name &&
+              player.isGK === roster[index]?.isGK,
+          );
+        return current.name === team.name && isSameRoster
+          ? current
+          : { ...current, name: team.name, players: roster };
+      });
+    }
+  }, [playersQuery.data, selectedHomeTeam, selectedAwayTeam, teamsQuery.data]);
 
   const leagueFixtures = useMemo(
     () => (competitionFixturesQuery.data ?? []).filter((fixture) => !fixture.tournament_id),
@@ -1418,7 +1461,7 @@ export function FinalMatchScorecard() {
 
   // Add goal
   const addGoal = (team: "home" | "away") => {
-    const players = team === "home" ? home.players : away.players;
+    const players = outfieldPlayers(team === "home" ? home.players : away.players);
     const player = players[0];
     if (!player) return;
 
@@ -2267,7 +2310,8 @@ export function FinalMatchScorecard() {
                         <span className="text-lg font-bold text-primary w-8 text-center shrink-0">
                           {idx + 1}
                         </span>
-                        <Select
+                        <PlayerPicker
+                          players={outfieldPlayers(home.players)}
                           value={goal.playerId}
                           onValueChange={(playerId) => {
                             const player = home.players.find((p) => p.id === playerId);
@@ -2276,18 +2320,9 @@ export function FinalMatchScorecard() {
                               playerName: player?.name || "",
                             });
                           }}
-                        >
-                          <SelectTrigger className="flex-1 bg-background/80 border-primary/30 hover:border-primary/50">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {outfieldPlayers(home.players).map((player) => (
-                              <SelectItem key={player.id} value={player.id}>
-                                {player.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Search or select a scorer"
+                          className="flex-1 bg-background/80 border-primary/30 hover:border-primary/50"
+                        />
                         <Input
                           type="number"
                           min="0"
@@ -2348,7 +2383,8 @@ export function FinalMatchScorecard() {
                         <span className="text-lg font-bold text-secondary w-8 text-center shrink-0">
                           {idx + 1}
                         </span>
-                        <Select
+                        <PlayerPicker
+                          players={outfieldPlayers(away.players)}
                           value={goal.playerId}
                           onValueChange={(playerId) => {
                             const player = away.players.find((p) => p.id === playerId);
@@ -2357,18 +2393,9 @@ export function FinalMatchScorecard() {
                               playerName: player?.name || "",
                             });
                           }}
-                        >
-                          <SelectTrigger className="flex-1 bg-background/80 border-secondary/30 hover:border-secondary/50">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {outfieldPlayers(away.players).map((player) => (
-                              <SelectItem key={player.id} value={player.id}>
-                                {player.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Search or select a scorer"
+                          className="flex-1 bg-background/80 border-secondary/30 hover:border-secondary/50"
+                        />
                         <Input
                           type="number"
                           min="0"
@@ -2432,7 +2459,8 @@ export function FinalMatchScorecard() {
                         <span className="text-lg font-bold text-primary w-8 text-center shrink-0">
                           {idx + 1}
                         </span>
-                        <Select
+                        <PlayerPicker
+                          players={gkFilteredPlayers(home.players)}
                           value={save.playerId}
                           onValueChange={(playerId) => {
                             const player = home.players.find((p) => p.id === playerId);
@@ -2441,18 +2469,9 @@ export function FinalMatchScorecard() {
                               playerName: player?.name || "",
                             });
                           }}
-                        >
-                          <SelectTrigger className="flex-1 bg-background/80 border-primary/30 hover:border-primary/50">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {gkFilteredPlayers(home.players).map((player) => (
-                              <SelectItem key={player.id} value={player.id}>
-                                {player.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Search or select a goalkeeper"
+                          className="flex-1 bg-background/80 border-primary/30 hover:border-primary/50"
+                        />
                         <Input
                           type="number"
                           min="0"
@@ -2513,7 +2532,8 @@ export function FinalMatchScorecard() {
                         <span className="text-lg font-bold text-secondary w-8 text-center shrink-0">
                           {idx + 1}
                         </span>
-                        <Select
+                        <PlayerPicker
+                          players={gkFilteredPlayers(away.players)}
                           value={save.playerId}
                           onValueChange={(playerId) => {
                             const player = away.players.find((p) => p.id === playerId);
@@ -2522,18 +2542,9 @@ export function FinalMatchScorecard() {
                               playerName: player?.name || "",
                             });
                           }}
-                        >
-                          <SelectTrigger className="flex-1 bg-background/80 border-secondary/30 hover:border-secondary/50">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {gkFilteredPlayers(away.players).map((player) => (
-                              <SelectItem key={player.id} value={player.id}>
-                                {player.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Search or select a goalkeeper"
+                          className="flex-1 bg-background/80 border-secondary/30 hover:border-secondary/50"
+                        />
                         <Input
                           type="number"
                           min="0"
