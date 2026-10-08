@@ -1,14 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Award, Flame, Goal, Shield, Trophy } from "lucide-react";
-import { toast } from "sonner";
 import type { ReactNode } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { EmptyState, PageHeader, TeamBadge, ListSkeleton } from "@/components/football-ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   fetchAllFixtureAppearances,
@@ -21,7 +18,6 @@ import {
   fetchTournamentChampionCaptains,
   fetchTeams,
   fetchTournaments,
-  saveTournamentChampionCaptain,
   type Fixture,
   type Competition,
   type Player,
@@ -69,7 +65,6 @@ async function fetchAllBestXIs(tournaments: Tournament[]) {
 }
 
 function HallOfFamePage() {
-  const queryClient = useQueryClient();
   const data = useQuery({
     queryKey: ["hall-of-fame"],
     queryFn: async (): Promise<HallData> => {
@@ -327,6 +322,7 @@ function HallOfFamePage() {
               icon={<Shield />}
               players={goalkeeperLeaders}
               stat="saves"
+              teamsById={teamsById}
               playerTournamentIds={playerTournamentIds}
               tournamentsById={tournamentsById}
               emptyMessage="Tournament title-winning goalkeepers and the leaders in recorded saves will appear here."
@@ -336,6 +332,7 @@ function HallOfFamePage() {
               icon={<Goal />}
               players={goalScorerLeaders}
               stat="goals"
+              teamsById={teamsById}
               playerTournamentIds={playerTournamentIds}
               tournamentsById={tournamentsById}
               emptyMessage="Tournament title-winning goal scorers and the leaders in recorded goals will appear here."
@@ -359,26 +356,21 @@ function HallOfFamePage() {
                         </span>
                         <PlayerAvatar player={player} />
                         <div className="min-w-0 flex-1">
-                          <Link
-                            to="/players/$playerId"
-                            params={{ playerId: player.id }}
-                            className="font-semibold hover:underline"
-                          >
-                            {player.name}
-                          </Link>
+                          <p className="font-semibold">{player.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {player.team_id
+                              ? (teamsById.get(player.team_id)?.name ?? "Team not recorded")
+                              : "Team not recorded"}
+                          </p>
                           <p className="text-sm text-muted-foreground">
                             {wins.length} champion captaincy{wins.length === 1 ? "" : "s"}
                           </p>
                         </div>
                         <div className="flex flex-wrap justify-end gap-1">
                           {wins.map((tournament) => (
-                            <Link
-                              key={tournament.id}
-                              to="/fixtures"
-                              search={{ tournamentId: tournament.id }}
-                            >
-                              <Badge variant="secondary">{tournament.tournament_name}</Badge>
-                            </Link>
+                            <Badge key={tournament.id} variant="secondary">
+                              {tournament.tournament_name}
+                            </Badge>
                           ))}
                         </div>
                       </CardContent>
@@ -386,15 +378,6 @@ function HallOfFamePage() {
                   ))}
                 </div>
               )}
-              <TournamentCaptainEditor
-                tournaments={tournaments}
-                teams={teams}
-                players={players}
-                assignments={d.captains}
-                onSaved={() => {
-                  void queryClient.invalidateQueries({ queryKey: ["hall-of-fame"] });
-                }}
-              />
             </section>
 
             <section>
@@ -415,26 +398,16 @@ function HallOfFamePage() {
                         </span>
                         <TeamBadge team={team} size={44} />
                         <div className="min-w-0 flex-1">
-                          <Link
-                            to="/teams"
-                            search={{ teamId: team.id }}
-                            className="font-semibold hover:underline"
-                          >
-                            {team.name}
-                          </Link>
+                          <p className="font-semibold">{team.name}</p>
                           <p className="text-sm text-muted-foreground">
                             {wins.length} title{wins.length === 1 ? "" : "s"}
                           </p>
                         </div>
                         <div className="flex flex-wrap justify-end gap-1">
                           {wins.map((tournament) => (
-                            <Link
-                              key={tournament.id}
-                              to="/fixtures"
-                              search={{ tournamentId: tournament.id }}
-                            >
-                              <Badge variant="secondary">{tournament.tournament_name}</Badge>
-                            </Link>
+                            <Badge key={tournament.id} variant="secondary">
+                              {tournament.tournament_name}
+                            </Badge>
                           ))}
                         </div>
                       </CardContent>
@@ -454,38 +427,32 @@ function HallOfFamePage() {
                     const champion = teamByRecordedName(tournament.winner);
                     const close = Math.abs(tournament.home_score - tournament.away_score) === 1;
                     return (
-                      <Link
-                        key={tournament.id}
-                        to="/fixtures"
-                        search={{ tournamentId: tournament.id }}
-                      >
-                        <Card className="h-full transition-shadow hover:shadow-elevated">
-                          <CardContent className="space-y-3 p-5">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                                  {tournament.tournament_name}
-                                </p>
-                                <p className="mt-1 font-display text-lg font-bold">
-                                  {tournament.home_team}{" "}
-                                  <span className="text-muted-foreground">vs</span>{" "}
-                                  {tournament.away_team}
-                                </p>
-                              </div>
-                              {champion && <TeamBadge team={champion} size={34} />}
+                      <Card key={tournament.id} className="h-full">
+                        <CardContent className="space-y-3 p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                                {tournament.tournament_name}
+                              </p>
+                              <p className="mt-1 font-display text-lg font-bold">
+                                {tournament.home_team}{" "}
+                                <span className="text-muted-foreground">vs</span>{" "}
+                                {tournament.away_team}
+                              </p>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="font-display text-2xl font-bold tabular-nums">
-                                {tournament.home_score} – {tournament.away_score}
-                              </span>
-                              <span className="text-sm font-semibold text-primary">
-                                Champion: {tournament.winner}
-                              </span>
-                            </div>
-                            {close && <Badge variant="secondary">One-goal finish</Badge>}
-                          </CardContent>
-                        </Card>
-                      </Link>
+                            {champion && <TeamBadge team={champion} size={34} />}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="font-display text-2xl font-bold tabular-nums">
+                              {tournament.home_score} – {tournament.away_score}
+                            </span>
+                            <span className="text-sm font-semibold text-primary">
+                              Champion: {tournament.winner}
+                            </span>
+                          </div>
+                          {close && <Badge variant="secondary">One-goal finish</Badge>}
+                        </CardContent>
+                      </Card>
                     );
                   })}
                 </div>
@@ -499,26 +466,20 @@ function HallOfFamePage() {
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                   {upsets.map(({ fixture, winner, opponent, gap }) => (
-                    <Link
-                      key={fixture.id}
-                      to="/match/$fixtureId"
-                      params={{ fixtureId: fixture.id }}
-                    >
-                      <Card className="h-full transition-shadow hover:shadow-elevated">
-                        <CardContent className="flex items-center gap-3 p-4">
-                          <Flame className="size-6 shrink-0 text-orange-500" />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold">
-                              {winner.name} beat {opponent.name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {fixture.home_score}–{fixture.away_score} · pre-match gap{" "}
-                              {gap.toFixed(2)} points per match
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
+                    <Card key={fixture.id} className="h-full">
+                      <CardContent className="flex items-center gap-3 p-4">
+                        <Flame className="size-6 shrink-0 text-orange-500" />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold">
+                            {winner.name} beat {opponent.name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {fixture.home_score}–{fixture.away_score} · pre-match gap{" "}
+                            {gap.toFixed(2)} points per match
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               )}
@@ -537,31 +498,25 @@ function HallOfFamePage() {
                       ? tournamentsById.get(fixture.tournament_id)
                       : undefined;
                     return (
-                      <Link
-                        key={fixture.id}
-                        to="/match/$fixtureId"
-                        params={{ fixtureId: fixture.id }}
-                      >
-                        <Card className="h-full transition-shadow hover:shadow-elevated">
-                          <CardContent className="flex items-center gap-3 p-4">
-                            {home && <TeamBadge team={home} size={34} />}
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate font-semibold">
-                                {home?.name} <span className="text-muted-foreground">vs</span>{" "}
-                                {away?.name}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {tournament?.tournament_name ?? "League match"} ·{" "}
-                                {formatDate(fixture.kickoff)}
-                              </p>
-                            </div>
-                            <span className="font-display text-xl font-bold tabular-nums">
-                              {fixture.home_score}–{fixture.away_score}
-                            </span>
-                            {away && <TeamBadge team={away} size={34} />}
-                          </CardContent>
-                        </Card>
-                      </Link>
+                      <Card key={fixture.id} className="h-full">
+                        <CardContent className="flex items-center gap-3 p-4">
+                          {home && <TeamBadge team={home} size={34} />}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-semibold">
+                              {home?.name} <span className="text-muted-foreground">vs</span>{" "}
+                              {away?.name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {tournament?.tournament_name ?? "League match"} ·{" "}
+                              {formatDate(fixture.kickoff)}
+                            </p>
+                          </div>
+                          <span className="font-display text-xl font-bold tabular-nums">
+                            {fixture.home_score}–{fixture.away_score}
+                          </span>
+                          {away && <TeamBadge team={away} size={34} />}
+                        </CardContent>
+                      </Card>
                     );
                   })}
                 </div>
@@ -575,23 +530,20 @@ function HallOfFamePage() {
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                   {bestPerformances.map((performance) => (
-                    <Link
+                    <Card
                       key={`${performance.tournamentId}-${performance.label}`}
-                      to="/fixtures"
-                      search={{ tournamentId: performance.tournamentId }}
+                      className="h-full"
                     >
-                      <Card className="h-full transition-shadow hover:shadow-elevated">
-                        <CardContent className="flex items-start gap-3 p-4">
-                          <Trophy className="mt-0.5 size-5 shrink-0 text-primary" />
-                          <div>
-                            <p className="font-semibold">{performance.label}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {performance.tournamentName}
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
+                      <CardContent className="flex items-start gap-3 p-4">
+                        <Trophy className="mt-0.5 size-5 shrink-0 text-primary" />
+                        <div>
+                          <p className="font-semibold">{performance.label}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {performance.tournamentName}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                   {[...bestXIByTournament]
                     .filter(
@@ -601,21 +553,15 @@ function HallOfFamePage() {
                     .map((tournamentId) => {
                       const tournament = tournamentsById.get(tournamentId);
                       return tournament ? (
-                        <Link
-                          key={`${tournamentId}-best-xi`}
-                          to="/fixtures"
-                          search={{ tournamentId }}
-                        >
-                          <Card className="transition-shadow hover:shadow-elevated">
-                            <CardContent className="flex items-center gap-3 p-4">
-                              <Award className="size-5 text-primary" />
-                              <span className="font-semibold">Best XI finalized</span>
-                              <span className="ml-auto text-sm text-muted-foreground">
-                                {tournament.tournament_name}
-                              </span>
-                            </CardContent>
-                          </Card>
-                        </Link>
+                        <Card key={`${tournamentId}-best-xi`}>
+                          <CardContent className="flex items-center gap-3 p-4">
+                            <Award className="size-5 text-primary" />
+                            <span className="font-semibold">Best XI finalized</span>
+                            <span className="ml-auto text-sm text-muted-foreground">
+                              {tournament.tournament_name}
+                            </span>
+                          </CardContent>
+                        </Card>
                       ) : null;
                     })}
                 </div>
@@ -642,119 +588,6 @@ function SectionTitle({ icon, title }: { icon: ReactNode; title: string }) {
       <span className="text-primary">{icon}</span>
       <h2 className="font-display text-2xl font-bold">{title}</h2>
     </div>
-  );
-}
-
-function TournamentCaptainEditor({
-  tournaments,
-  teams,
-  players,
-  assignments,
-  onSaved,
-}: {
-  tournaments: Tournament[];
-  teams: Team[];
-  players: Player[];
-  assignments: HallData["captains"];
-  onSaved: () => void;
-}) {
-  const [selectedPlayers, setSelectedPlayers] = useState<Record<string, string>>({});
-  const [savingTournamentId, setSavingTournamentId] = useState<string | null>(null);
-  const eligibleTournaments = tournaments.filter(
-    (tournament) =>
-      tournament.status === "completed" && matchingTeam(tournament.winner, teams) !== undefined,
-  );
-
-  useEffect(() => {
-    setSelectedPlayers(
-      Object.fromEntries(
-        assignments.map((assignment) => [assignment.tournament_id, assignment.player_id]),
-      ),
-    );
-  }, [assignments]);
-
-  async function saveCaptain(tournamentId: string) {
-    const playerId = selectedPlayers[tournamentId];
-    if (!playerId) {
-      toast.error("Select the officially recorded champion captain first.");
-      return;
-    }
-    setSavingTournamentId(tournamentId);
-    try {
-      await saveTournamentChampionCaptain(tournamentId, playerId);
-      toast.success("Champion captain assignment saved");
-      onSaved();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save captain assignment");
-    } finally {
-      setSavingTournamentId(null);
-    }
-  }
-
-  if (eligibleTournaments.length === 0) return null;
-
-  return (
-    <details className="mt-5 rounded-xl border border-border/60 bg-card p-4">
-      <summary className="cursor-pointer font-semibold">Record official champion captains</summary>
-      <p className="my-3 text-sm text-muted-foreground">
-        Record a captain only when official tournament records confirm they captained the champion.
-        This does not infer captains from managers or current squad membership.
-      </p>
-      <div className="space-y-3">
-        {eligibleTournaments.map((tournament) => {
-          const champion = matchingTeam(tournament.winner, teams);
-          if (!champion) return null;
-          const isSaving = savingTournamentId === tournament.id;
-          return (
-            <div
-              key={tournament.id}
-              className="flex flex-col gap-3 rounded-lg border border-border/50 p-3 sm:flex-row sm:items-end"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{tournament.tournament_name}</p>
-                <p className="mb-2 text-sm text-muted-foreground">Champion: {champion.name}</p>
-                <label className="block text-sm font-medium">
-                  Official captain
-                  <select
-                    aria-label={`Official captain for ${tournament.tournament_name}`}
-                    className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={selectedPlayers[tournament.id] ?? ""}
-                    onChange={(event) =>
-                      setSelectedPlayers((current) => ({
-                        ...current,
-                        [tournament.id]: event.target.value,
-                      }))
-                    }
-                    disabled={isSaving}
-                  >
-                    <option value="">Select a player</option>
-                    {players.map((player) => {
-                      const playerTeam = player.team_id
-                        ? teams.find((team) => team.id === player.team_id)
-                        : undefined;
-                      return (
-                        <option key={player.id} value={player.id}>
-                          {player.name}
-                          {playerTeam ? ` · ${playerTeam.name}` : ""}
-                          {player.status !== "Active" ? " · inactive" : ""}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
-              </div>
-              <Button
-                size="sm"
-                disabled={isSaving || !selectedPlayers[tournament.id]}
-                onClick={() => void saveCaptain(tournament.id)}
-              >
-                {isSaving ? "Saving…" : "Save captain"}
-              </Button>
-            </div>
-          );
-        })}
-      </div>
-    </details>
   );
 }
 
@@ -787,6 +620,7 @@ function PlayerRecognitionSection({
   icon,
   players,
   stat,
+  teamsById,
   playerTournamentIds,
   tournamentsById,
   emptyMessage,
@@ -795,6 +629,7 @@ function PlayerRecognitionSection({
   icon: ReactNode;
   players: RecognitionPlayer[];
   stat: "goals" | "saves";
+  teamsById: Map<string, Team>;
   playerTournamentIds: Map<string, Set<string>>;
   tournamentsById: Map<string, Tournament>;
   emptyMessage: string;
@@ -811,32 +646,35 @@ function PlayerRecognitionSection({
               <h3 className="font-display text-lg font-semibold">{group.title}</h3>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {group.players.map(({ player, metrics }, index) => (
-                  <Link key={player.id} to="/players/$playerId" params={{ playerId: player.id }}>
-                    <Card className="h-full transition-shadow hover:shadow-elevated">
-                      <CardContent className="flex items-center gap-3 p-4">
-                        <span className="font-display text-xl font-bold text-primary">
-                          {sharedRank(
-                            group.players,
-                            index,
-                            (left, right) =>
-                              left.metrics.titles === right.metrics.titles &&
-                              left.metrics[stat] === right.metrics[stat],
-                          )}
-                        </span>
-                        <PlayerAvatar player={player} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-semibold">{player.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {stat === "goals" &&
-                              `${metrics.goals} goal${metrics.goals === 1 ? "" : "s"} · `}
-                            {metrics.titles} title{metrics.titles === 1 ? "" : "s"}
-                            {stat === "saves" &&
-                              ` · ${metrics.saves} save${metrics.saves === 1 ? "" : "s"}`}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                  <Card key={player.id} className="h-full">
+                    <CardContent className="flex items-center gap-3 p-4">
+                      <span className="font-display text-xl font-bold text-primary">
+                        {sharedRank(
+                          group.players,
+                          index,
+                          (left, right) =>
+                            left.metrics.titles === right.metrics.titles &&
+                            left.metrics[stat] === right.metrics[stat],
+                        )}
+                      </span>
+                      <PlayerAvatar player={player} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold">{player.name}</p>
+                        <p className="truncate text-sm text-muted-foreground">
+                          {player.team_id
+                            ? (teamsById.get(player.team_id)?.name ?? "Team not recorded")
+                            : "Team not recorded"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {stat === "goals" &&
+                            `${metrics.goals} goal${metrics.goals === 1 ? "" : "s"} · `}
+                          {metrics.titles} title{metrics.titles === 1 ? "" : "s"}
+                          {stat === "saves" &&
+                            ` · ${metrics.saves} save${metrics.saves === 1 ? "" : "s"}`}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </div>
