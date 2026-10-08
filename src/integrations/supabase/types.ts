@@ -59,6 +59,69 @@ export type Database = {
         };
         Relationships: [];
       };
+      fixture_player_appearances: {
+        Row: {
+          fixture_id: string;
+          player_id: string;
+          team_id: string;
+          created_at: string;
+        };
+        Insert: {
+          fixture_id: string;
+          player_id: string;
+          team_id: string;
+          created_at?: string;
+        };
+        Update: {
+          fixture_id?: string;
+          player_id?: string;
+          team_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      player_achievements: {
+        Row: {
+          player_id: string;
+          achievement_key: string;
+          unlocked_at: string;
+          evidence_fixture_id: string | null;
+        };
+        Insert: {
+          player_id: string;
+          achievement_key: string;
+          unlocked_at: string;
+          evidence_fixture_id?: string | null;
+        };
+        Update: {
+          player_id?: string;
+          achievement_key?: string;
+          unlocked_at?: string;
+          evidence_fixture_id?: string | null;
+        };
+        Relationships: [];
+      };
+      tournament_champion_captains: {
+        Row: {
+          tournament_id: string;
+          team_id: string;
+          player_id: string;
+          recorded_at: string;
+        };
+        Insert: {
+          tournament_id: string;
+          team_id: string;
+          player_id: string;
+          recorded_at?: string;
+        };
+        Update: {
+          tournament_id?: string;
+          team_id?: string;
+          player_id?: string;
+          recorded_at?: string;
+        };
+        Relationships: [];
+      };
       competitions: {
         Row: {
           archived: boolean;
@@ -690,6 +753,14 @@ export type Database = {
       };
       recalc_fixture_score: {
         Args: { _fixture_id: string };
+        Returns: undefined;
+      };
+      save_fixture_player_appearances: {
+        Args: { p_appearances: Json; p_fixture_id: string };
+        Returns: undefined;
+      };
+      save_tournament_champion_captain: {
+        Args: { p_player_id: string; p_tournament_id: string };
         Returns: undefined;
       };
     };

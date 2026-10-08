@@ -11,11 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AchievementsRouteImport } from './routes/achievements'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BestXiRouteImport } from './routes/best-xi'
 import { Route as CodeOfConductRouteImport } from './routes/code-of-conduct'
 import { Route as FinalRouteImport } from './routes/final'
 import { Route as FixturesRouteImport } from './routes/fixtures'
+import { Route as HallOfFameRouteImport } from './routes/hall-of-fame'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as SavesRouteImport } from './routes/saves'
 import { Route as ScorecardRouteImport } from './routes/scorecard'
@@ -25,6 +27,7 @@ import { Route as StatisticsRouteImport } from './routes/statistics'
 import { Route as TeamsRouteImport } from './routes/teams'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as MatchFixtureIdRouteImport } from './routes/match.$fixtureId'
+import { Route as PlayersPlayerIdRouteImport } from './routes/players.$playerId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -33,6 +36,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AchievementsRoute = AchievementsRouteImport.update({
+  id: '/achievements',
+  path: '/achievements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -58,6 +66,11 @@ const FinalRoute = FinalRouteImport.update({
 const FixturesRoute = FixturesRouteImport.update({
   id: '/fixtures',
   path: '/fixtures',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HallOfFameRoute = HallOfFameRouteImport.update({
+  id: '/hall-of-fame',
+  path: '/hall-of-fame',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResultsRoute = ResultsRouteImport.update({
@@ -105,14 +118,21 @@ const MatchFixtureIdRoute = MatchFixtureIdRouteImport.update({
   path: '/match/$fixtureId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlayersPlayerIdRoute = PlayersPlayerIdRouteImport.update({
+  id: '/players/$playerId',
+  path: '/players/$playerId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/achievements': typeof AchievementsRoute
   '/auth': typeof AuthRoute
   '/best-xi': typeof BestXiRoute
   '/code-of-conduct': typeof CodeOfConductRoute
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
+  '/hall-of-fame': typeof HallOfFameRoute
   '/results': typeof ResultsRoute
   '/saves': typeof SavesRoute
   '/scorecard': typeof ScorecardRoute
@@ -122,14 +142,17 @@ export interface FileRoutesByFullPath {
   '/teams': typeof TeamsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/match/$fixtureId': typeof MatchFixtureIdRoute
+  '/players/$playerId': typeof PlayersPlayerIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/achievements': typeof AchievementsRoute
   '/auth': typeof AuthRoute
   '/best-xi': typeof BestXiRoute
   '/code-of-conduct': typeof CodeOfConductRoute
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
+  '/hall-of-fame': typeof HallOfFameRoute
   '/results': typeof ResultsRoute
   '/saves': typeof SavesRoute
   '/scorecard': typeof ScorecardRoute
@@ -139,16 +162,19 @@ export interface FileRoutesByTo {
   '/teams': typeof TeamsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/match/$fixtureId': typeof MatchFixtureIdRoute
+  '/players/$playerId': typeof PlayersPlayerIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/achievements': typeof AchievementsRoute
   '/auth': typeof AuthRoute
   '/best-xi': typeof BestXiRoute
   '/code-of-conduct': typeof CodeOfConductRoute
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
+  '/hall-of-fame': typeof HallOfFameRoute
   '/results': typeof ResultsRoute
   '/saves': typeof SavesRoute
   '/scorecard': typeof ScorecardRoute
@@ -158,16 +184,19 @@ export interface FileRoutesById {
   '/teams': typeof TeamsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/match/$fixtureId': typeof MatchFixtureIdRoute
+  '/players/$playerId': typeof PlayersPlayerIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/achievements'
     | '/auth'
     | '/best-xi'
     | '/code-of-conduct'
     | '/final'
     | '/fixtures'
+    | '/hall-of-fame'
     | '/results'
     | '/saves'
     | '/scorecard'
@@ -177,14 +206,17 @@ export interface FileRouteTypes {
     | '/teams'
     | '/admin'
     | '/match/$fixtureId'
+    | '/players/$playerId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/achievements'
     | '/auth'
     | '/best-xi'
     | '/code-of-conduct'
     | '/final'
     | '/fixtures'
+    | '/hall-of-fame'
     | '/results'
     | '/saves'
     | '/scorecard'
@@ -194,15 +226,18 @@ export interface FileRouteTypes {
     | '/teams'
     | '/admin'
     | '/match/$fixtureId'
+    | '/players/$playerId'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/achievements'
     | '/auth'
     | '/best-xi'
     | '/code-of-conduct'
     | '/final'
     | '/fixtures'
+    | '/hall-of-fame'
     | '/results'
     | '/saves'
     | '/scorecard'
@@ -212,16 +247,19 @@ export interface FileRouteTypes {
     | '/teams'
     | '/_authenticated/admin'
     | '/match/$fixtureId'
+    | '/players/$playerId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AchievementsRoute: typeof AchievementsRoute
   AuthRoute: typeof AuthRoute
   BestXiRoute: typeof BestXiRoute
   CodeOfConductRoute: typeof CodeOfConductRoute
   FinalRoute: typeof FinalRoute
   FixturesRoute: typeof FixturesRoute
+  HallOfFameRoute: typeof HallOfFameRoute
   ResultsRoute: typeof ResultsRoute
   SavesRoute: typeof SavesRoute
   ScorecardRoute: typeof ScorecardRoute
@@ -230,6 +268,7 @@ export interface RootRouteChildren {
   StatisticsRoute: typeof StatisticsRoute
   TeamsRoute: typeof TeamsRoute
   MatchFixtureIdRoute: typeof MatchFixtureIdRoute
+  PlayersPlayerIdRoute: typeof PlayersPlayerIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -246,6 +285,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/achievements': {
+      id: '/achievements'
+      path: '/achievements'
+      fullPath: '/achievements'
+      preLoaderRoute: typeof AchievementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -281,6 +327,13 @@ declare module '@tanstack/react-router' {
       path: '/fixtures'
       fullPath: '/fixtures'
       preLoaderRoute: typeof FixturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hall-of-fame': {
+      id: '/hall-of-fame'
+      path: '/hall-of-fame'
+      fullPath: '/hall-of-fame'
+      preLoaderRoute: typeof HallOfFameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/results': {
@@ -346,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MatchFixtureIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/players/$playerId': {
+      id: '/players/$playerId'
+      path: '/players/$playerId'
+      fullPath: '/players/$playerId'
+      preLoaderRoute: typeof PlayersPlayerIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -363,11 +423,13 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AchievementsRoute: AchievementsRoute,
   AuthRoute: AuthRoute,
   BestXiRoute: BestXiRoute,
   CodeOfConductRoute: CodeOfConductRoute,
   FinalRoute: FinalRoute,
   FixturesRoute: FixturesRoute,
+  HallOfFameRoute: HallOfFameRoute,
   ResultsRoute: ResultsRoute,
   SavesRoute: SavesRoute,
   ScorecardRoute: ScorecardRoute,
@@ -376,6 +438,7 @@ const rootRouteChildren: RootRouteChildren = {
   StatisticsRoute: StatisticsRoute,
   TeamsRoute: TeamsRoute,
   MatchFixtureIdRoute: MatchFixtureIdRoute,
+  PlayersPlayerIdRoute: PlayersPlayerIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

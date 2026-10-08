@@ -72,6 +72,29 @@ export type MatchEvent = {
   notes: string | null;
 };
 
+export type AchievementKey = "hat_trick_hero" | "on_fire";
+
+export type PlayerAchievement = {
+  player_id: string;
+  achievement_key: AchievementKey;
+  unlocked_at: string;
+  evidence_fixture_id: string | null;
+};
+
+export type FixtureAppearance = {
+  fixture_id: string;
+  player_id: string;
+  team_id: string;
+  created_at: string;
+};
+
+export type TournamentChampionCaptain = {
+  tournament_id: string;
+  team_id: string;
+  player_id: string;
+  recorded_at: string;
+};
+
 export type StandingRow = {
   competition_id: string | null;
   team_id: string;
@@ -262,6 +285,164 @@ export async function fetchEvents(fixtureId: string): Promise<MatchEvent[]> {
   return (data ?? []) as MatchEvent[];
 }
 
+export async function fetchAllMatchEvents(): Promise<MatchEvent[]> {
+  const { data, error } = await db.from("match_events").select("*");
+  if (error) throw error;
+  return (data ?? []) as MatchEvent[];
+}
+
+function isMissingRelation(error: { code?: string; message?: string }, table: string): boolean {
+  if (error.code !== "42P01" && error.code !== "PGRST205") return false;
+  console.warn(
+    `[Achievements] Supabase table "${table}" is unavailable. Apply the player achievements migration to enable persisted badges and appearance/captain records.`,
+    error,
+  );
+  return true;
+}
+
+export async function fetchPlayerAchievements(playerId?: string): Promise<PlayerAchievement[]> {
+  let query = db.from("player_achievements").select("*").order("unlocked_at");
+  if (playerId) query = query.eq("player_id", playerId);
+
+  const [achievementResult, fixtures, events] = await Promise.all([
+    query,
+    fetchFixtures(),
+    fetchAllMatchEvents(),
+  ]);
+  if (
+    achievementResult.error &&
+    !isMissingRelation(achievementResult.error, "player_achievements")
+  ) {
+    throw achievementResult.error;
+  }
+
+  const stored = (achievementResult.data ?? []) as PlayerAchievement[];
+  const derivedHatTricks = deriveHatTrickAchievements(fixtures, events).filter(
+    (achievement) => !playerId || achievement.player_id === playerId,
+  );
+  const merged = new Map(
+    stored.map((achievement) => [
+      `${achievement.player_id}:${achievement.achievement_key}`,
+      achievement,
+    ]),
+  );
+  for (const achievement of derivedHatTricks) {
+    const key = `${achievement.player_id}:${achievement.achievement_key}`;
+    if (!merged.has(key)) merged.set(key, achievement);
+  }
+  return [...merged.values()].sort((left, right) =>
+    left.unlocked_at.localeCompare(right.unlocked_at),
+  );
+}
+
+export function deriveHatTrickAchievements(
+  fixtures: Fixture[],
+  events: MatchEvent[],
+): PlayerAchievement[] {
+  const finalizedFixtures = new Map(
+    fixtures
+      .filter(
+        (fixture) =>
+          fixture.status === "Full Time" &&
+          fixture.home_score !== null &&
+          fixture.away_score !== null,
+      )
+      .map((fixture) => [fixture.id, fixture]),
+  );
+  const playerGoals = new Map<string, number>();
+  const teamGoals = new Map<string, number>();
+
+  for (const event of events) {
+    if (
+      event.event_type !== "goal" ||
+      !event.player_id ||
+      !event.team_id ||
+      event.goal_type?.toLowerCase() === "own goal"
+    ) {
+      continue;
+    }
+    const fixture = finalizedFixtures.get(event.fixture_id);
+    if (
+      !fixture ||
+      (event.team_id !== fixture.home_team_id && event.team_id !== fixture.away_team_id)
+    ) {
+      continue;
+    }
+
+    const teamKey = `${fixture.id}:${event.team_id}`;
+    const playerKey = `${teamKey}:${event.player_id}`;
+    teamGoals.set(teamKey, (teamGoals.get(teamKey) ?? 0) + 1);
+    playerGoals.set(playerKey, (playerGoals.get(playerKey) ?? 0) + 1);
+  }
+
+  const earliestHatTricks = new Map<string, PlayerAchievement>();
+  for (const [key, goals] of playerGoals) {
+    if (goals < 3) continue;
+    const [fixtureId, teamId, playerId] = key.split(":");
+    if (!fixtureId || !teamId || !playerId) continue;
+    const fixture = finalizedFixtures.get(fixtureId);
+    if (!fixture) continue;
+    const teamGoalCount = teamGoals.get(`${fixtureId}:${teamId}`) ?? 0;
+    const teamScore = teamId === fixture.home_team_id ? fixture.home_score : fixture.away_score;
+    if (teamScore === null || teamGoalCount > teamScore) continue;
+
+    const achievement: PlayerAchievement = {
+      player_id: playerId,
+      achievement_key: "hat_trick_hero",
+      unlocked_at: fixture.kickoff,
+      evidence_fixture_id: fixtureId,
+    };
+    const previous = earliestHatTricks.get(playerId);
+    if (!previous || achievement.unlocked_at < previous.unlocked_at) {
+      earliestHatTricks.set(playerId, achievement);
+    }
+  }
+  return [...earliestHatTricks.values()];
+}
+
+export async function fetchFixtureAppearances(fixtureId: string): Promise<FixtureAppearance[]> {
+  const { data, error } = await db
+    .from("fixture_player_appearances")
+    .select("*")
+    .eq("fixture_id", fixtureId);
+  if (error && !isMissingRelation(error, "fixture_player_appearances")) throw error;
+  return (data ?? []) as FixtureAppearance[];
+}
+
+export async function fetchAllFixtureAppearances(): Promise<FixtureAppearance[]> {
+  const { data, error } = await db.from("fixture_player_appearances").select("*");
+  if (error && !isMissingRelation(error, "fixture_player_appearances")) throw error;
+  return (data ?? []) as FixtureAppearance[];
+}
+
+export async function saveFixtureAppearances(
+  fixtureId: string,
+  appearances: Pick<FixtureAppearance, "player_id" | "team_id">[],
+): Promise<void> {
+  const { error } = await db.rpc("save_fixture_player_appearances", {
+    p_fixture_id: fixtureId,
+    p_appearances: appearances,
+  });
+  if (error) throw error;
+}
+
+export async function fetchTournamentChampionCaptains(): Promise<TournamentChampionCaptain[]> {
+  const { data, error } = await db.from("tournament_champion_captains").select("*");
+  if (error && !isMissingRelation(error, "tournament_champion_captains")) throw error;
+  return (data ?? []) as TournamentChampionCaptain[];
+}
+
+export async function saveTournamentChampionCaptain(
+  tournamentId: string,
+  playerId: string,
+): Promise<void> {
+  const { error } = await db.rpc("save_tournament_champion_captain", {
+    p_tournament_id: tournamentId,
+    p_player_id: playerId,
+  });
+  if (error) throw error;
+}
+
 export async function fetchStandings(competitionId?: string): Promise<StandingRow[]> {
   let q = db.from("standings").select("*");
   if (competitionId) q = q.eq("competition_id", competitionId);
@@ -368,9 +549,7 @@ export async function fetchTopSaves(tournamentId?: string): Promise<SavesRow[]> 
   if (error) throw error;
   return ((data ?? []) as SavesRow[])
     .filter((row) => row.saves > 0)
-    .sort(
-      (a, b) => b.saves - a.saves || b.clean_sheets - a.clean_sheets || a.matches - b.matches,
-    );
+    .sort((a, b) => b.saves - a.saves || b.clean_sheets - a.clean_sheets || a.matches - b.matches);
 }
 
 export async function fetchPlayerStats(competitionId?: string): Promise<PlayerStatRow[]> {
@@ -508,6 +687,12 @@ export async function fetchBestXI(tournamentId: string): Promise<BestXI | null> 
     .maybeSingle();
   if (error) throw error;
   return data as BestXI | null;
+}
+
+export async function fetchBestXIs(): Promise<BestXI[]> {
+  const { data, error } = await db.from("best_xi").select("*");
+  if (error && !isMissingRelation(error, "best_xi")) throw error;
+  return (data ?? []) as BestXI[];
 }
 
 export async function saveBestXI(
@@ -666,8 +851,7 @@ export async function fetchTournaments(): Promise<Tournament[]> {
     ...(row as Tournament),
     tournament_name: row["tournament_name"] ?? row["type"] ?? "Tournament",
     status: (row["status"] as Tournament["status"]) ?? "completed",
-    fixture_status:
-      (row["fixture_status"] as Tournament["fixture_status"]) ?? "in_progress",
+    fixture_status: (row["fixture_status"] as Tournament["fixture_status"]) ?? "in_progress",
   }));
 }
 
@@ -684,8 +868,7 @@ export async function fetchLatestTournament(): Promise<Tournament | null> {
     ...(row as Tournament),
     tournament_name: row["tournament_name"] ?? row["type"] ?? "Tournament",
     status: (row["status"] as Tournament["status"]) ?? "completed",
-    fixture_status:
-      (row["fixture_status"] as Tournament["fixture_status"]) ?? "in_progress",
+    fixture_status: (row["fixture_status"] as Tournament["fixture_status"]) ?? "in_progress",
   };
 }
 

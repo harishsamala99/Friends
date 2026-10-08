@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,9 @@ import {
 } from "@/lib/football";
 
 export const Route = createFileRoute("/fixtures")({
+  validateSearch: (search: Record<string, unknown>): { tournamentId?: string } => ({
+    ...(typeof search["tournamentId"] === "string" ? { tournamentId: search["tournamentId"] } : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Fixtures & Results — FRIENDS LEAGUE" },
@@ -30,10 +33,14 @@ export const Route = createFileRoute("/fixtures")({
 });
 
 function FixturesPage() {
+  const { tournamentId: requestedTournamentId } = Route.useSearch();
   const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
   const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: fetchTournaments });
   const [tournamentId, setTournamentId] = useState("");
-  const tournamentList: Tournament[] = Array.isArray(tournaments.data) ? tournaments.data : [];
+  const tournamentList = useMemo<Tournament[]>(
+    () => (Array.isArray(tournaments.data) ? tournaments.data : []),
+    [tournaments.data],
+  );
   const selectedTournament = tournamentList.find((tournament) => tournament.id === tournamentId);
   const fixtures = useQuery({
     queryKey: ["fixtures", tournamentId],
@@ -47,11 +54,14 @@ function FixturesPage() {
   useEffect(() => {
     const storedId = localStorage.getItem("current-tournament-id");
     const firstTournament = tournamentList[0];
-    const selectedId = tournamentList.some((tournament) => tournament.id === storedId)
-      ? storedId
-      : (firstTournament?.id ?? "");
+    const selectedId =
+      (tournamentList.some((tournament) => tournament.id === requestedTournamentId)
+        ? requestedTournamentId
+        : tournamentList.some((tournament) => tournament.id === storedId)
+          ? storedId
+          : firstTournament?.id) ?? "";
     setTournamentId(selectedId);
-  }, [tournamentList]);
+  }, [requestedTournamentId, tournamentList]);
 
   const played = (fixtures.data ?? [])
     .filter(
@@ -103,7 +113,30 @@ function FixturesPage() {
         ) : fixtures.isLoading ? (
           <ListSkeleton rows={8} />
         ) : upcoming.length === 0 && played.length === 0 ? (
-          <EmptyState message="No fixtures or results for this tournament." />
+          selectedTournament?.status === "completed" ? (
+            <Card>
+              <CardContent className="space-y-3 p-5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  Archived final · {selectedTournament.tournament_name}
+                </p>
+                <p className="font-display text-xl font-bold">
+                  {selectedTournament.home_team} <span className="text-muted-foreground">vs</span>{" "}
+                  {selectedTournament.away_team}
+                </p>
+                <p className="font-display text-3xl font-bold tabular-nums">
+                  {selectedTournament.home_score} – {selectedTournament.away_score}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Champion: {selectedTournament.winner} · {selectedTournament.date}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  No individual match fixtures are linked to this archived result.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <EmptyState message="No fixtures or results for this tournament." />
+          )
         ) : (
           <div className="space-y-10">
             {groups.size > 0 && (

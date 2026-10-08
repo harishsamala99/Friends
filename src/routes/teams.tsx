@@ -1,12 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchTeams, fetchPlayers } from "@/lib/football";
 
 export const Route = createFileRoute("/teams")({
+  validateSearch: (search: Record<string, unknown>): { teamId?: string } => ({
+    ...(typeof search["teamId"] === "string" ? { teamId: search["teamId"] } : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Teams — FRIENDS LEAGUE" },
@@ -24,9 +27,16 @@ export const Route = createFileRoute("/teams")({
 });
 
 function TeamsPage() {
+  const { teamId } = Route.useSearch();
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
   const players = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
+
+  useEffect(() => {
+    if (teamId && teams.data?.some((team) => team.id === teamId)) {
+      setSelectedTeamId(teamId);
+    }
+  }, [teamId, teams.data]);
 
   const counts = new Map<string, number>();
   for (const p of players.data ?? []) {

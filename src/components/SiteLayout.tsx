@@ -11,6 +11,8 @@ const NAV = [
   { to: "/scorers", label: "Top Scorers" },
   { to: "/saves", label: "Top Saves" },
   { to: "/best-xi", label: "THE BEST XI" },
+  { to: "/achievements", label: "Achievements" },
+  { to: "/hall-of-fame", label: "Hall of Fame" },
   { to: "/teams", label: "Teams" },
   { to: "/code-of-conduct", label: "Code of Conduct" },
 ] as const;
@@ -57,15 +59,15 @@ export function SiteLayout({ children }: { children: ReactNode }) {
               FRIENDS LEAGUE
             </span>
           </Link>
-          <nav className="ml-auto hidden items-center gap-1 rounded-2xl border border-white/50 bg-white/55 p-1 shadow-sm backdrop-blur-xl md:flex dark:border-white/10 dark:bg-white/10">
+          <nav className="ml-auto hidden max-w-[52vw] items-center gap-1 overflow-x-auto whitespace-nowrap rounded-2xl border border-white/50 bg-white/55 p-1 shadow-sm backdrop-blur-xl md:flex dark:border-white/10 dark:bg-white/10">
             {NAV.map((n) => (
               <Link
                 key={n.to}
                 to={n.to}
-                className="rounded-xl px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-white/70 hover:text-foreground dark:hover:bg-white/15"
+                className="shrink-0 rounded-xl px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-white/70 hover:text-foreground dark:hover:bg-white/15"
                 activeProps={{
                   className:
-                    "rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm",
+                    "shrink-0 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm",
                 }}
                 activeOptions={{ exact: n.to === "/" }}
               >

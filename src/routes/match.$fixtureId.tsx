@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/SiteLayout";
 import { TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
@@ -12,11 +12,13 @@ import { PlayerPicker } from "@/components/player-picker";
 import {
   EVENT_TYPES,
   fetchEvents,
+  fetchFixtureAppearances,
   fetchFixture,
   fetchPlayers,
   fetchTeams,
   replaceFixturePlayerGoals,
   replaceFixturePlayerSaves,
+  saveFixtureAppearances,
   updateFixture,
 } from "@/lib/football";
 
@@ -69,12 +71,27 @@ function MatchPage() {
     queryKey: ["events", fixtureId],
     queryFn: () => fetchEvents(fixtureId),
   });
+  const appearances = useQuery({
+    queryKey: ["appearances", fixtureId],
+    queryFn: () => fetchFixtureAppearances(fixtureId),
+  });
 
   const f = fixture.data;
   const byId = new Map((teams.data ?? []).map((t) => [t.id, t]));
   const playerById = new Map((players.data ?? []).map((p) => [p.id, p]));
   const home = f ? byId.get(f.home_team_id) : undefined;
   const away = f ? byId.get(f.away_team_id) : undefined;
+  const fixtureRoster = (players.data ?? []).filter(
+    (player) =>
+      player.status === "Active" &&
+      f &&
+      (player.team_id === f.home_team_id || player.team_id === f.away_team_id),
+  );
+  const appearanceRoster = new Map(fixtureRoster.map((player) => [player.id, player]));
+  for (const appearance of appearances.data ?? EMPTY_APPEARANCES) {
+    const player = playerById.get(appearance.player_id);
+    if (player) appearanceRoster.set(player.id, { ...player, team_id: appearance.team_id });
+  }
 
   return (
     <SiteLayout>
@@ -113,19 +130,28 @@ function MatchPage() {
               fixture={f}
               homeTeamId={f.home_team_id}
               awayTeamId={f.away_team_id}
-              players={(players.data ?? []).filter(
-                (p) =>
-                  p.status === "Active" &&
-                  (p.team_id === f.home_team_id || p.team_id === f.away_team_id),
-              )}
+              players={fixtureRoster}
               events={events.data ?? []}
               onSaved={() => {
                 void fixture.refetch();
                 void events.refetch();
+                void appearances.refetch();
                 void queryClient.invalidateQueries({ queryKey: ["scorers"] });
                 void queryClient.invalidateQueries({ queryKey: ["saves"] });
                 void queryClient.invalidateQueries({ queryKey: ["fixtures"] });
                 void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+                void queryClient.invalidateQueries({ queryKey: ["achievements"] });
+              }}
+            />
+            <MatchAppearancesEditor
+              fixtureId={f.id}
+              loading={appearances.isLoading}
+              failed={appearances.isError}
+              players={[...appearanceRoster.values()]}
+              appearances={appearances.data ?? EMPTY_APPEARANCES}
+              onSaved={() => {
+                void appearances.refetch();
+                void queryClient.invalidateQueries({ queryKey: ["achievements"] });
               }}
             />
             <h2 className="mb-4 font-display text-2xl font-bold">Timeline</h2>
@@ -167,6 +193,8 @@ function MatchPage() {
   );
 }
 
+const EMPTY_APPEARANCES: { player_id: string; team_id: string }[] = [];
+
 function MatchEditor({
   fixture,
   homeTeamId,
@@ -178,7 +206,7 @@ function MatchEditor({
   fixture: { id: string; home_score: number | null; away_score: number | null };
   homeTeamId: string;
   awayTeamId: string;
-  players: { id: string; name: string; team_id: string | null }[];
+  players: { id: string; name: string; team_id: string | null; position: string }[];
   events: { id: string; player_id: string | null; team_id: string | null; event_type: string }[];
   onSaved: () => void;
 }) {
@@ -709,6 +737,103 @@ function MatchEditor({
             </div>
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MatchAppearancesEditor({
+  fixtureId,
+  loading,
+  failed,
+  players,
+  appearances,
+  onSaved,
+}: {
+  fixtureId: string;
+  loading: boolean;
+  failed: boolean;
+  players: { id: string; name: string; team_id: string | null; position: string }[];
+  appearances: { player_id: string; team_id: string }[];
+  onSaved: () => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setSelectedIds(appearances.map((appearance) => appearance.player_id));
+  }, [appearances]);
+
+  async function saveAppearances() {
+    setSaving(true);
+    try {
+      const selected = new Set(selectedIds);
+      await saveFixtureAppearances(
+        fixtureId,
+        players.flatMap((player) =>
+          player.team_id && selected.has(player.id)
+            ? [{ player_id: player.id, team_id: player.team_id }]
+            : [],
+        ),
+      );
+      toast.success("Match appearances saved");
+      onSaved();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save match appearances");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="mb-10">
+      <CardHeader>
+        <CardTitle className="text-base">Record match appearances</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Select only players who took part. Confirmed appearances are required to calculate
+          consecutive scoring badges accurately.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {failed ? (
+          <p className="text-sm text-destructive">
+            Saved appearances could not be loaded. Refresh before changing them.
+          </p>
+        ) : loading ? (
+          <p className="text-sm text-muted-foreground">Loading saved appearances…</p>
+        ) : players.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No active players are assigned to these teams.
+          </p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {players.map((player) => (
+              <label key={player.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(player.id)}
+                  disabled={loading || failed}
+                  onChange={(event) =>
+                    setSelectedIds((current) =>
+                      event.target.checked
+                        ? [...current, player.id]
+                        : current.filter((id) => id !== player.id),
+                    )
+                  }
+                  className="size-4 accent-primary"
+                />
+                {player.name}
+              </label>
+            ))}
+          </div>
+        )}
+        <Button
+          size="sm"
+          disabled={saving || loading || failed || players.length === 0}
+          onClick={saveAppearances}
+        >
+          {saving ? "Saving…" : "Save appearances"}
+        </Button>
       </CardContent>
     </Card>
   );
