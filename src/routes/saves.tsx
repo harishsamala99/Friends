@@ -5,6 +5,8 @@ import { Trash2 } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, ListSkeleton, EmptyState } from "@/components/football-ui";
 import {
+  fetchFixtures,
+  fetchAllFixtureAppearances,
   fetchTopSaves,
   fetchTournaments,
   deletePlayerSaves,
@@ -45,6 +47,27 @@ function SavesPage() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
+  const fixtures = useQuery({
+    queryKey: ["fixtures", tournamentId],
+    queryFn: () => fetchFixtures(undefined, tournamentId),
+    enabled: Boolean(tournamentId),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+  const appearances = useQuery({
+    queryKey: ["appearances", tournamentId],
+    queryFn: fetchAllFixtureAppearances,
+    enabled: Boolean(tournamentId),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+  const tournamentFixtureIds = new Set((fixtures.data ?? []).map((fixture) => fixture.id));
+  const appearancesByPlayer = (appearances.data ?? []).reduce((counts, appearance) => {
+    if (tournamentFixtureIds.has(appearance.fixture_id)) {
+      counts.set(appearance.player_id, (counts.get(appearance.player_id) ?? 0) + 1);
+    }
+    return counts;
+  }, new Map<string, number>());
   const leadingSaves = Math.max(0, ...(saves.data ?? []).map((player) => player.saves));
 
   useEffect(() => {
@@ -97,7 +120,11 @@ function SavesPage() {
           <EmptyState message="Unable to load tournaments. Refresh the page and try again." />
         ) : saves.isError ? (
           <EmptyState message="Unable to load save statistics. Try returning to the page." />
+        ) : fixtures.isError || appearances.isError ? (
+          <EmptyState message="Unable to load appearance statistics. Try returning to the page." />
         ) : saves.isLoading ? (
+          <ListSkeleton rows={10} />
+        ) : fixtures.isLoading || appearances.isLoading ? (
           <ListSkeleton rows={10} />
         ) : (saves.data ?? []).length === 0 ? (
           <EmptyState message="No saves recorded yet." />
@@ -110,6 +137,7 @@ function SavesPage() {
                   <th className="p-3 text-left font-medium">Player</th>
                   <th className="p-3 text-left font-medium">Team</th>
                   <th className="p-3 text-center font-medium">Saves</th>
+                  <th className="p-3 text-center font-medium">Appearances</th>
                   <th className="p-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
@@ -131,6 +159,9 @@ function SavesPage() {
                       className={`p-3 text-center tabular-nums ${s.saves === leadingSaves ? "font-bold text-primary" : "font-semibold"}`}
                     >
                       {s.saves}
+                    </td>
+                    <td className="p-3 text-center tabular-nums">
+                      {appearancesByPlayer.get(s.player_id) ?? 0}
                     </td>
                     <td className="p-3 text-right">
                       <Button

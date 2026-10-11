@@ -145,13 +145,18 @@ function MatchPage() {
             />
             <MatchAppearancesEditor
               fixtureId={f.id}
+              homeTeamId={f.home_team_id}
+              awayTeamId={f.away_team_id}
+              homeTeamName={home?.name ?? "Home team"}
+              awayTeamName={away?.name ?? "Away team"}
               loading={appearances.isLoading}
               failed={appearances.isError}
+              loadError={appearances.error instanceof Error ? appearances.error.message : undefined}
               players={[...appearanceRoster.values()]}
               appearances={appearances.data ?? EMPTY_APPEARANCES}
-              onSaved={() => {
-                void appearances.refetch();
-                void queryClient.invalidateQueries({ queryKey: ["achievements"] });
+              onSaved={async () => {
+                await queryClient.invalidateQueries({ queryKey: ["appearances"] });
+                await queryClient.invalidateQueries({ queryKey: ["achievements"] });
               }}
             />
             <h2 className="mb-4 font-display text-2xl font-bold">Timeline</h2>
@@ -744,21 +749,35 @@ function MatchEditor({
 
 function MatchAppearancesEditor({
   fixtureId,
+  homeTeamId,
+  awayTeamId,
+  homeTeamName,
+  awayTeamName,
   loading,
   failed,
+  loadError,
   players,
   appearances,
   onSaved,
 }: {
   fixtureId: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  homeTeamName: string;
+  awayTeamName: string;
   loading: boolean;
   failed: boolean;
+  loadError?: string;
   players: { id: string; name: string; team_id: string | null; position: string }[];
   appearances: { player_id: string; team_id: string }[];
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const teams = [
+    { id: homeTeamId, name: homeTeamName },
+    { id: awayTeamId, name: awayTeamName },
+  ];
 
   useEffect(() => {
     setSelectedIds(appearances.map((appearance) => appearance.player_id));
@@ -776,8 +795,8 @@ function MatchAppearancesEditor({
             : [],
         ),
       );
+      await onSaved();
       toast.success("Match appearances saved");
-      onSaved();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save match appearances");
     } finally {
@@ -797,7 +816,7 @@ function MatchAppearancesEditor({
       <CardContent className="space-y-4">
         {failed ? (
           <p className="text-sm text-destructive">
-            Saved appearances could not be loaded. Refresh before changing them.
+            {loadError ?? "Saved appearances could not be loaded. Refresh before changing them."}
           </p>
         ) : loading ? (
           <p className="text-sm text-muted-foreground">Loading saved appearances…</p>
@@ -806,25 +825,48 @@ function MatchAppearancesEditor({
             No active players are assigned to these teams.
           </p>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {players.map((player) => (
-              <label key={player.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.includes(player.id)}
-                  disabled={loading || failed}
-                  onChange={(event) =>
-                    setSelectedIds((current) =>
-                      event.target.checked
-                        ? [...current, player.id]
-                        : current.filter((id) => id !== player.id),
-                    )
-                  }
-                  className="size-4 accent-primary"
-                />
-                {player.name}
-              </label>
-            ))}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {teams.map((team) => {
+              const teamPlayers = players.filter((player) => player.team_id === team.id);
+              const selectedCount = teamPlayers.filter((player) =>
+                selectedIds.includes(player.id),
+              ).length;
+
+              return (
+                <section key={team.id} className="rounded-lg border border-border/60 p-3">
+                  <h3 className="mb-3 flex items-center justify-between gap-2 text-sm font-semibold">
+                    <span>{team.name}</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {selectedCount}/{teamPlayers.length} appeared
+                    </span>
+                  </h3>
+                  {teamPlayers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No players assigned.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {teamPlayers.map((player) => (
+                        <label key={player.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(player.id)}
+                            disabled={loading || failed}
+                            onChange={(event) =>
+                              setSelectedIds((current) =>
+                                event.target.checked
+                                  ? [...current, player.id]
+                                  : current.filter((id) => id !== player.id),
+                              )
+                            }
+                            className="size-4 accent-primary"
+                          />
+                          {player.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
         <Button

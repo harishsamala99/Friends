@@ -405,13 +405,27 @@ export async function fetchFixtureAppearances(fixtureId: string): Promise<Fixtur
     .from("fixture_player_appearances")
     .select("*")
     .eq("fixture_id", fixtureId);
-  if (error && !isMissingRelation(error, "fixture_player_appearances")) throw error;
+  if (error) {
+    if (isMissingRelation(error, "fixture_player_appearances")) {
+      throw new Error(
+        "Match appearances are not set up in the database yet. Apply the latest Supabase migrations and try again.",
+      );
+    }
+    throw error;
+  }
   return (data ?? []) as FixtureAppearance[];
 }
 
 export async function fetchAllFixtureAppearances(): Promise<FixtureAppearance[]> {
   const { data, error } = await db.from("fixture_player_appearances").select("*");
-  if (error && !isMissingRelation(error, "fixture_player_appearances")) throw error;
+  if (error) {
+    if (isMissingRelation(error, "fixture_player_appearances")) {
+      throw new Error(
+        "Match appearances are not set up in the database yet. Apply the latest Supabase migrations and try again.",
+      );
+    }
+    throw error;
+  }
   return (data ?? []) as FixtureAppearance[];
 }
 
@@ -423,7 +437,14 @@ export async function saveFixtureAppearances(
     p_fixture_id: fixtureId,
     p_appearances: appearances,
   });
-  if (error) throw error;
+  if (error) {
+    if (error.code === "PGRST202" || error.code === "42883") {
+      throw new Error(
+        "Match appearance saving is not set up in the database yet. Apply the latest Supabase migrations and try again.",
+      );
+    }
+    throw error;
+  }
 }
 
 export async function fetchTournamentChampionCaptains(): Promise<TournamentChampionCaptain[]> {
