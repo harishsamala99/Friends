@@ -117,11 +117,8 @@ function Home() {
     const selectedTournament =
       tournament.data?.find(
         (item) =>
-          item.status === "completed" &&
-          (item.tournament_name ?? item.type).trim().toLowerCase() === "friends league -6",
-      ) ??
-      tournament.data?.find((item) => item.status === "completed") ??
-      tournament.data?.[0];
+          item.home_team && item.away_team && item.home_team !== "TBD" && item.away_team !== "TBD",
+      ) ?? tournament.data?.[0];
     if (selectedTournament) {
       const dbTournament = normalizeTournament({
         id: selectedTournament.id,
@@ -198,42 +195,46 @@ function Home() {
     .sort((a, b) => +new Date(a.kickoff) - +new Date(b.kickoff))[0];
   const tournamentHasFinalScore = Boolean(
     latestTournament?.status === "completed" &&
-      latestTournament.homeScore != null &&
-      latestTournament.awayScore != null,
+    latestTournament.homeScore != null &&
+    latestTournament.awayScore != null,
   );
   const scheduledFinal =
     !tournamentHasFinalScore &&
     finalFixtures?.home_score == null &&
     finalFixtures?.away_score == null
-    ? finalFixtures
-    : undefined;
+      ? finalFixtures
+      : undefined;
   const savedFinal = finalFixtures;
   const finalistRows = (standings.data ?? []).slice(0, 2);
   const hasFinalists = finalistRows.length === 2;
   const hasTournamentFinalTeams = Boolean(
     latestTournament?.homeTeam &&
-      latestTournament.awayTeam &&
-      latestTournament.homeTeam !== "TBD" &&
-      latestTournament.awayTeam !== "TBD",
+    latestTournament.awayTeam &&
+    latestTournament.homeTeam !== "TBD" &&
+    latestTournament.awayTeam !== "TBD",
   );
   const finalHomeName = scheduledFinal
     ? byId.get(scheduledFinal.home_team_id)?.name
     : savedFinal
       ? byId.get(savedFinal.home_team_id)?.name
-    : hasTournamentFinalTeams
-      ? latestTournament.homeTeam
-      : finalistRows[0]?.team_name;
+      : hasTournamentFinalTeams
+        ? latestTournament.homeTeam
+        : finalistRows[0]?.team_name;
   const finalAwayName = scheduledFinal
     ? byId.get(scheduledFinal.away_team_id)?.name
     : savedFinal
       ? byId.get(savedFinal.away_team_id)?.name
-    : hasTournamentFinalTeams
-      ? latestTournament.awayTeam
-      : finalistRows[1]?.team_name;
-  const finalIsToBePlayed = Boolean(scheduledFinal || (!savedFinal && !latestTournament && hasFinalists));
+      : hasTournamentFinalTeams
+        ? latestTournament.awayTeam
+        : finalistRows[1]?.team_name;
+  const finalIsToBePlayed = Boolean(
+    scheduledFinal ||
+    (!savedFinal && hasTournamentFinalTeams && latestTournament?.status !== "completed") ||
+    (!savedFinal && !latestTournament && hasFinalists),
+  );
   const finalScoreRecorded = Boolean(
     (latestTournament?.homeScore != null && latestTournament?.awayScore != null) ||
-      (savedFinal?.home_score != null && savedFinal?.away_score != null),
+    (savedFinal?.home_score != null && savedFinal?.away_score != null),
   );
   const finalCompleted = Boolean(
     (latestTournament?.status === "completed" || savedFinal?.status === "Full Time") &&
@@ -398,13 +399,9 @@ function Home() {
                           {finalIsToBePlayed ? "TO BE PLAYED" : "Full time"}
                         </p>
                         <div className="latest-final-card__score-value mt-2 flex items-center gap-2 font-display text-5xl font-black tabular-nums text-primary drop-shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_35%,transparent)] dark:text-[#fff7e6] dark:drop-shadow-[0_0_18px_rgba(255,177,66,0.55)] sm:text-7xl sm:gap-3">
-                          <span>
-                            {finalIsToBePlayed ? "-" : (finalHomeScore ?? 0)}
-                          </span>
+                          <span>{finalIsToBePlayed ? "-" : (finalHomeScore ?? 0)}</span>
                           <span className="text-2xl text-muted-foreground sm:text-3xl">:</span>
-                          <span>
-                            {finalIsToBePlayed ? "-" : (finalAwayScore ?? 0)}
-                          </span>
+                          <span>{finalIsToBePlayed ? "-" : (finalAwayScore ?? 0)}</span>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {finalIsToBePlayed ? "Awaiting final result" : "Final score"}
@@ -430,9 +427,7 @@ function Home() {
                         {finalIsToBePlayed ? "Status" : "Champion"}
                       </span>
                       <strong className="latest-final-card__champion-name truncate text-base font-black sm:text-lg">
-                        {finalIsToBePlayed
-                          ? "TO BE PLAYED"
-                          : finalWinner}
+                        {finalIsToBePlayed ? "TO BE PLAYED" : finalWinner}
                       </strong>
                     </div>
                   </div>

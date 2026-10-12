@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Plus,
@@ -158,7 +158,7 @@ function calculateFinalStandings(
   }
 
   for (const fixture of fixtures) {
-    if (fixture.tournament_id || fixture.home_score == null || fixture.away_score == null) continue;
+    if (fixture.home_score == null || fixture.away_score == null) continue;
     const home = rows.get(fixture.home_team_id);
     const away = rows.get(fixture.away_team_id);
     if (!home || !away) continue;
@@ -220,6 +220,7 @@ function TournamentSetup({
   tournamentId,
   fixtures,
   onFixturesSaved,
+  onSaveFinalistTeams,
   tournaments,
   onCreateTournament,
   onSelectTournament,
@@ -235,6 +236,7 @@ function TournamentSetup({
   tournamentId: string;
   fixtures: Fixture[];
   onFixturesSaved: () => void;
+  onSaveFinalistTeams: (homeTeam: string, awayTeam: string) => Promise<void>;
   tournaments: Tournament[];
   onCreateTournament: () => void;
   onSelectTournament: (tournament: Tournament) => void;
@@ -312,11 +314,33 @@ function TournamentSetup({
       return;
     }
 
-    const existingFinal = fixtures.find((fixture) =>
-      fixture.notes?.includes("completed league standings"),
+    const existingFinal = fixtures.find(
+      (fixture) =>
+        fixture.notes?.includes("completed league standings") ||
+        fixture.notes?.includes("Final teams selected manually"),
     );
     if (existingFinal) {
-      toast.success("Final teams are already saved in the bracket");
+      const homeTeamName = teamNames.get(existingFinal.home_team_id);
+      const awayTeamName = teamNames.get(existingFinal.away_team_id);
+      if (!homeTeamName || !awayTeamName) {
+        toast.error("The saved final includes a team that could not be found");
+        return;
+      }
+      setSaving(true);
+      try {
+        await onSaveFinalistTeams(homeTeamName, awayTeamName);
+        toast.success("Final teams are already saved in the bracket");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not save final teams");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+    const homeTeamName = teamNames.get(homeId);
+    const awayTeamName = teamNames.get(awayId);
+    if (!homeTeamName || !awayTeamName) {
+      toast.error("The selected teams could not be found");
       return;
     }
 
@@ -334,6 +358,7 @@ function TournamentSetup({
           notes: "Automatically created from the completed league standings.",
         },
       ]);
+      await onSaveFinalistTeams(homeTeamName, awayTeamName);
       toast.success(`${teamNames.get(homeId)} vs ${teamNames.get(awayId)} saved as the final`);
       onFixturesSaved();
     } catch (error) {
@@ -593,12 +618,6 @@ export function FinalMatchScorecard() {
   const competitionId =
     competitionsQuery.data?.[0]?.id ??
     teamsQuery.data?.find((team) => team.competition_id)?.competition_id;
-  const competitionFixturesQuery = useQuery({
-    queryKey: ["competition-fixtures", competitionId],
-    queryFn: () => fetchFixtures(competitionId ?? undefined),
-    enabled: Boolean(competitionId),
-    refetchOnWindowFocus: true,
-  });
   const [tournamentId, setTournamentId] = useState("");
   const [activeTab, setActiveTab] = useState("tournament");
   const [expandedTournamentId, setExpandedTournamentId] = useState<string | null>(null);
@@ -743,6 +762,33 @@ export function FinalMatchScorecard() {
   const [selectedAwayTeam, setSelectedAwayTeam] = useState<string>("");
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const currentTournament = tournaments.find((tournament) => tournament.id === tournamentId);
+  const persistFinalistTeams = useCallback(
+    async (homeTeam: string, awayTeam: string, resetFinalResult = false) => {
+      await updateTournament(tournamentId, {
+        home_team: homeTeam,
+        away_team: awayTeam,
+        ...(resetFinalResult
+          ? { home_score: 0, away_score: 0, winner: "TBD", status: "draft" as const }
+          : {}),
+      });
+      setTournaments((current) =>
+        current.map((tournament) =>
+          tournament.id === tournamentId
+            ? {
+                ...tournament,
+                homeTeam,
+                awayTeam,
+                ...(resetFinalResult
+                  ? { homeScore: 0, awayScore: 0, winner: "TBD", status: "draft" as const }
+                  : {}),
+              }
+            : tournament,
+        ),
+      );
+      await queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+    },
+    [queryClient, tournamentId],
+  );
   const [editingPlayerTeam, setEditingPlayerTeam] = useState<"home" | "away" | null>(null);
   const [editingPlayerIndex, setEditingPlayerIndex] = useState<number | null>(null);
   const [editingPlayerName, setEditingPlayerName] = useState<string>("");
@@ -839,26 +885,45 @@ export function FinalMatchScorecard() {
     }
   }, [playersQuery.data, selectedHomeTeam, selectedAwayTeam, teamsQuery.data]);
 
-  const leagueFixtures = useMemo(
-    () => (competitionFixturesQuery.data ?? []).filter((fixture) => !fixture.tournament_id),
-    [competitionFixturesQuery.data],
+  const tournamentRoundFixtures = useMemo(
+    () =>
+      (fixturesQuery.data ?? []).filter(
+        (fixture) =>
+          !fixture.notes?.includes("completed league standings") &&
+          !fixture.notes?.includes("Final teams selected manually"),
+      ),
+    [fixturesQuery.data],
+  );
+  const tournamentTeamIds = useMemo(
+    () =>
+      new Set(
+        tournamentRoundFixtures.flatMap((fixture) => [fixture.home_team_id, fixture.away_team_id]),
+      ),
+    [tournamentRoundFixtures],
+  );
+  const tournamentTeams = useMemo(
+    () => (teamsQuery.data ?? []).filter((team) => tournamentTeamIds.has(team.id)),
+    [teamsQuery.data, tournamentTeamIds],
   );
   const competition = competitionsQuery.data?.find((item) => item.id === competitionId);
   const finalStandings = useMemo(
     () =>
       calculateFinalStandings(
-        teamsQuery.data ?? [],
-        leagueFixtures,
+        tournamentTeams,
+        tournamentRoundFixtures,
         competition?.points_win ?? 3,
         competition?.points_draw ?? 1,
       ),
-    [teamsQuery.data, leagueFixtures, competition?.points_win, competition?.points_draw],
+    [tournamentTeams, tournamentRoundFixtures, competition?.points_win, competition?.points_draw],
   );
   const homeFinalist = finalStandings[0];
   const awayFinalist = finalStandings[1];
   const leagueComplete =
-    leagueFixtures.length > 0 &&
-    leagueFixtures.every((fixture) => fixture.home_score != null && fixture.away_score != null);
+    tournamentRoundFixtures.length > 0 &&
+    tournamentRoundFixtures.every(
+      (fixture) =>
+        fixture.status === "Full Time" && fixture.home_score != null && fixture.away_score != null,
+    );
   const finalHasBeenPosted = Boolean(
     currentTournament?.status === "completed" ||
     (fixturesQuery.data ?? []).some(
@@ -1005,6 +1070,12 @@ export function FinalMatchScorecard() {
       toast.error("Select a competition before saving the final");
       return;
     }
+    const homeFinalistName = teamsQuery.data?.find((team) => team.id === selectedHomeTeam)?.name;
+    const awayFinalistName = teamsQuery.data?.find((team) => team.id === selectedAwayTeam)?.name;
+    if (!homeFinalistName || !awayFinalistName) {
+      toast.error("The selected teams could not be found");
+      return;
+    }
 
     const existingFinal = (fixturesQuery.data ?? []).find(
       (fixture) =>
@@ -1038,6 +1109,7 @@ export function FinalMatchScorecard() {
           },
         ]);
       }
+      await persistFinalistTeams(homeFinalistName, awayFinalistName, true);
       manuallySelectedFinalKey.current = `${tournamentId}:${selectedHomeTeam}:${selectedAwayTeam}`;
       await queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
       await queryClient.invalidateQueries({ queryKey: ["fixtures"] });
@@ -1126,33 +1198,47 @@ export function FinalMatchScorecard() {
       return;
     if (fixturesQuery.isLoading) return;
     if (manuallySelectedFinalKey.current?.startsWith(`${tournamentId}:`)) return;
-    if (
-      (fixturesQuery.data ?? []).some(
-        (fixture) =>
-          fixture.notes?.includes("completed league standings") ||
-          fixture.notes?.includes("Final teams selected manually"),
-      )
-    )
-      return;
 
     const creationKey = `${tournamentId}:${homeFinalist.team_id}:${awayFinalist.team_id}`;
+    const savedFinal = (fixturesQuery.data ?? []).find(
+      (fixture) =>
+        fixture.notes?.includes("completed league standings") ||
+        fixture.notes?.includes("Final teams selected manually"),
+    );
+    if (savedFinal) {
+      if (
+        savedFinal.home_team_id === homeFinalist.team_id &&
+        savedFinal.away_team_id === awayFinalist.team_id &&
+        (currentTournament?.homeTeam !== homeFinalist.team_name ||
+          currentTournament?.awayTeam !== awayFinalist.team_name)
+      ) {
+        void persistFinalistTeams(homeFinalist.team_name, awayFinalist.team_name).catch((error) => {
+          toast.error(
+            error instanceof Error ? error.message : "Could not save tournament finalists",
+          );
+        });
+      }
+      return;
+    }
     if (finalFixtureCreationKey.current === creationKey) return;
     finalFixtureCreationKey.current = creationKey;
 
-    const nextMatchday =
-      Math.max(0, ...(fixturesQuery.data ?? []).map((fixture) => fixture.matchday)) + 1;
-    void insertFixtures([
-      {
-        competition_id: competitionId,
-        tournament_id: tournamentId,
-        matchday: nextMatchday,
-        home_team_id: homeFinalist.team_id,
-        away_team_id: awayFinalist.team_id,
-        kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        status: "Scheduled",
-        notes: "Automatically created from the completed league standings.",
-      },
-    ])
+    void persistFinalistTeams(homeFinalist.team_name, awayFinalist.team_name)
+      .then(() =>
+        insertFixtures([
+          {
+            competition_id: competitionId,
+            tournament_id: tournamentId,
+            matchday:
+              Math.max(0, ...(fixturesQuery.data ?? []).map((fixture) => fixture.matchday)) + 1,
+            home_team_id: homeFinalist.team_id,
+            away_team_id: awayFinalist.team_id,
+            kickoff: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            status: "Scheduled",
+            notes: "Automatically created from the completed league standings.",
+          },
+        ]),
+      )
       .then(() => {
         void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
         toast.success(
@@ -1169,6 +1255,9 @@ export function FinalMatchScorecard() {
     awayFinalist,
     competitionId,
     isCurrentTournamentCreated,
+    currentTournament?.homeTeam,
+    currentTournament?.awayTeam,
+    persistFinalistTeams,
     tournamentId,
     fixturesQuery.data,
     fixturesQuery.isLoading,
@@ -1875,6 +1964,9 @@ export function FinalMatchScorecard() {
               void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
               void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
             }}
+            onSaveFinalistTeams={(homeTeam, awayTeam) =>
+              persistFinalistTeams(homeTeam, awayTeam, true)
+            }
             tournaments={tournaments}
             onCreateTournament={createTournament}
             onSelectTournament={selectTournamentForFixtures}
