@@ -554,12 +554,80 @@ export function sortStandings(rows: StandingRow[]): StandingRow[] {
 }
 
 export async function fetchTopScorers(tournamentId?: string): Promise<ScorerRow[]> {
-  let q = db.from("top_scorers").select("*");
-  if (tournamentId) q = q.eq("tournament_id", tournamentId);
-  const { data, error } = await q;
+  const [fixtures, players, teams] = await Promise.all([
+    fetchFixtures(undefined, tournamentId),
+    fetchPlayers(),
+    fetchTeams(),
+  ]);
+  const completedFixtures = fixtures.filter(
+    (fixture) =>
+      fixture.status === "Full Time" && fixture.home_score != null && fixture.away_score != null,
+  );
+  if (completedFixtures.length === 0) return [];
+
+  const fixtureById = new Map(completedFixtures.map((fixture) => [fixture.id, fixture]));
+  const { data, error } = await db
+    .from("match_events")
+    .select("*")
+    .in(
+      "fixture_id",
+      completedFixtures.map((fixture) => fixture.id),
+    )
+    .eq("event_type", "goal");
   if (error) throw error;
-  return ((data ?? []) as ScorerRow[])
-    .filter((r) => r.goals > 0)
+
+  const playerById = new Map(players.map((player) => [player.id, player]));
+  const teamById = new Map(teams.map((team) => [team.id, team]));
+  const scorerRows = new Map<string, ScorerRow & { fixtureIds: Set<string> }>();
+
+  for (const event of (data ?? []) as MatchEvent[]) {
+    const player = event.player_id ? playerById.get(event.player_id) : undefined;
+    const fixture = fixtureById.get(event.fixture_id);
+    const team = player?.team_id ? teamById.get(player.team_id) : undefined;
+    if (!player || !fixture || !team) continue;
+
+    const key = `${player.id}:${fixture.tournament_id ?? ""}`;
+    let scorer = scorerRows.get(key);
+    if (!scorer) {
+      scorer = {
+        player_id: player.id,
+        player_name: player.name,
+        position: player.position,
+        photo_url: player.photo_url,
+        jersey_number: player.jersey_number,
+        team_id: team.id,
+        team_name: team.name,
+        short_name: team.short_name,
+        crest_color: team.crest_color,
+        competition_id: team.competition_id,
+        tournament_id: fixture.tournament_id,
+        goals: 0,
+        assists: 0,
+        matches: 0,
+        fixtureIds: new Set(),
+      };
+      scorerRows.set(key, scorer);
+    }
+
+    scorer.goals += 1;
+    scorer.fixtureIds.add(fixture.id);
+  }
+
+  for (const event of (data ?? []) as MatchEvent[]) {
+    if (!event.assist_player_id) continue;
+    const fixture = fixtureById.get(event.fixture_id);
+    if (!fixture) continue;
+    const assistedScorer = scorerRows.get(
+      `${event.assist_player_id}:${fixture.tournament_id ?? ""}`,
+    );
+    if (assistedScorer) assistedScorer.assists += 1;
+  }
+
+  return [...scorerRows.values()]
+    .map(({ fixtureIds, ...scorer }) => ({
+      ...scorer,
+      matches: fixtureIds.size,
+    }))
     .sort((a, b) => b.goals - a.goals || b.assists - a.assists || a.matches - b.matches);
 }
 
