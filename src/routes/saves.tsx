@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, ListSkeleton, EmptyState } from "@/components/football-ui";
@@ -68,6 +68,45 @@ function SavesPage() {
     }
     return counts;
   }, new Map<string, number>());
+  const cleanSheetsByGoalkeeper = useMemo(() => {
+    const fixturesById = new Map((fixtures.data ?? []).map((fixture) => [fixture.id, fixture]));
+    const goalkeeperKeys = new Set(
+      (saves.data ?? [])
+        .filter((player) => {
+          const position = player.position.trim().toLowerCase();
+          return position === "gk" || position.includes("goalkeeper");
+        })
+        .map((player) => `${player.player_id}:${player.team_id}`),
+    );
+    const countedAppearances = new Set<string>();
+    const cleanSheets = new Map<string, number>();
+
+    for (const appearance of appearances.data ?? []) {
+      const fixture = fixturesById.get(appearance.fixture_id);
+      const goalkeeperKey = `${appearance.player_id}:${appearance.team_id}`;
+      if (
+        !fixture ||
+        !goalkeeperKeys.has(goalkeeperKey) ||
+        fixture.status !== "Full Time" ||
+        fixture.home_score == null ||
+        fixture.away_score == null ||
+        (appearance.team_id !== fixture.home_team_id && appearance.team_id !== fixture.away_team_id)
+      ) {
+        continue;
+      }
+
+      const appearanceKey = `${fixture.id}:${goalkeeperKey}`;
+      if (countedAppearances.has(appearanceKey)) continue;
+      countedAppearances.add(appearanceKey);
+      const conceded =
+        appearance.team_id === fixture.home_team_id ? fixture.away_score : fixture.home_score;
+      if (conceded === 0) {
+        cleanSheets.set(goalkeeperKey, (cleanSheets.get(goalkeeperKey) ?? 0) + 1);
+      }
+    }
+
+    return cleanSheets;
+  }, [appearances.data, fixtures.data, saves.data]);
   const leadingSaves = Math.max(0, ...(saves.data ?? []).map((player) => player.saves));
 
   useEffect(() => {
@@ -137,6 +176,7 @@ function SavesPage() {
                   <th className="p-3 text-left font-medium">Player</th>
                   <th className="p-3 text-left font-medium">Team</th>
                   <th className="p-3 text-center font-medium">Saves</th>
+                  <th className="p-3 text-center font-medium">Clean Sheets</th>
                   <th className="p-3 text-center font-medium">Appearances</th>
                   <th className="p-3 text-right font-medium">Actions</th>
                 </tr>
@@ -159,6 +199,9 @@ function SavesPage() {
                       className={`p-3 text-center tabular-nums ${s.saves === leadingSaves ? "font-bold text-primary" : "font-semibold"}`}
                     >
                       {s.saves}
+                    </td>
+                    <td className="p-3 text-center tabular-nums">
+                      {cleanSheetsByGoalkeeper.get(`${s.player_id}:${s.team_id}`) ?? 0}
                     </td>
                     <td className="p-3 text-center tabular-nums">
                       {appearancesByPlayer.get(s.player_id) ?? 0}

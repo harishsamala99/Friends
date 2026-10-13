@@ -212,6 +212,11 @@ function StatisticsPage() {
       ),
     [completedFixtures, appearances.data, players.data, teams.data],
   );
+  const topGoalkeeperCleanSheets =
+    goalkeeperRecords.find(
+      (record) =>
+        record.player_id === topGoalkeeper?.player_id && record.team_id === topGoalkeeper?.team_id,
+    )?.clean_sheets ?? 0;
   const rows: StandingRow[] = standings.data ?? [];
   const recordedWinner = tournament?.winner?.trim();
   const winnerIsRecorded = Boolean(
@@ -429,7 +434,11 @@ function StatisticsPage() {
                   icon={Hand}
                   title="Most Saves · Goalkeeper"
                   player={topGoalkeeper}
-                  stat={topGoalkeeper ? `${topGoalkeeper.saves} saves` : undefined}
+                  stat={
+                    topGoalkeeper
+                      ? `${topGoalkeeper.saves} saves · ${topGoalkeeperCleanSheets} clean sheets`
+                      : undefined
+                  }
                   accent="bg-sky-100 text-sky-800 dark:bg-sky-300/15 dark:text-sky-200"
                 />
                 <AwardCard
@@ -1066,14 +1075,16 @@ function calculatePlayerRecords(
     else if (goals === 2) record.braces += 1;
   }
 
-  return [...records.values()].sort(
-    (left, right) =>
-      right.hattricks - left.hattricks ||
-      right.braces - left.braces ||
-      right.goals - left.goals ||
-      left.player_name.localeCompare(right.player_name) ||
-      left.team_name.localeCompare(right.team_name),
-  );
+  return [...records.values()]
+    .filter((record) => record.hattricks > 0 || record.braces > 0)
+    .sort(
+      (left, right) =>
+        right.hattricks - left.hattricks ||
+        right.braces - left.braces ||
+        right.goals - left.goals ||
+        left.player_name.localeCompare(right.player_name) ||
+        left.team_name.localeCompare(right.team_name),
+    );
 }
 
 function calculateGoalkeeperRecords(
