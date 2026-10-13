@@ -427,14 +427,12 @@ function TournamentSetup({
             variant="outline"
             role="status"
             className={
-              selectedTournament?.fixtureStatus === "fixtures_completed"
+              selectedTournament?.status === "completed"
                 ? "w-fit border-emerald-600 bg-emerald-50 px-3 py-1 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
                 : "w-fit border-amber-600 bg-amber-50 px-3 py-1 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200"
             }
           >
-            {selectedTournament?.fixtureStatus === "fixtures_completed"
-              ? "Finished its fixtures"
-              : "In progress"}
+            {selectedTournament?.status === "completed" ? "Completed" : "In progress"}
           </Badge>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -564,8 +562,8 @@ function TournamentSetup({
                     <div>
                       <span className="font-semibold">{tournament.tournamentName}</span>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {tournament.fixtureStatus === "fixtures_completed"
-                          ? "Tournament has finished its fixtures"
+                        {tournament.status === "completed"
+                          ? "Tournament completed"
                           : "Tournament in progress"}
                       </p>
                     </div>
@@ -1810,7 +1808,6 @@ export function FinalMatchScorecard() {
       top_assister_assists: stats.topAssister.assists,
       top_saver_name: topSaverName,
       top_saver_saves: topSaverSaves,
-      status: "completed" as const,
     };
 
     const finalFixture = findTournamentFinalFixture(
@@ -1822,6 +1819,19 @@ export function FinalMatchScorecard() {
       toast.error("Save the final teams before recording the final result.");
       return;
     }
+    const fixtures = fixturesQuery.data ?? [];
+    const tournamentStatus: Tournament["status"] =
+      fixtures.length > 0 &&
+      fixtures.every(
+        (fixture) =>
+          fixture.id === finalFixture.id ||
+          (fixture.status === "Full Time" &&
+            fixture.home_score != null &&
+            fixture.away_score != null),
+      )
+        ? "completed"
+        : "draft";
+    const tournamentToSave = { ...newTournament, status: tournamentStatus };
 
     savingTournamentRef.current = true;
     setSavingTournament(true);
@@ -1877,14 +1887,28 @@ export function FinalMatchScorecard() {
       let savedTournamentId = tournamentId;
       try {
         if (isCurrentTournamentCreated) {
-          const { id: _id, ...changes } = newTournament;
+          const { id: _id, ...changes } = tournamentToSave;
           await saveTournamentMutation.mutateAsync({ id: tournamentId, changes });
         } else {
-          const { id: _id, ...newTournamentWithoutLocalId } = newTournament;
+          const { id: _id, ...newTournamentWithoutLocalId } = tournamentToSave;
           const createdTournament = await createTournamentMutation.mutateAsync(
             newTournamentWithoutLocalId,
           );
-          savedTournamentId = createdTournament?.id ?? tournamentId;
+          if (!createdTournament?.id) {
+            toast.error("Tournament was created but its database ID could not be determined");
+            return;
+          }
+          savedTournamentId = createdTournament.id;
+          try {
+            await updateFixture(finalFixture.id, { tournament_id: savedTournamentId });
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Could not link the final");
+            return;
+          }
+          await queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
+          await queryClient.invalidateQueries({ queryKey: ["fixtures", savedTournamentId] });
+          await queryClient.invalidateQueries({ queryKey: ["scorers"] });
+          await queryClient.invalidateQueries({ queryKey: ["saves"] });
         }
       } catch {
         return;
@@ -1901,7 +1925,7 @@ export function FinalMatchScorecard() {
         homeScore: newTournament.home_score,
         awayScore: newTournament.away_score,
         winner: newTournament.winner,
-        status: "completed",
+        status: tournamentToSave.status,
         manager: newTournament.manager || "",
         participants: newTournament.participants,
         stats: {
