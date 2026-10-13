@@ -496,6 +496,35 @@
   }
 }
 
+.mr-icon-shimmer {
+  background: linear-gradient(
+    115deg,
+    transparent 15%,
+    rgba(224, 242, 254, 0.08) 38%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(224, 242, 254, 0.08) 62%,
+    transparent 85%
+  );
+  background-size: 220% 100%;
+  animation: mr-icon-shimmer 9s ease-in-out infinite;
+}
+
+@keyframes mr-icon-shimmer {
+  0%,
+  100% {
+    background-position: 120% 0;
+  }
+  50% {
+    background-position: -20% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mr-icon-shimmer {
+    animation: none;
+  }
+}
+
 .latest-final-card {
   border-top: 4px solid var(--primary);
   background-image: linear-gradient(

@@ -616,6 +616,96 @@ export type Database = {
         };
         Relationships: [];
       };
+      mr_icon_awards: {
+        Row: {
+          id: string;
+          edition: number;
+          start_tournament_id: string;
+          end_tournament_id: string;
+          tournament_ids: string[];
+          winning_player_id: string;
+          winner_player_name: string;
+          winning_team_id: string | null;
+          winner_team_name: string;
+          overall_score: number;
+          statistics: Json;
+          leaderboard: Json;
+          formula_version: string;
+          status: string;
+          finalized_at: string;
+          finalized_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          edition: number;
+          start_tournament_id: string;
+          end_tournament_id: string;
+          tournament_ids: string[];
+          winning_player_id: string;
+          winner_player_name: string;
+          winning_team_id?: string | null;
+          winner_team_name: string;
+          overall_score: number;
+          statistics: Json;
+          leaderboard: Json;
+          formula_version: string;
+          status?: string;
+          finalized_at?: string;
+          finalized_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          edition?: number;
+          start_tournament_id?: string;
+          end_tournament_id?: string;
+          tournament_ids?: string[];
+          winning_player_id?: string;
+          winner_player_name?: string;
+          winning_team_id?: string | null;
+          winner_team_name?: string;
+          overall_score?: number;
+          statistics?: Json;
+          leaderboard?: Json;
+          formula_version?: string;
+          status?: string;
+          finalized_at?: string;
+          finalized_by?: string | null;
+        };
+        Relationships: [];
+      };
+      mr_icon_award_audit: {
+        Row: {
+          id: string;
+          award_id: string;
+          action: string;
+          reason: string;
+          previous_snapshot: Json;
+          new_snapshot: Json;
+          changed_at: string;
+          changed_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          award_id: string;
+          action: string;
+          reason: string;
+          previous_snapshot: Json;
+          new_snapshot: Json;
+          changed_at?: string;
+          changed_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          award_id?: string;
+          action?: string;
+          reason?: string;
+          previous_snapshot?: Json;
+          new_snapshot?: Json;
+          changed_at?: string;
+          changed_by?: string | null;
+        };
+        Relationships: [];
+      };
       user_roles: {
         Row: {
           id: string;
@@ -744,6 +834,15 @@ export type Database = {
     Functions: {
       can_manage: { Args: { _user_id: string }; Returns: boolean };
       can_officiate: { Args: { _user_id: string }; Returns: boolean };
+      correct_mr_icon_award: {
+        Args: { p_award_id: string; p_reason: string; p_winning_player_id: string };
+        Returns: undefined;
+      };
+      finalize_mr_icon_award: { Args: { p_edition: number }; Returns: string };
+      recalculate_mr_icon_award: {
+        Args: { p_award_id: string; p_reason: string };
+        Returns: undefined;
+      };
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"];
@@ -755,6 +854,7 @@ export type Database = {
         Args: { _fixture_id: string };
         Returns: undefined;
       };
+      mr_icon_period_leaderboard: { Args: { p_edition: number }; Returns: Json };
       save_fixture_player_appearances: {
         Args: { p_appearances: Json; p_fixture_id: string };
         Returns: undefined;

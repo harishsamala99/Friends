@@ -195,6 +195,50 @@ export type BestXI = {
   finalized_at: string;
 };
 
+export type MrIconLeaderboardEntry = {
+  player_id: string;
+  player_name: string;
+  team_id: string | null;
+  team_name: string | null;
+  overall_score: number;
+  goals: number;
+  assists: number;
+  saves: number;
+  hattricks: number;
+  braces: number;
+  appearances: number;
+  clean_sheets: number;
+};
+
+export type MrIconPeriodLeaderboard = {
+  edition: number;
+  start_tournament_id: string | null;
+  end_tournament_id: string | null;
+  tournament_ids: string[];
+  tournament_count: number;
+  leaderboard: MrIconLeaderboardEntry[];
+  formula_version: string;
+};
+
+export type MrIconAward = {
+  id: string;
+  edition: number;
+  start_tournament_id: string;
+  end_tournament_id: string;
+  tournament_ids: string[];
+  winning_player_id: string;
+  winner_player_name: string;
+  winning_team_id: string | null;
+  winner_team_name: string;
+  overall_score: number;
+  statistics: MrIconLeaderboardEntry;
+  leaderboard: MrIconLeaderboardEntry[];
+  formula_version: string;
+  status: string;
+  finalized_at: string;
+  finalized_by: string | null;
+};
+
 export const MATCH_STATUSES = [
   "Scheduled",
   "Live",
@@ -281,6 +325,13 @@ export async function fetchEvents(fixtureId: string): Promise<MatchEvent[]> {
     .select("*")
     .eq("fixture_id", fixtureId)
     .order("minute");
+  if (error) throw error;
+  return (data ?? []) as MatchEvent[];
+}
+
+export async function fetchEventsForFixtures(fixtureIds: string[]): Promise<MatchEvent[]> {
+  if (fixtureIds.length === 0) return [];
+  const { data, error } = await db.from("match_events").select("*").in("fixture_id", fixtureIds);
   if (error) throw error;
   return (data ?? []) as MatchEvent[];
 }
@@ -942,6 +993,50 @@ export async function fetchTournaments(): Promise<Tournament[]> {
     status: (row["status"] as Tournament["status"]) ?? "completed",
     fixture_status: (row["fixture_status"] as Tournament["fixture_status"]) ?? "in_progress",
   }));
+}
+
+export async function fetchMrIconAwards(): Promise<MrIconAward[]> {
+  const { data, error } = await db
+    .from("mr_icon_awards")
+    .select("*")
+    .order("edition", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as MrIconAward[];
+}
+
+export async function fetchMrIconPeriodLeaderboard(
+  edition: number,
+): Promise<MrIconPeriodLeaderboard> {
+  const { data, error } = await db.rpc("mr_icon_period_leaderboard", { p_edition: edition });
+  if (error) throw error;
+  return data as unknown as MrIconPeriodLeaderboard;
+}
+
+export async function finalizeMrIconAward(edition: number): Promise<string> {
+  const { data, error } = await db.rpc("finalize_mr_icon_award", { p_edition: edition });
+  if (error) throw error;
+  return data;
+}
+
+export async function correctMrIconAward(
+  awardId: string,
+  playerId: string,
+  reason: string,
+): Promise<void> {
+  const { error } = await db.rpc("correct_mr_icon_award", {
+    p_award_id: awardId,
+    p_winning_player_id: playerId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+}
+
+export async function recalculateMrIconAward(awardId: string, reason: string): Promise<void> {
+  const { error } = await db.rpc("recalculate_mr_icon_award", {
+    p_award_id: awardId,
+    p_reason: reason,
+  });
+  if (error) throw error;
 }
 
 export async function fetchLatestTournament(): Promise<Tournament | null> {
