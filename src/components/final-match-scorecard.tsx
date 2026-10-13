@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   Plus,
   X,
@@ -624,7 +624,6 @@ function TournamentSetup({
 }
 
 export function FinalMatchScorecard() {
-  const navigate = useNavigate();
   // Fetch teams and players
   const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
   const playersQuery = useQuery({
@@ -817,6 +816,7 @@ export function FinalMatchScorecard() {
   const [savingFinalTeams, setSavingFinalTeams] = useState(false);
   const finalFixtureCreationKey = useRef<string | null>(null);
   const manuallySelectedFinalKey = useRef<string | null>(null);
+  const editingFinalFixtureId = useRef<string | null>(null);
   const [tournamentForm, setTournamentForm] = useState({
     name: "",
     type: "League",
@@ -852,6 +852,7 @@ export function FinalMatchScorecard() {
       }));
       const isChangingTeam =
         side === "home" ? selectedHomeTeam !== teamId : selectedAwayTeam !== teamId;
+      if (isChangingTeam) editingFinalFixtureId.current = null;
 
       if (side === "home") {
         setHome((current) => ({
@@ -1317,6 +1318,7 @@ export function FinalMatchScorecard() {
       resetMatch();
       return;
     }
+    if (editingFinalFixtureId.current === savedFinal.id) return;
 
     setSelectedHomeTeam(savedFinal.home_team_id);
     setSelectedAwayTeam(savedFinal.away_team_id);
@@ -1345,6 +1347,12 @@ export function FinalMatchScorecard() {
         fetchEvents(finalFixture.id),
         fetchPlayers(),
       ]);
+      const homeTeamName =
+        teamsQuery.data?.find((team) => team.id === finalFixture.home_team_id)?.name ??
+        tournament.homeTeam;
+      const awayTeamName =
+        teamsQuery.data?.find((team) => team.id === finalFixture.away_team_id)?.name ??
+        tournament.awayTeam;
       const homePlayers = allPlayers
         .filter(
           (player) => player.team_id === finalFixture.home_team_id && player.status === "Active",
@@ -1389,17 +1397,18 @@ export function FinalMatchScorecard() {
 
       setTournamentId(tournament.id);
       localStorage.setItem("current-tournament-id", tournament.id);
+      editingFinalFixtureId.current = finalFixture.id;
       setSelectedHomeTeam(finalFixture.home_team_id);
       setSelectedAwayTeam(finalFixture.away_team_id);
       setHome({
-        name: tournament.homeTeam,
+        name: homeTeamName,
         players: homePlayers,
         goals: goalsFor(finalFixture.home_team_id),
         assists: [],
         saves: savesFor(finalFixture.home_team_id),
       });
       setAway({
-        name: tournament.awayTeam,
+        name: awayTeamName,
         players: awayPlayers,
         goals: goalsFor(finalFixture.away_team_id),
         assists: [],
@@ -1418,7 +1427,7 @@ export function FinalMatchScorecard() {
           tournament.stats.topSaver.name === "None" ? "" : tournament.stats.topSaver.name,
         topSaverSaves: String(tournament.stats.topSaver.saves),
       }));
-      setActiveTab("tournament");
+      setActiveTab("match");
       toast.success("Final loaded for editing.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not load the final for editing");
@@ -1426,20 +1435,8 @@ export function FinalMatchScorecard() {
   };
 
   const editTournamentFinal = (tournament: Tournament) => {
-    localStorage.setItem("edit-final-tournament-id", tournament.id);
-    localStorage.setItem("current-tournament-id", tournament.id);
-    void navigate({ to: "/scorecard" });
-  };
-
-  useEffect(() => {
-    const editTournamentId = localStorage.getItem("edit-final-tournament-id");
-    if (!editTournamentId) return;
-    const tournament = tournaments.find((item) => item.id === editTournamentId);
-    if (!tournament) return;
-
-    localStorage.removeItem("edit-final-tournament-id");
     void loadTournamentFinalForEditing(tournament);
-  }, [tournaments]);
+  };
 
   useEffect(() => {
     const selectedTournament = tournaments.find((tournament) => tournament.id === tournamentId);
