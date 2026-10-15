@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/SiteLayout";
 import { TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
@@ -16,10 +16,14 @@ import {
   fetchFixture,
   fetchPlayers,
   fetchTeams,
+  saveFixtureAppearances,
   replaceFixturePlayerGoals,
   replaceFixturePlayerSaves,
   updateFixture,
+  type FixtureAppearance,
 } from "@/lib/football";
+
+const EMPTY_APPEARANCES: FixtureAppearance[] = [];
 
 export const Route = createFileRoute("/match/$fixtureId")({
   head: () => ({
@@ -129,7 +133,8 @@ function MatchPage() {
               fixture={f}
               homeTeamId={f.home_team_id}
               awayTeamId={f.away_team_id}
-              players={fixtureRoster}
+              players={[...appearanceRoster.values()]}
+              appearances={appearances.data ?? EMPTY_APPEARANCES}
               events={events.data ?? []}
               onSaved={() => {
                 void fixture.refetch();
@@ -139,6 +144,7 @@ function MatchPage() {
                 void queryClient.invalidateQueries({ queryKey: ["fixtures"] });
                 void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
                 void queryClient.invalidateQueries({ queryKey: ["achievements"] });
+                void queryClient.invalidateQueries({ queryKey: ["appearances"] });
               }}
             />
             <h2 className="mb-4 font-display text-2xl font-bold">Timeline</h2>
@@ -185,6 +191,7 @@ function MatchEditor({
   homeTeamId,
   awayTeamId,
   players,
+  appearances,
   events,
   onSaved,
 }: {
@@ -192,6 +199,7 @@ function MatchEditor({
   homeTeamId: string;
   awayTeamId: string;
   players: { id: string; name: string; team_id: string | null; position: string }[];
+  appearances: FixtureAppearance[];
   events: { id: string; player_id: string | null; team_id: string | null; event_type: string }[];
   onSaved: () => void;
 }) {
@@ -210,6 +218,11 @@ function MatchEditor({
   const [savingAwayScorer, setSavingAwayScorer] = useState(false);
   const [savingHomeGK, setSavingHomeGK] = useState(false);
   const [savingAwayGK, setSavingAwayGK] = useState(false);
+  const fixtureAppearancesRef =
+    useRef<Array<Pick<FixtureAppearance, "player_id" | "team_id">>>(appearances);
+  useEffect(() => {
+    fixtureAppearancesRef.current = appearances;
+  }, [appearances]);
 
   // Filter players by team
   const homeTeamPlayers = players.filter((p) => p.team_id === homeTeamId);
@@ -263,6 +276,19 @@ function MatchEditor({
     return savesByPlayerAndTeam[key];
   });
 
+  async function saveGoalkeeperAppearance(playerId: string, teamId: string): Promise<void> {
+    const nextAppearances = new Map(
+      fixtureAppearancesRef.current.map((appearance) => [
+        appearance.player_id,
+        { player_id: appearance.player_id, team_id: appearance.team_id },
+      ]),
+    );
+    nextAppearances.set(playerId, { player_id: playerId, team_id: teamId });
+    const updatedAppearances = [...nextAppearances.values()];
+    await saveFixtureAppearances(fixture.id, updatedAppearances);
+    fixtureAppearancesRef.current = updatedAppearances;
+  }
+
   async function saveScore() {
     if (homeScore === "" || awayScore === "") {
       toast.error("Enter both the home and away scores before saving.");
@@ -270,11 +296,19 @@ function MatchEditor({
     }
     setSavingScore(true);
     try {
+      const homeGoalkeeper =
+        homeGKs.find((player) => player.id === homeGKId) ??
+        (homeGKs.length === 1 ? homeGKs[0] : undefined);
+      const awayGoalkeeper =
+        awayGKs.find((player) => player.id === awayGKId) ??
+        (awayGKs.length === 1 ? awayGKs[0] : undefined);
       await updateFixture(fixture.id, {
         home_score: Number(homeScore),
         away_score: Number(awayScore),
         status: "Full Time",
       });
+      if (homeGoalkeeper) await saveGoalkeeperAppearance(homeGoalkeeper.id, homeTeamId);
+      if (awayGoalkeeper) await saveGoalkeeperAppearance(awayGoalkeeper.id, awayTeamId);
       toast.success("Match score saved");
       onSaved();
     } catch (error) {
@@ -333,6 +367,7 @@ function MatchEditor({
     }
     setSavingHomeGK(true);
     try {
+      await saveGoalkeeperAppearance(gk.id, homeTeamId);
       await replaceFixturePlayerSaves(fixture.id, homeTeamId, gk.id, count);
       toast.success(`${gk.name}'s saves set to ${count}`);
       setHomeSaves(String(count));
@@ -353,6 +388,7 @@ function MatchEditor({
     }
     setSavingAwayGK(true);
     try {
+      await saveGoalkeeperAppearance(gk.id, awayTeamId);
       await replaceFixturePlayerSaves(fixture.id, awayTeamId, gk.id, count);
       toast.success(`${gk.name}'s saves set to ${count}`);
       setAwaySaves(String(count));

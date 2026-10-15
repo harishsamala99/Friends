@@ -193,7 +193,10 @@ function SavesPage() {
                       {s.saves}
                     </td>
                     <td className="p-3 text-center tabular-nums">
-                      {cleanSheetsByGoalkeeper.get(`${s.player_id}:${s.team_id}`) ?? 0}
+                      {Math.max(
+                        cleanSheetsByGoalkeeper.get(`${s.player_id}:${s.team_id}`) ?? 0,
+                        s.clean_sheets,
+                      )}
                     </td>
                     <td className="p-3 text-right">
                       <Button

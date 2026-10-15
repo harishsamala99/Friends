@@ -43,7 +43,7 @@ function StandingsPage() {
   useEffect(() => {
     const storedId = localStorage.getItem("current-tournament-id");
     const firstTournament = tournamentList[0];
-    const selectedId = tournamentList.some((tournament) => tournament.id === storedId)
+    const selectedId = storedId && tournamentList.some((tournament) => tournament.id === storedId)
       ? storedId
       : (firstTournament?.id ?? "");
     setTournamentId(selectedId);

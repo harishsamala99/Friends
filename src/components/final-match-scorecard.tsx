@@ -815,7 +815,6 @@ export function FinalMatchScorecard() {
   const savingTournamentRef = useRef(false);
   const [savingFinalTeams, setSavingFinalTeams] = useState(false);
   const finalFixtureCreationKey = useRef<string | null>(null);
-  const manuallySelectedFinalKey = useRef<string | null>(null);
   const editingFinalFixtureId = useRef<string | null>(null);
   const [tournamentForm, setTournamentForm] = useState({
     name: "",
@@ -961,7 +960,7 @@ export function FinalMatchScorecard() {
   useEffect(() => {
     if (!homeFinalist || !awayFinalist) return;
     if (!leagueComplete) return;
-    if (isCurrentTournamentCreated) return;
+    if (!isCurrentTournamentCreated || finalHasBeenPosted) return;
 
     if (selectedHomeTeam !== homeFinalist.team_id) loadTeamPlayers(homeFinalist.team_id, "home");
     if (selectedAwayTeam !== awayFinalist.team_id) loadTeamPlayers(awayFinalist.team_id, "away");
@@ -971,6 +970,7 @@ export function FinalMatchScorecard() {
     }));
   }, [
     leagueComplete,
+    finalHasBeenPosted,
     homeFinalist,
     awayFinalist,
     selectedHomeTeam,
@@ -1132,7 +1132,6 @@ export function FinalMatchScorecard() {
         ]);
       }
       await persistFinalistTeams(homeFinalistName, awayFinalistName, true);
-      manuallySelectedFinalKey.current = `${tournamentId}:${selectedHomeTeam}:${selectedAwayTeam}`;
       await queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
       await queryClient.invalidateQueries({ queryKey: ["fixtures"] });
       toast.success("Final teams saved. They will now appear on the home page.");
@@ -1188,7 +1187,6 @@ export function FinalMatchScorecard() {
       setSelectedHomeTeam("");
       setSelectedAwayTeam("");
       resetMatch();
-      manuallySelectedFinalKey.current = null;
       finalFixtureCreationKey.current = null;
       await queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
       await queryClient.invalidateQueries({ queryKey: ["fixtures"] });
@@ -1215,34 +1213,67 @@ export function FinalMatchScorecard() {
       !homeFinalist ||
       !awayFinalist ||
       !competitionId ||
-      !isCurrentTournamentCreated
+      !isCurrentTournamentCreated ||
+      finalHasBeenPosted
     )
       return;
     if (fixturesQuery.isLoading) return;
-    if (manuallySelectedFinalKey.current?.startsWith(`${tournamentId}:`)) return;
 
     const creationKey = `${tournamentId}:${homeFinalist.team_id}:${awayFinalist.team_id}`;
+    if (finalFixtureCreationKey.current === creationKey) return;
+
     const savedFinal = (fixturesQuery.data ?? []).find(
       (fixture) =>
         fixture.notes?.includes("completed league standings") ||
         fixture.notes?.includes("Final teams selected manually"),
     );
     if (savedFinal) {
-      if (
+      const finalistsMatch =
         savedFinal.home_team_id === homeFinalist.team_id &&
-        savedFinal.away_team_id === awayFinalist.team_id &&
-        (currentTournament?.homeTeam !== homeFinalist.team_name ||
-          currentTournament?.awayTeam !== awayFinalist.team_name)
-      ) {
-        void persistFinalistTeams(homeFinalist.team_name, awayFinalist.team_name).catch((error) => {
+        savedFinal.away_team_id === awayFinalist.team_id;
+      if (finalistsMatch) {
+        if (
+          currentTournament?.homeTeam !== homeFinalist.team_name ||
+          currentTournament?.awayTeam !== awayFinalist.team_name
+        ) {
+          void persistFinalistTeams(homeFinalist.team_name, awayFinalist.team_name).catch(
+            (error) => {
+              toast.error(
+                error instanceof Error ? error.message : "Could not save tournament finalists",
+              );
+            },
+          );
+        }
+        return;
+      }
+
+      finalFixtureCreationKey.current = creationKey;
+      void Promise.all([
+        updateFixture(savedFinal.id, {
+          home_team_id: homeFinalist.team_id,
+          away_team_id: awayFinalist.team_id,
+          home_score: null,
+          away_score: null,
+          status: "Scheduled",
+          notes: "Automatically created from the completed league standings.",
+        }),
+        persistFinalistTeams(homeFinalist.team_name, awayFinalist.team_name, true),
+      ])
+        .then(() => {
+          void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
+          void queryClient.invalidateQueries({ queryKey: ["fixtures"] });
+          toast.success(
+            `Finalists updated from the standings: ${homeFinalist.team_name} vs ${awayFinalist.team_name}.`,
+          );
+        })
+        .catch((error) => {
+          finalFixtureCreationKey.current = null;
           toast.error(
-            error instanceof Error ? error.message : "Could not save tournament finalists",
+            error instanceof Error ? error.message : "Could not update the final fixture",
           );
         });
-      }
       return;
     }
-    if (finalFixtureCreationKey.current === creationKey) return;
     finalFixtureCreationKey.current = creationKey;
 
     void persistFinalistTeams(homeFinalist.team_name, awayFinalist.team_name)
@@ -1277,6 +1308,7 @@ export function FinalMatchScorecard() {
     awayFinalist,
     competitionId,
     isCurrentTournamentCreated,
+    finalHasBeenPosted,
     currentTournament?.homeTeam,
     currentTournament?.awayTeam,
     persistFinalistTeams,
@@ -1292,7 +1324,6 @@ export function FinalMatchScorecard() {
     setSelectedHomeTeam("");
     setSelectedAwayTeam("");
     resetMatch();
-    manuallySelectedFinalKey.current = null;
     finalFixtureCreationKey.current = null;
     setTournamentForm((current) => ({
       ...current,
@@ -2091,16 +2122,16 @@ export function FinalMatchScorecard() {
             </CardContent>
           </Card>
 
-          {homeFinalist && awayFinalist && !finalHasBeenPosted && !isCurrentTournamentCreated && (
+          {homeFinalist && awayFinalist && !finalHasBeenPosted && isCurrentTournamentCreated && (
             <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-white text-slate-900 shadow-lg dark:bg-[#18212d] dark:text-foreground">
               <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-bold uppercase tracking-wider text-[#16756b]">
-                    {leagueComplete ? "Finalists confirmed" : "Current final places"}
+                    {leagueComplete ? "Finalists qualified automatically" : "Current final places"}
                   </p>
                   <p className="mt-1 font-semibold text-slate-800 dark:text-foreground">
                     {leagueComplete
-                      ? "The final has been prepared from the top two teams."
+                      ? "The top two teams in the completed standings are set for the final."
                       : "The top two teams currently lead the standings."}
                   </p>
                   <p className="mt-1 text-sm text-slate-600 dark:text-muted-foreground">
@@ -2136,6 +2167,7 @@ export function FinalMatchScorecard() {
                   <Select
                     value={selectedHomeTeam}
                     onValueChange={(teamId) => loadTeamPlayers(teamId, "home")}
+                    disabled={leagueComplete}
                   >
                     <SelectTrigger className="bg-background border-2 hover:border-primary/50 transition-colors">
                       <SelectValue placeholder="Select team 1..." />
@@ -2161,6 +2193,7 @@ export function FinalMatchScorecard() {
                   <Select
                     value={selectedAwayTeam}
                     onValueChange={(teamId) => loadTeamPlayers(teamId, "away")}
+                    disabled={leagueComplete}
                   >
                     <SelectTrigger className="bg-background border-2 hover:border-primary/50 transition-colors">
                       <SelectValue placeholder="Select team 2..." />
@@ -2182,7 +2215,9 @@ export function FinalMatchScorecard() {
               </div>
               <div className="flex flex-col gap-3 border-t border-[#f28c5b]/20 pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Choose both finalists, then save them to the tournament bracket and home page.
+                  {leagueComplete
+                    ? "The top two teams from the completed standings are selected and scheduled automatically."
+                    : "Choose both finalists, then save them to the tournament bracket and home page."}
                 </p>
                 <Button
                   type="button"
@@ -2191,28 +2226,34 @@ export function FinalMatchScorecard() {
                   onClick={() => void saveSelectedFinalTeams()}
                   disabled={
                     savingFinalTeams ||
+                    leagueComplete ||
                     !isCurrentTournamentCreated ||
                     !selectedHomeTeam ||
                     !selectedAwayTeam
                   }
                 >
-                  {savingFinalTeams ? "Saving final teams..." : "Save final teams"}
+                  {savingFinalTeams
+                    ? "Saving final teams..."
+                    : leagueComplete
+                      ? "Finalists set automatically"
+                      : "Save final teams"}
                 </Button>
-                {(fixturesQuery.data ?? []).some(
-                  (fixture) =>
-                    fixture.notes?.includes("completed league standings") ||
-                    fixture.notes?.includes("Final teams selected manually"),
-                ) && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10"
-                    onClick={() => void removeSavedFinal()}
-                    disabled={savingFinalTeams}
-                  >
-                    Remove saved final
-                  </Button>
-                )}
+                {!leagueComplete &&
+                  (fixturesQuery.data ?? []).some(
+                    (fixture) =>
+                      fixture.notes?.includes("completed league standings") ||
+                      fixture.notes?.includes("Final teams selected manually"),
+                  ) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10"
+                      onClick={() => void removeSavedFinal()}
+                      disabled={savingFinalTeams}
+                    >
+                      Remove saved final
+                    </Button>
+                  )}
               </div>
             </CardContent>
           </Card>
