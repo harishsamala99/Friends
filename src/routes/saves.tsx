@@ -10,7 +10,10 @@ import {
   fetchTopSaves,
   fetchTournaments,
   deletePlayerSaves,
+  fetchPlayers,
+  fetchTeams,
   type Tournament,
+  type SavesRow,
 } from "@/lib/football";
 import { Button } from "@/components/ui/button";
 
@@ -61,25 +64,31 @@ function SavesPage() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
+  const players = useQuery({
+    queryKey: ["players"],
+    queryFn: () => fetchPlayers(),
+    enabled: Boolean(tournamentId),
+  });
+  const teams = useQuery({
+    queryKey: ["teams"],
+    queryFn: () => fetchTeams(),
+    enabled: Boolean(tournamentId),
+  });
   const cleanSheetsByGoalkeeper = useMemo(() => {
     const fixturesById = new Map((fixtures.data ?? []).map((fixture) => [fixture.id, fixture]));
-    const goalkeeperKeys = new Set(
-      (saves.data ?? [])
-        .filter((player) => {
-          const position = player.position.trim().toLowerCase();
-          return position === "gk" || position.includes("goalkeeper");
-        })
-        .map((player) => `${player.player_id}:${player.team_id}`),
-    );
+    const playersById = new Map((players.data ?? []).map((player) => [player.id, player]));
     const countedAppearances = new Set<string>();
     const cleanSheets = new Map<string, number>();
 
     for (const appearance of appearances.data ?? []) {
       const fixture = fixturesById.get(appearance.fixture_id);
+      const player = playersById.get(appearance.player_id);
       const goalkeeperKey = `${appearance.player_id}:${appearance.team_id}`;
       if (
         !fixture ||
-        !goalkeeperKeys.has(goalkeeperKey) ||
+        !player ||
+        (player.position.trim().toLowerCase() !== "gk" &&
+          !player.position.trim().toLowerCase().includes("goalkeeper")) ||
         fixture.status !== "Full Time" ||
         fixture.home_score == null ||
         fixture.away_score == null ||
@@ -99,8 +108,52 @@ function SavesPage() {
     }
 
     return cleanSheets;
-  }, [appearances.data, fixtures.data, saves.data]);
-  const leadingSaves = Math.max(0, ...(saves.data ?? []).map((player) => player.saves));
+  }, [appearances.data, fixtures.data, players.data]);
+  const goalkeeperRows = useMemo(() => {
+    const rows = new Map<string, SavesRow>();
+    const teamsById = new Map((teams.data ?? []).map((team) => [team.id, team]));
+
+    for (const saveRow of saves.data ?? []) {
+      const key = `${saveRow.player_id}:${saveRow.team_id}`;
+      rows.set(key, {
+        ...saveRow,
+        clean_sheets: Math.max(cleanSheetsByGoalkeeper.get(key) ?? 0, saveRow.clean_sheets),
+      });
+    }
+
+    for (const [key, cleanSheets] of cleanSheetsByGoalkeeper) {
+      if (rows.has(key)) continue;
+      const [playerId, teamId] = key.split(":");
+      const player = players.data?.find((item) => item.id === playerId);
+      const team = teamsById.get(teamId);
+      if (!player || !team) continue;
+
+      rows.set(key, {
+        player_id: player.id,
+        player_name: player.name,
+        position: player.position,
+        photo_url: player.photo_url,
+        jersey_number: player.jersey_number,
+        team_id: team.id,
+        team_name: team.name,
+        short_name: team.short_name,
+        crest_color: team.crest_color,
+        competition_id: team.competition_id,
+        tournament_id: tournamentId,
+        saves: 0,
+        clean_sheets: cleanSheets,
+        matches: 0,
+      });
+    }
+
+    return [...rows.values()].sort(
+      (left, right) =>
+        right.saves - left.saves ||
+        right.clean_sheets - left.clean_sheets ||
+        right.matches - left.matches,
+    );
+  }, [cleanSheetsByGoalkeeper, players.data, saves.data, teams.data, tournamentId]);
+  const leadingSaves = Math.max(0, ...goalkeeperRows.map((player) => player.saves));
 
   useEffect(() => {
     const storedId = localStorage.getItem("current-tournament-id");
@@ -152,13 +205,13 @@ function SavesPage() {
           <EmptyState message="Unable to load tournaments. Refresh the page and try again." />
         ) : saves.isError ? (
           <EmptyState message="Unable to load save statistics. Try returning to the page." />
-        ) : fixtures.isError || appearances.isError ? (
+        ) : fixtures.isError || appearances.isError || players.isError || teams.isError ? (
           <EmptyState message="Unable to load goalkeeper appearance statistics. Try returning to the page." />
         ) : saves.isLoading ? (
           <ListSkeleton rows={10} />
-        ) : fixtures.isLoading || appearances.isLoading ? (
+        ) : fixtures.isLoading || appearances.isLoading || players.isLoading || teams.isLoading ? (
           <ListSkeleton rows={10} />
-        ) : (saves.data ?? []).length === 0 ? (
+        ) : goalkeeperRows.length === 0 ? (
           <EmptyState message="No saves recorded yet." />
         ) : (
           <div className="data-table-wrap overflow-x-auto">
@@ -174,21 +227,21 @@ function SavesPage() {
                 </tr>
               </thead>
               <tbody>
-                {(saves.data ?? []).map((s, i) => (
-                  <tr key={s.player_id} className="border-t border-border/60">
+                {goalkeeperRows.map((s, i) => (
+                  <tr key={`${s.player_id}:${s.team_id}`} className="border-t border-border/60">
                     <td className="p-3 text-muted-foreground">
                       <span className={`rank-badge ${i === 0 ? "rank-badge--gold" : ""}`}>
                         {i + 1}
                       </span>
                     </td>
                     <td
-                      className={`p-3 ${s.saves === leadingSaves ? "font-bold text-primary" : "font-medium"}`}
+                      className={`p-3 ${leadingSaves > 0 && s.saves === leadingSaves ? "font-bold text-primary" : "font-medium"}`}
                     >
                       {s.player_name}
                     </td>
                     <td className="p-3 text-muted-foreground">{s.team_name}</td>
                     <td
-                      className={`p-3 text-center tabular-nums ${s.saves === leadingSaves ? "font-bold text-primary" : "font-semibold"}`}
+                      className={`p-3 text-center tabular-nums ${leadingSaves > 0 && s.saves === leadingSaves ? "font-bold text-primary" : "font-semibold"}`}
                     >
                       {s.saves}
                     </td>
@@ -199,24 +252,26 @@ function SavesPage() {
                       )}
                     </td>
                     <td className="p-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title={`Delete ${s.player_name}'s saves for ${s.team_name}`}
-                        aria-label={`Delete ${s.player_name} from ${s.team_name} top saves`}
-                        disabled={removeSaves.isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Remove all recorded saves for ${s.player_name} on ${s.team_name}?`,
-                            )
-                          ) {
-                            removeSaves.mutate(s.player_id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                      {s.saves > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={`Delete ${s.player_name}'s saves for ${s.team_name}`}
+                          aria-label={`Delete ${s.player_name} from ${s.team_name} top saves`}
+                          disabled={removeSaves.isPending}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Remove all recorded saves for ${s.player_name} on ${s.team_name}?`,
+                              )
+                            ) {
+                              removeSaves.mutate(s.player_id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
