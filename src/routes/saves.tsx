@@ -61,13 +61,6 @@ function SavesPage() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
-  const tournamentFixtureIds = new Set((fixtures.data ?? []).map((fixture) => fixture.id));
-  const appearancesByPlayer = (appearances.data ?? []).reduce((counts, appearance) => {
-    if (tournamentFixtureIds.has(appearance.fixture_id)) {
-      counts.set(appearance.player_id, (counts.get(appearance.player_id) ?? 0) + 1);
-    }
-    return counts;
-  }, new Map<string, number>());
   const cleanSheetsByGoalkeeper = useMemo(() => {
     const fixturesById = new Map((fixtures.data ?? []).map((fixture) => [fixture.id, fixture]));
     const goalkeeperKeys = new Set(
@@ -160,7 +153,7 @@ function SavesPage() {
         ) : saves.isError ? (
           <EmptyState message="Unable to load save statistics. Try returning to the page." />
         ) : fixtures.isError || appearances.isError ? (
-          <EmptyState message="Unable to load appearance statistics. Try returning to the page." />
+          <EmptyState message="Unable to load goalkeeper appearance statistics. Try returning to the page." />
         ) : saves.isLoading ? (
           <ListSkeleton rows={10} />
         ) : fixtures.isLoading || appearances.isLoading ? (
@@ -177,7 +170,6 @@ function SavesPage() {
                   <th className="p-3 text-left font-medium">Team</th>
                   <th className="p-3 text-center font-medium">Saves</th>
                   <th className="p-3 text-center font-medium">Clean Sheets</th>
-                  <th className="p-3 text-center font-medium">Appearances</th>
                   <th className="p-3 text-right font-medium">Actions</th>
                 </tr>
               </thead>
@@ -202,9 +194,6 @@ function SavesPage() {
                     </td>
                     <td className="p-3 text-center tabular-nums">
                       {cleanSheetsByGoalkeeper.get(`${s.player_id}:${s.team_id}`) ?? 0}
-                    </td>
-                    <td className="p-3 text-center tabular-nums">
-                      {appearancesByPlayer.get(s.player_id) ?? 0}
                     </td>
                     <td className="p-3 text-right">
                       <Button

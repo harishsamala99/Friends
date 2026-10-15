@@ -18,7 +18,6 @@ import {
   fetchTeams,
   replaceFixturePlayerGoals,
   replaceFixturePlayerSaves,
-  saveFixtureAppearances,
   updateFixture,
 } from "@/lib/football";
 
@@ -135,28 +134,11 @@ function MatchPage() {
               onSaved={() => {
                 void fixture.refetch();
                 void events.refetch();
-                void appearances.refetch();
                 void queryClient.invalidateQueries({ queryKey: ["scorers"] });
                 void queryClient.invalidateQueries({ queryKey: ["saves"] });
                 void queryClient.invalidateQueries({ queryKey: ["fixtures"] });
                 void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
                 void queryClient.invalidateQueries({ queryKey: ["achievements"] });
-              }}
-            />
-            <MatchAppearancesEditor
-              fixtureId={f.id}
-              homeTeamId={f.home_team_id}
-              awayTeamId={f.away_team_id}
-              homeTeamName={home?.name ?? "Home team"}
-              awayTeamName={away?.name ?? "Away team"}
-              loading={appearances.isLoading}
-              failed={appearances.isError}
-              loadError={appearances.error instanceof Error ? appearances.error.message : undefined}
-              players={[...appearanceRoster.values()]}
-              appearances={appearances.data ?? EMPTY_APPEARANCES}
-              onSaved={async () => {
-                await queryClient.invalidateQueries({ queryKey: ["appearances"] });
-                await queryClient.invalidateQueries({ queryKey: ["achievements"] });
               }}
             />
             <h2 className="mb-4 font-display text-2xl font-bold">Timeline</h2>
@@ -197,8 +179,6 @@ function MatchPage() {
     </SiteLayout>
   );
 }
-
-const EMPTY_APPEARANCES: { player_id: string; team_id: string }[] = [];
 
 function MatchEditor({
   fixture,
@@ -742,140 +722,6 @@ function MatchEditor({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function MatchAppearancesEditor({
-  fixtureId,
-  homeTeamId,
-  awayTeamId,
-  homeTeamName,
-  awayTeamName,
-  loading,
-  failed,
-  loadError,
-  players,
-  appearances,
-  onSaved,
-}: {
-  fixtureId: string;
-  homeTeamId: string;
-  awayTeamId: string;
-  homeTeamName: string;
-  awayTeamName: string;
-  loading: boolean;
-  failed: boolean;
-  loadError?: string;
-  players: { id: string; name: string; team_id: string | null; position: string }[];
-  appearances: { player_id: string; team_id: string }[];
-  onSaved: () => void | Promise<void>;
-}) {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
-  const teams = [
-    { id: homeTeamId, name: homeTeamName },
-    { id: awayTeamId, name: awayTeamName },
-  ];
-
-  useEffect(() => {
-    setSelectedIds(appearances.map((appearance) => appearance.player_id));
-  }, [appearances]);
-
-  async function saveAppearances() {
-    setSaving(true);
-    try {
-      const selected = new Set(selectedIds);
-      await saveFixtureAppearances(
-        fixtureId,
-        players.flatMap((player) =>
-          player.team_id && selected.has(player.id)
-            ? [{ player_id: player.id, team_id: player.team_id }]
-            : [],
-        ),
-      );
-      await onSaved();
-      toast.success("Match appearances saved");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save match appearances");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Card className="mb-10">
-      <CardHeader>
-        <CardTitle className="text-base">Record match appearances</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Select only players who took part. Confirmed appearances are required to calculate
-          consecutive scoring badges accurately.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {failed ? (
-          <p className="text-sm text-destructive">
-            {loadError ?? "Saved appearances could not be loaded. Refresh before changing them."}
-          </p>
-        ) : loading ? (
-          <p className="text-sm text-muted-foreground">Loading saved appearances…</p>
-        ) : players.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No active players are assigned to these teams.
-          </p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {teams.map((team) => {
-              const teamPlayers = players.filter((player) => player.team_id === team.id);
-              const selectedCount = teamPlayers.filter((player) =>
-                selectedIds.includes(player.id),
-              ).length;
-
-              return (
-                <section key={team.id} className="rounded-lg border border-border/60 p-3">
-                  <h3 className="mb-3 flex items-center justify-between gap-2 text-sm font-semibold">
-                    <span>{team.name}</span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      {selectedCount}/{teamPlayers.length} appeared
-                    </span>
-                  </h3>
-                  {teamPlayers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No players assigned.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {teamPlayers.map((player) => (
-                        <label key={player.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(player.id)}
-                            disabled={loading || failed}
-                            onChange={(event) =>
-                              setSelectedIds((current) =>
-                                event.target.checked
-                                  ? [...current, player.id]
-                                  : current.filter((id) => id !== player.id),
-                              )
-                            }
-                            className="size-4 accent-primary"
-                          />
-                          {player.name}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              );
-            })}
-          </div>
-        )}
-        <Button
-          size="sm"
-          disabled={saving || loading || failed || players.length === 0}
-          onClick={saveAppearances}
-        >
-          {saving ? "Saving…" : "Save appearances"}
-        </Button>
       </CardContent>
     </Card>
   );

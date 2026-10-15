@@ -6,7 +6,6 @@ import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, ListSkeleton, EmptyState } from "@/components/football-ui";
 import {
   fetchFixtures,
-  fetchAllFixtureAppearances,
   fetchTopScorers,
   fetchTournaments,
   deletePlayerGoals,
@@ -51,20 +50,6 @@ function ScorersPage() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
-  const appearances = useQuery({
-    queryKey: ["appearances", tournamentId],
-    queryFn: fetchAllFixtureAppearances,
-    enabled: Boolean(tournamentId),
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
-  });
-  const tournamentFixtureIds = new Set((fixtures.data ?? []).map((fixture) => fixture.id));
-  const appearancesByPlayer = (appearances.data ?? []).reduce((counts, appearance) => {
-    if (tournamentFixtureIds.has(appearance.fixture_id)) {
-      counts.set(appearance.player_id, (counts.get(appearance.player_id) ?? 0) + 1);
-    }
-    return counts;
-  }, new Map<string, number>());
   const totalGoals = (fixtures.data ?? [])
     .filter(
       (fixture) =>
@@ -123,11 +108,11 @@ function ScorersPage() {
           <EmptyState message="Unable to load tournaments. Refresh the page and try again." />
         ) : scorers.isError ? (
           <EmptyState message="Unable to load scorer statistics. Try returning to the page." />
-        ) : fixtures.isError || appearances.isError ? (
-          <EmptyState message="Unable to load appearance statistics. Try returning to the page." />
+        ) : fixtures.isError ? (
+          <EmptyState message="Unable to load tournament statistics. Try returning to the page." />
         ) : scorers.isLoading ? (
           <ListSkeleton rows={10} />
-        ) : fixtures.isLoading || appearances.isLoading ? (
+        ) : fixtures.isLoading ? (
           <ListSkeleton rows={10} />
         ) : (scorers.data ?? []).length === 0 ? (
           <EmptyState message="No goals recorded yet." />
@@ -149,7 +134,6 @@ function ScorersPage() {
                     <th className="p-3 text-left font-medium">Player</th>
                     <th className="p-3 text-left font-medium">Team</th>
                     <th className="p-3 text-center font-medium">Goals</th>
-                    <th className="p-3 text-center font-medium">Appearances</th>
                     <th className="p-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -171,9 +155,6 @@ function ScorersPage() {
                         className={`p-3 text-center tabular-nums ${s.goals === leadingGoals ? "font-bold text-primary" : "font-semibold"}`}
                       >
                         {s.goals}
-                      </td>
-                      <td className="p-3 text-center tabular-nums">
-                        {appearancesByPlayer.get(s.player_id) ?? 0}
                       </td>
                       <td className="p-3 text-right">
                         <Button

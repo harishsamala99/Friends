@@ -171,6 +171,10 @@ function Home() {
     queryFn: () => fetchFixtures(undefined, latestTournament?.id),
     enabled: Boolean(latestTournament?.id),
   });
+  const allFixtures = useQuery({
+    queryKey: ["fixtures", "latest-results"],
+    queryFn: () => fetchFixtures(),
+  });
   const standings = useQuery({ queryKey: ["standings"], queryFn: () => fetchStandings() });
   const scorers = useQuery({
     queryKey: ["scorers", latestTournament?.id],
@@ -265,7 +269,7 @@ function Home() {
       latestTournament?.stats.topSaver.name.trim().toLowerCase(),
   );
   const upcoming = all.filter((f) => f.status === "Scheduled").slice(0, 5);
-  const recent = all
+  const recent = (allFixtures.data ?? [])
     .filter((f) => f.home_score != null)
     .sort((a, b) => +new Date(b.kickoff) - +new Date(a.kickoff))
     .slice(0, 5);
@@ -538,7 +542,7 @@ function Home() {
 
         <section>
           <h2 className="mb-4 font-display text-2xl font-bold">Latest results</h2>
-          {fixtures.isLoading ? (
+          {allFixtures.isLoading ? (
             <ListSkeleton rows={4} />
           ) : recent.length === 0 ? (
             <EmptyState message="No results yet." />
