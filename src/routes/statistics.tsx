@@ -758,11 +758,9 @@ function MrIconAwardsSection({ tournaments }: { tournaments: Tournament[] }) {
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   {[
                     ["Goals", award.statistics.goals],
-                    ["Assists", award.statistics.assists],
                     ["Saves", award.statistics.saves],
                     ["Hat-tricks", award.statistics.hattricks],
                     ["Braces", award.statistics.braces],
-                    ["Appearances", award.statistics.appearances],
                     ["Clean sheets", award.statistics.clean_sheets],
                   ].map(([label, value]) => (
                     <div
@@ -800,8 +798,9 @@ function MrIconAwardsSection({ tournaments }: { tournaments: Tournament[] }) {
               Period score breakdown
             </h4>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              Goals ×4 · Assists ×3 · Saves ×1 · Hat-tricks ×2 · Braces ×1 · Appearances ×1 · Clean
-              sheets ×2
+              {award && award.formula_version !== "mr-icon-v3"
+                ? "This finalized edition used an earlier scoring formula."
+                : "Goals ×4 · Saves ×1 · Hat-tricks ×2 · Braces ×1 · Clean sheets ×2"}
             </p>
             {liveLeaderboard.isLoading ? (
               <p className="mt-5 text-sm text-slate-400">Calculating period leaderboard…</p>
@@ -822,9 +821,8 @@ function MrIconAwardsSection({ tournaments }: { tournaments: Tournament[] }) {
                         {entry.player_name}
                       </p>
                       <p className="truncate text-xs text-slate-400">
-                        {entry.team_name || "Team not recorded"} · {entry.goals} G · {entry.assists}{" "}
-                        A · {entry.saves} SV · {entry.hattricks} H · {entry.braces} B ·{" "}
-                        {entry.appearances} apps · {entry.clean_sheets} CS
+                        {entry.team_name || "Team not recorded"} · {entry.goals} G · {entry.saves}{" "}
+                        SV · {entry.hattricks} H · {entry.braces} B · {entry.clean_sheets} CS
                       </p>
                     </div>
                     <span className="text-sm font-bold tabular-nums text-sky-100">

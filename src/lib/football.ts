@@ -202,11 +202,9 @@ export type MrIconLeaderboardEntry = {
   team_name: string | null;
   overall_score: number;
   goals: number;
-  assists: number;
   saves: number;
   hattricks: number;
   braces: number;
-  appearances: number;
   clean_sheets: number;
 };
 
@@ -331,9 +329,21 @@ export async function fetchEvents(fixtureId: string): Promise<MatchEvent[]> {
 
 export async function fetchEventsForFixtures(fixtureIds: string[]): Promise<MatchEvent[]> {
   if (fixtureIds.length === 0) return [];
-  const { data, error } = await db.from("match_events").select("*").in("fixture_id", fixtureIds);
-  if (error) throw error;
-  return (data ?? []) as MatchEvent[];
+
+  const pageSize = 1000;
+  const events: MatchEvent[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await db
+      .from("match_events")
+      .select("*")
+      .in("fixture_id", fixtureIds)
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+
+    const page = (data ?? []) as MatchEvent[];
+    events.push(...page);
+    if (page.length < pageSize) return events;
+  }
 }
 
 export async function fetchAllMatchEvents(): Promise<MatchEvent[]> {
