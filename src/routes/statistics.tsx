@@ -1,13 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Award,
   ChartNoAxesCombined,
-  Check,
   Crown,
-  Diamond,
   Goal,
   Hand,
   Medal,
@@ -23,12 +21,7 @@ import {
   fetchFixtures,
   fetchAllFixtureAppearances,
   fetchEventsForFixtures,
-  correctMrIconAward,
-  fetchMrIconAwards,
-  fetchMrIconPeriodLeaderboard,
-  finalizeMrIconAward,
   fetchPlayers,
-  recalculateMrIconAward,
   fetchTeams,
   fetchTopScorers,
   fetchTopSaves,
@@ -36,15 +29,11 @@ import {
   fetchTournaments,
   type FixtureAppearance,
   type Fixture,
-  type MrIconAward,
-  type MrIconLeaderboardEntry,
-  type MrIconPeriodLeaderboard,
   type MatchEvent,
   type Player,
   type ScorerRow,
   type StandingRow,
   type Team,
-  type Tournament,
 } from "@/lib/football";
 
 export const Route = createFileRoute("/statistics")({
@@ -312,13 +301,9 @@ function StatisticsPage() {
             </div>
           </div>
         ) : !tournament ? (
-          <>
-            <EmptyState message="No tournaments are available yet." />
-            <MrIconAwardsSection tournaments={tournamentList} />
-          </>
+          <EmptyState message="No tournaments are available yet." />
         ) : (
           <>
-            <MrIconAwardsSection tournaments={tournamentList} />
             <section aria-labelledby="champion-heading">
               <SectionHeading
                 eyebrow="The season's finest"
@@ -579,409 +564,6 @@ function StatisticsPage() {
         )}
       </div>
     </SiteLayout>
-  );
-}
-
-function MrIconAwardsSection({ tournaments }: { tournaments: Tournament[] }) {
-  const queryClient = useQueryClient();
-  const awards = useQuery({ queryKey: ["mr-icon-awards"], queryFn: fetchMrIconAwards });
-  const chronologicalTournaments = useMemo(
-    () =>
-      [...tournaments].sort(
-        (a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id.localeCompare(b.id),
-      ),
-    [tournaments],
-  );
-  const finalizedEditions = new Set((awards.data ?? []).map((award) => award.edition));
-  const availableEditionCount = Math.ceil(chronologicalTournaments.length / 10);
-  let currentEdition = 1;
-  while (currentEdition <= availableEditionCount && finalizedEditions.has(currentEdition)) {
-    currentEdition += 1;
-  }
-  if (currentEdition > availableEditionCount) {
-    currentEdition = Math.floor(chronologicalTournaments.length / 10) + 1;
-  }
-  const currentPeriod = chronologicalTournaments.slice(
-    (currentEdition - 1) * 10,
-    currentEdition * 10,
-  );
-  const currentPeriodIds = currentPeriod.map((tournament) => tournament.id);
-  const [chosenEdition, setChosenEdition] = useState<number | null>(null);
-  const selectedEdition = chosenEdition ?? currentEdition;
-  const [correctionPlayerId, setCorrectionPlayerId] = useState("");
-  const [reason, setReason] = useState("");
-  const [actionMessage, setActionMessage] = useState("");
-  const award = (awards.data ?? []).find((item) => item.edition === selectedEdition);
-  const periodFixtures = useQuery({
-    queryKey: ["mr-icon-current-period-fixtures", currentEdition, currentPeriodIds.join(",")],
-    queryFn: async () =>
-      (
-        await Promise.all(
-          currentPeriod.map((tournament) => fetchFixtures(undefined, tournament.id)),
-        )
-      ).flat(),
-    enabled: currentPeriod.length === 10,
-  });
-  const currentPeriodComplete =
-    currentPeriod.length === 10 &&
-    currentPeriod.every((tournament) => tournament.status === "completed") &&
-    currentPeriod.every((tournament) => {
-      const tournamentFixtures = (periodFixtures.data ?? []).filter(
-        (fixture) => fixture.tournament_id === tournament.id,
-      );
-      return (
-        tournamentFixtures.length > 0 &&
-        tournamentFixtures.every(
-          (fixture) =>
-            fixture.status === "Full Time" &&
-            fixture.home_score != null &&
-            fixture.away_score != null,
-        )
-      );
-    });
-  const liveLeaderboard = useQuery({
-    queryKey: ["mr-icon-leaderboard", selectedEdition],
-    queryFn: () => fetchMrIconPeriodLeaderboard(selectedEdition),
-    enabled: !award,
-  });
-  const leaderboard: MrIconLeaderboardEntry[] = award
-    ? award.leaderboard
-    : (liveLeaderboard.data?.leaderboard ?? []);
-  const selectedCorrectionPlayerId =
-    correctionPlayerId && leaderboard.some((entry) => entry.player_id === correctionPlayerId)
-      ? correctionPlayerId
-      : (award?.winning_player_id ?? "");
-  const maxEdition = Math.max(currentEdition, ...(awards.data ?? []).map((item) => item.edition));
-  const editions = Array.from({ length: maxEdition }, (_, index) => index + 1);
-
-  const awardSaved = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["mr-icon-awards"] });
-    setActionMessage("MR. ICON award updated successfully.");
-  };
-  const finalize = useMutation({
-    mutationFn: () => finalizeMrIconAward(currentEdition),
-    onSuccess: awardSaved,
-  });
-  const correct = useMutation({
-    mutationFn: () => {
-      if (!award) throw new Error("Select a finalized award to correct.");
-      return correctMrIconAward(award.id, selectedCorrectionPlayerId, reason.trim());
-    },
-    onSuccess: awardSaved,
-  });
-  const recalculate = useMutation({
-    mutationFn: () => {
-      if (!award) throw new Error("Select a finalized award to recalculate.");
-      return recalculateMrIconAward(award.id, reason.trim());
-    },
-    onSuccess: awardSaved,
-  });
-  const actionError = finalize.error ?? correct.error ?? recalculate.error;
-  const migrationSetupMessage =
-    "The MR. ICON database migration is not available in Supabase yet. Apply the project's Supabase migrations, then reload this page.";
-  const displayMrIconError = (error: Error) =>
-    /schema cache|could not find (the )?(table|function)|does not exist/i.test(error.message)
-      ? migrationSetupMessage
-      : error.message;
-
-  return (
-    <section aria-labelledby="mr-icon-heading" className="space-y-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <SectionHeading
-          eyebrow="Historical 10-tournament awards"
-          title="MR. ICON ARCHIVE"
-          icon={Diamond}
-          id="mr-icon-heading"
-        />
-        <Link to="/mr-icon" className="text-sm font-semibold text-primary hover:underline">
-          Open the current MR. ICON leaderboard
-        </Link>
-        <label className="flex w-full flex-col gap-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground sm:w-64">
-          Inspect award edition
-          <select
-            aria-label="Inspect MR. ICON award edition"
-            className="h-11 rounded-xl border border-sky-300/30 bg-card px-3 text-sm font-semibold normal-case tracking-normal text-foreground outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-300/20"
-            value={selectedEdition}
-            onChange={(event) => {
-              setChosenEdition(Number(event.target.value));
-              setActionMessage("");
-            }}
-          >
-            {editions.map((edition) => (
-              <option key={edition} value={edition} className="bg-card text-foreground">
-                MR. ICON #{edition}
-                {finalizedEditions.has(edition) ? " · Finalized" : " · Pending"}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {awards.isError && (
-        <p
-          className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
-          role="alert"
-        >
-          Unable to load MR. ICON history: {displayMrIconError(awards.error)}
-        </p>
-      )}
-
-      <div className="relative overflow-hidden rounded-3xl border border-sky-200/20 bg-[radial-gradient(ellipse_at_top_right,rgba(186,230,253,0.17),transparent_45%),linear-gradient(135deg,#101827,#17253a_55%,#101827)] p-5 text-slate-100 shadow-2xl sm:p-8">
-        <div
-          aria-hidden="true"
-          className="mr-icon-shimmer pointer-events-none absolute inset-0 opacity-35"
-        />
-        <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div>
-            <div className="flex items-center gap-3 text-sky-200">
-              <Crown className="size-6" strokeWidth={1.5} />
-              <p className="text-xs font-bold uppercase tracking-[0.24em]">MR. ICON</p>
-            </div>
-            <p className="mt-3 text-sm text-slate-300">
-              Edition #{selectedEdition} <span className="px-1 text-slate-500">·</span>
-              Tournaments {(selectedEdition - 1) * 10 + 1}–{selectedEdition * 10}
-            </p>
-            {award ? (
-              <>
-                <p className="mt-7 text-[11px] font-bold uppercase tracking-[0.22em] text-sky-200/80">
-                  PLAYER
-                </p>
-                <h3 className="mt-1 break-words font-display text-4xl font-bold tracking-wide text-white sm:text-5xl">
-                  {award.winner_player_name}
-                </h3>
-                <p className="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
-                  TEAM
-                </p>
-                <p className="mt-1 text-lg font-semibold text-slate-100">
-                  {award.winner_team_name}
-                </p>
-                <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-sky-200/25 bg-sky-200/10 px-4 py-2 text-sm font-bold text-sky-100">
-                  <Sparkles className="size-4" />
-                  {award.overall_score.toLocaleString()} points
-                </p>
-                <div className="mt-4 grid grid-cols-3 gap-2">
-                  {[
-                    ["Goals", award.statistics.goals],
-                    ["Saves", award.statistics.saves],
-                    ["Hat-tricks", award.statistics.hattricks],
-                    ["Braces", award.statistics.braces],
-                    ["Clean sheets", award.statistics.clean_sheets],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2"
-                    >
-                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                        {label}
-                      </p>
-                      <p className="mt-1 text-lg font-bold tabular-nums text-white">{value}</p>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-3 text-xs text-slate-400">
-                  Finalized {new Date(award.finalized_at).toLocaleDateString()} ·{" "}
-                  {award.formula_version}
-                </p>
-              </>
-            ) : (
-              <>
-                <h3 className="mt-7 font-display text-3xl font-bold text-white sm:text-4xl">
-                  Awaiting completion
-                </h3>
-                <p className="mt-2 text-sm text-slate-300">
-                  {currentPeriod.length} of 10 tournaments are in this award period.
-                  {currentEdition !== selectedEdition
-                    ? ` Edition #${selectedEdition} is not available yet.`
-                    : " The official title is awarded only after all ten tournaments and fixtures are complete."}
-                </p>
-              </>
-            )}
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5">
-            <h4 className="text-xs font-bold uppercase tracking-[0.18em] text-sky-100">
-              Historical award scoring
-            </h4>
-            <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              {award && award.formula_version !== "mr-icon-v3"
-                ? "This finalized edition used an earlier scoring formula."
-                : "Archived formula: Goals ×4 · Saves ×1 · Hat-tricks ×2 · Braces ×1 · Clean sheets ×2"}
-            </p>
-            {liveLeaderboard.isLoading ? (
-              <p className="mt-5 text-sm text-slate-400">Calculating period leaderboard…</p>
-            ) : liveLeaderboard.isError && !award ? (
-              <p className="mt-5 text-sm text-rose-200" role="alert">
-                Unable to calculate this period: {displayMrIconError(liveLeaderboard.error)}
-              </p>
-            ) : leaderboard.length > 0 ? (
-              <div className="mt-4 max-h-72 space-y-2 overflow-auto">
-                {leaderboard.map((entry, index) => (
-                  <div
-                    key={entry.player_id}
-                    className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 rounded-xl border border-white/5 bg-white/[0.035] px-3 py-2 transition-colors hover:bg-white/[0.08]"
-                  >
-                    <span className="text-sm font-bold text-sky-200">#{index + 1}</span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-white">
-                        {entry.player_name}
-                      </p>
-                      <p className="truncate text-xs text-slate-400">
-                        {entry.team_name || "Team not recorded"} · {entry.goals} G · {entry.saves}{" "}
-                        SV · {entry.hattricks} H · {entry.braces} B · {entry.clean_sheets} CS
-                      </p>
-                    </div>
-                    <span className="text-sm font-bold tabular-nums text-sky-100">
-                      {entry.overall_score}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-5 rounded-xl border border-dashed border-white/10 px-3 py-5 text-center text-sm text-slate-400">
-                No player records are available for this period yet.
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="relative mt-6 border-t border-white/10 pt-5">
-          {periodFixtures.isError && selectedEdition === currentEdition && !award && (
-            <p className="mb-3 text-sm text-rose-200" role="alert">
-              Unable to verify tournament completion: {periodFixtures.error.message}
-            </p>
-          )}
-          {!award && selectedEdition === currentEdition ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-300">
-                {currentPeriodComplete
-                  ? "All ten tournaments and their fixtures are complete. The award can be finalized."
-                  : "Finalization unlocks when all ten tournaments and their fixtures are complete."}
-              </p>
-              <button
-                type="button"
-                disabled={!currentPeriodComplete || finalize.isPending}
-                onClick={() => {
-                  setActionMessage("");
-                  finalize.mutate();
-                }}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-200 px-4 text-sm font-bold text-slate-950 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                <Check className="size-4" />
-                {finalize.isPending ? "Finalizing…" : "Finalize MR. ICON"}
-              </button>
-            </div>
-          ) : award ? (
-            <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
-              <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                Correction winner
-                <select
-                  className="h-10 rounded-lg border border-white/15 bg-slate-900 px-3 text-sm font-medium normal-case tracking-normal text-white"
-                  value={selectedCorrectionPlayerId}
-                  onChange={(event) => setCorrectionPlayerId(event.target.value)}
-                >
-                  {leaderboard.map((entry) => (
-                    <option key={entry.player_id} value={entry.player_id}>
-                      {entry.player_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                Audit reason
-                <input
-                  className="h-10 rounded-lg border border-white/15 bg-slate-900 px-3 text-sm font-medium normal-case tracking-normal text-white placeholder:text-slate-500"
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  placeholder="Required for correction or recalculation"
-                />
-              </label>
-              <button
-                type="button"
-                disabled={!reason.trim() || correct.isPending}
-                onClick={() => {
-                  setActionMessage("");
-                  correct.mutate();
-                }}
-                className="mt-auto h-10 rounded-xl border border-sky-100/25 px-4 text-sm font-bold text-sky-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                {correct.isPending ? "Saving…" : "Correct winner"}
-              </button>
-              <button
-                type="button"
-                disabled={!reason.trim() || recalculate.isPending}
-                onClick={() => {
-                  setActionMessage("");
-                  recalculate.mutate();
-                }}
-                className="mt-auto h-10 rounded-xl border border-sky-100/25 px-4 text-sm font-bold text-sky-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                {recalculate.isPending ? "Recalculating…" : "Recalculate"}
-              </button>
-            </div>
-          ) : null}
-          {actionMessage && (
-            <p className="mt-3 text-sm text-emerald-200" role="status">
-              {actionMessage}
-            </p>
-          )}
-          {actionError && (
-            <p className="mt-3 text-sm text-rose-200" role="alert">
-              {displayMrIconError(actionError)}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-sm font-extrabold uppercase tracking-[0.18em] text-foreground">
-          THE MR. ICON LEGACY
-        </h3>
-        {(awards.data ?? []).length > 0 ? (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[...(awards.data ?? [])]
-              .sort((a, b) => a.edition - b.edition)
-              .map((history) => (
-                <button
-                  key={history.id}
-                  type="button"
-                  onClick={() => {
-                    setChosenEdition(history.edition);
-                    setActionMessage("");
-                  }}
-                  aria-pressed={selectedEdition === history.edition}
-                  className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-sky-300/50 ${
-                    selectedEdition === history.edition
-                      ? "border-sky-300/50 bg-sky-300/[0.08]"
-                      : "border-border/70 bg-card"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-200">
-                      MR. ICON #{history.edition}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Tournaments {(history.edition - 1) * 10 + 1}–{history.edition * 10}
-                    </span>
-                  </div>
-                  <p className="mt-3 font-display text-2xl font-bold text-foreground">
-                    {history.winner_player_name}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    TEAM: {history.winner_team_name}
-                  </p>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    {history.overall_score} points ·{" "}
-                    {new Date(history.finalized_at).toLocaleDateString()}
-                  </p>
-                </button>
-              ))}
-          </div>
-        ) : (
-          <p className="mt-3 rounded-2xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-            No official MR. ICON editions have been finalized yet. The next award period is{" "}
-            {currentPeriod.length} of 10 tournaments complete.
-          </p>
-        )}
-      </div>
-    </section>
   );
 }
 
