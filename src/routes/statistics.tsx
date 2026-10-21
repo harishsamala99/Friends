@@ -688,11 +688,14 @@ function MrIconAwardsSection({ tournaments }: { tournaments: Tournament[] }) {
     <section aria-labelledby="mr-icon-heading" className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <SectionHeading
-          eyebrow="The 10-tournament crown"
-          title="MR. ICON"
+          eyebrow="Historical 10-tournament awards"
+          title="MR. ICON ARCHIVE"
           icon={Diamond}
           id="mr-icon-heading"
         />
+        <Link to="/mr-icon" className="text-sm font-semibold text-primary hover:underline">
+          Open the current MR. ICON leaderboard
+        </Link>
         <label className="flex w-full flex-col gap-2 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground sm:w-64">
           Inspect award edition
           <select
@@ -795,12 +798,12 @@ function MrIconAwardsSection({ tournaments }: { tournaments: Tournament[] }) {
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5">
             <h4 className="text-xs font-bold uppercase tracking-[0.18em] text-sky-100">
-              Period score breakdown
+              Historical award scoring
             </h4>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
               {award && award.formula_version !== "mr-icon-v3"
                 ? "This finalized edition used an earlier scoring formula."
-                : "Goals ×4 · Saves ×1 · Hat-tricks ×2 · Braces ×1 · Clean sheets ×2"}
+                : "Archived formula: Goals ×4 · Saves ×1 · Hat-tricks ×2 · Braces ×1 · Clean sheets ×2"}
             </p>
             {liveLeaderboard.isLoading ? (
               <p className="mt-5 text-sm text-slate-400">Calculating period leaderboard…</p>

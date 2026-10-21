@@ -726,6 +726,47 @@ export type Database = {
       };
     };
     Views: {
+      mr_icon_player_match_ratings: {
+        Row: {
+          away_score: number;
+          away_team_id: string;
+          braces: number;
+          braces_points: number;
+          clean_sheets: number;
+          clean_sheets_points: number;
+          competition_id: string;
+          fixture_id: string;
+          goals: number;
+          goals_points: number;
+          hattricks: number;
+          hattricks_points: number;
+          home_score: number;
+          home_team_id: string;
+          kickoff: string;
+          overall_score: number;
+          photo_url: string | null;
+          player_id: string;
+          player_name: string;
+          position: string;
+          saves: number;
+          saves_points: number;
+          short_name: string | null;
+          team_id: string;
+          team_name: string;
+          tournament_id: string | null;
+        };
+        Relationships: [];
+      };
+      mr_icon_review_flags: {
+        Row: {
+          event_id: string | null;
+          event_type: string;
+          fixture_id: string;
+          issue: string;
+          kickoff: string;
+        };
+        Relationships: [];
+      };
       player_stats: {
         Row: {
           assists: number | null;
@@ -834,6 +875,23 @@ export type Database = {
     Functions: {
       can_manage: { Args: { _user_id: string }; Returns: boolean };
       can_officiate: { Args: { _user_id: string }; Returns: boolean };
+      mr_icon_calculate_rating: {
+        Args: {
+          p_braces: number;
+          p_clean_sheets: number;
+          p_goals: number;
+          p_hattricks: number;
+          p_saves: number;
+        };
+        Returns: {
+          braces_points: number;
+          clean_sheets_points: number;
+          goals_points: number;
+          hattricks_points: number;
+          overall_score: number;
+          saves_points: number;
+        }[];
+      };
       correct_mr_icon_award: {
         Args: { p_award_id: string; p_reason: string; p_winning_player_id: string };
         Returns: undefined;

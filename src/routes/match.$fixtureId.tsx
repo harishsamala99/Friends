@@ -145,6 +145,8 @@ function MatchPage() {
                 void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
                 void queryClient.invalidateQueries({ queryKey: ["achievements"] });
                 void queryClient.invalidateQueries({ queryKey: ["appearances"] });
+                void queryClient.invalidateQueries({ queryKey: ["mr-icon-match-ratings"] });
+                void queryClient.invalidateQueries({ queryKey: ["mr-icon-review-flags"] });
               }}
             />
             <h2 className="mb-4 font-display text-2xl font-bold">Timeline</h2>

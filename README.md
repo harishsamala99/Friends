@@ -1391,6 +1391,16 @@ Prioritize data consistency, automatic calculations, excellent UX, and a profess
 
 This project was built with [Lovable](https://lovable.dev).
 
+## MR. ICON rating
+
+The live leaderboard at `/mr-icon` calculates player totals from finalized fixture events and official fixture appearances. Its scoring formula is:
+
+`goals × 10 + goalkeeper saves × 1.5 + hat-tricks × 5 + braces × 3 + clean sheets × 10`
+
+Hat-tricks are awarded once for three or more goals in a match; braces are awarded once for exactly two. Clean sheets require a recorded appearance by a goalkeeper or defender on a team that conceded no goals. The current match record stores appearances but not minutes played, so any official appearance is the eligibility evidence used. Goalkeeper saves are validated when recorded and invalid historical assignments are excluded and flagged for review.
+
+Ratings are computed by the `mr_icon_player_match_ratings` database view rather than stored as cumulative totals. As a result, match edits and deletions, event corrections, and new finalized fixtures are reflected without duplicate scoring or a historical reset. The separate 10-tournament MR. ICON archive preserves its original finalized award snapshots.
+
 ## Build with Lovable
 
 Continue developing this project in the [Lovable editor](https://lovable.dev/projects/b1ed4cfb-650e-4643-8cbf-83374a2594e7).

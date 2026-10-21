@@ -18,6 +18,7 @@ import { Route as CodeOfConductRouteImport } from './routes/code-of-conduct'
 import { Route as FinalRouteImport } from './routes/final'
 import { Route as FixturesRouteImport } from './routes/fixtures'
 import { Route as HallOfFameRouteImport } from './routes/hall-of-fame'
+import { Route as MrIconRouteImport } from './routes/mr-icon'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as SavesRouteImport } from './routes/saves'
 import { Route as ScorecardRouteImport } from './routes/scorecard'
@@ -71,6 +72,11 @@ const FixturesRoute = FixturesRouteImport.update({
 const HallOfFameRoute = HallOfFameRouteImport.update({
   id: '/hall-of-fame',
   path: '/hall-of-fame',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MrIconRoute = MrIconRouteImport.update({
+  id: '/mr-icon',
+  path: '/mr-icon',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResultsRoute = ResultsRouteImport.update({
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
   '/hall-of-fame': typeof HallOfFameRoute
+  '/mr-icon': typeof MrIconRoute
   '/results': typeof ResultsRoute
   '/saves': typeof SavesRoute
   '/scorecard': typeof ScorecardRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
   '/hall-of-fame': typeof HallOfFameRoute
+  '/mr-icon': typeof MrIconRoute
   '/results': typeof ResultsRoute
   '/saves': typeof SavesRoute
   '/scorecard': typeof ScorecardRoute
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
   '/hall-of-fame': typeof HallOfFameRoute
+  '/mr-icon': typeof MrIconRoute
   '/results': typeof ResultsRoute
   '/saves': typeof SavesRoute
   '/scorecard': typeof ScorecardRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/final'
     | '/fixtures'
     | '/hall-of-fame'
+    | '/mr-icon'
     | '/results'
     | '/saves'
     | '/scorecard'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/final'
     | '/fixtures'
     | '/hall-of-fame'
+    | '/mr-icon'
     | '/results'
     | '/saves'
     | '/scorecard'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/final'
     | '/fixtures'
     | '/hall-of-fame'
+    | '/mr-icon'
     | '/results'
     | '/saves'
     | '/scorecard'
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   FinalRoute: typeof FinalRoute
   FixturesRoute: typeof FixturesRoute
   HallOfFameRoute: typeof HallOfFameRoute
+  MrIconRoute: typeof MrIconRoute
   ResultsRoute: typeof ResultsRoute
   SavesRoute: typeof SavesRoute
   ScorecardRoute: typeof ScorecardRoute
@@ -334,6 +347,13 @@ declare module '@tanstack/react-router' {
       path: '/hall-of-fame'
       fullPath: '/hall-of-fame'
       preLoaderRoute: typeof HallOfFameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mr-icon': {
+      id: '/mr-icon'
+      path: '/mr-icon'
+      fullPath: '/mr-icon'
+      preLoaderRoute: typeof MrIconRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/results': {
@@ -430,6 +450,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinalRoute: FinalRoute,
   FixturesRoute: FixturesRoute,
   HallOfFameRoute: HallOfFameRoute,
+  MrIconRoute: MrIconRoute,
   ResultsRoute: ResultsRoute,
   SavesRoute: SavesRoute,
   ScorecardRoute: ScorecardRoute,

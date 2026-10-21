@@ -208,6 +208,43 @@ export type MrIconLeaderboardEntry = {
   clean_sheets: number;
 };
 
+export type MrIconMatchRating = {
+  fixture_id: string;
+  tournament_id: string | null;
+  competition_id: string;
+  kickoff: string;
+  home_team_id: string;
+  away_team_id: string;
+  home_score: number;
+  away_score: number;
+  player_id: string;
+  player_name: string;
+  position: string;
+  photo_url: string | null;
+  team_id: string;
+  team_name: string;
+  short_name: string | null;
+  goals: number;
+  saves: number;
+  hattricks: number;
+  braces: number;
+  clean_sheets: number;
+  goals_points: number;
+  saves_points: number;
+  hattricks_points: number;
+  braces_points: number;
+  clean_sheets_points: number;
+  overall_score: number;
+};
+
+export type MrIconReviewFlag = {
+  fixture_id: string;
+  kickoff: string;
+  event_id: string | null;
+  event_type: string;
+  issue: string;
+};
+
 export type MrIconPeriodLeaderboard = {
   edition: number;
   start_tournament_id: string | null;
@@ -1020,6 +1057,36 @@ export async function fetchMrIconPeriodLeaderboard(
   const { data, error } = await db.rpc("mr_icon_period_leaderboard", { p_edition: edition });
   if (error) throw error;
   return data as unknown as MrIconPeriodLeaderboard;
+}
+
+export async function fetchMrIconMatchRatings(playerId?: string): Promise<MrIconMatchRating[]> {
+  const pageSize = 1000;
+  const rows: MrIconMatchRating[] = [];
+  for (let from = 0; ; from += pageSize) {
+    let q = db
+      .from("mr_icon_player_match_ratings")
+      .select("*")
+      .order("kickoff", { ascending: false })
+      .order("fixture_id", { ascending: true })
+      .order("player_id", { ascending: true });
+    if (playerId) q = q.eq("player_id", playerId);
+    const { data, error } = await q.range(from, from + pageSize - 1);
+    if (error) throw error;
+
+    const page = (data ?? []) as MrIconMatchRating[];
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+  }
+}
+
+export async function fetchMrIconReviewFlags(): Promise<MrIconReviewFlag[]> {
+  const { data, error } = await db
+    .from("mr_icon_review_flags")
+    .select("*")
+    .order("kickoff", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? []) as MrIconReviewFlag[];
 }
 
 export async function finalizeMrIconAward(edition: number): Promise<string> {

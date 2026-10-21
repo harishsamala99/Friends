@@ -72,6 +72,8 @@ function ScorersPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["scorers", tournamentId] });
       void queryClient.invalidateQueries({ queryKey: ["standings"] });
+      void queryClient.invalidateQueries({ queryKey: ["mr-icon-match-ratings"] });
+      void queryClient.invalidateQueries({ queryKey: ["mr-icon-review-flags"] });
     },
   });
 

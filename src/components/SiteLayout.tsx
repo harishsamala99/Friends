@@ -8,6 +8,7 @@ const NAV = [
   { to: "/fixtures", label: "Fixtures & Results" },
   { to: "/standings", label: "Standings" },
   { to: "/statistics", label: "Statistics" },
+  { to: "/mr-icon", label: "MR. ICON 🏆" },
   { to: "/scorers", label: "Top Scorers" },
   { to: "/saves", label: "Top Saves" },
   { to: "/best-xi", label: "THE BEST XI" },

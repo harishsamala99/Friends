@@ -10,6 +10,7 @@ import {
   fetchAllFixtureAppearances,
   fetchAllMatchEvents,
   fetchFixtures,
+  fetchMrIconMatchRatings,
   fetchPlayerAchievements,
   fetchPlayers,
   fetchTeams,
@@ -48,6 +49,10 @@ function PlayerProfilePage() {
   const fixtures = useQuery({ queryKey: ["fixtures"], queryFn: () => fetchFixtures() });
   const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: () => fetchTournaments() });
   const events = useQuery({ queryKey: ["match-events"], queryFn: () => fetchAllMatchEvents() });
+  const mrIconMatches = useQuery({
+    queryKey: ["mr-icon-match-ratings", playerId],
+    queryFn: () => fetchMrIconMatchRatings(playerId),
+  });
   const appearances = useQuery({
     queryKey: ["player-appearances"],
     queryFn: () => fetchAllFixtureAppearances(),
@@ -164,15 +169,43 @@ function PlayerProfilePage() {
       }
     }
   }
-  const goals = playerEvents.filter(
-    (event) => event.event_type === "goal" && event.goal_type !== "Own Goal",
-  ).length;
+  const ratingStats = (mrIconMatches.data ?? []).reduce(
+    (total, match) => ({
+      goals: total.goals + match.goals,
+      saves: total.saves + match.saves,
+      hattricks: total.hattricks + match.hattricks,
+      braces: total.braces + match.braces,
+      clean_sheets: total.clean_sheets + match.clean_sheets,
+      goals_points: total.goals_points + match.goals_points,
+      saves_points: total.saves_points + match.saves_points,
+      hattricks_points: total.hattricks_points + match.hattricks_points,
+      braces_points: total.braces_points + match.braces_points,
+      clean_sheets_points: total.clean_sheets_points + match.clean_sheets_points,
+      overall_score: total.overall_score + match.overall_score,
+    }),
+    {
+      goals: 0,
+      saves: 0,
+      hattricks: 0,
+      braces: 0,
+      clean_sheets: 0,
+      goals_points: 0,
+      saves_points: 0,
+      hattricks_points: 0,
+      braces_points: 0,
+      clean_sheets_points: 0,
+      overall_score: 0,
+    },
+  );
+  const playerRating = ratingStats;
+  const goals = ratingStats.goals;
   const loading =
     players.isLoading ||
     teams.isLoading ||
     fixtures.isLoading ||
     tournaments.isLoading ||
     events.isLoading ||
+    mrIconMatches.isLoading ||
     appearances.isLoading ||
     achievements.isLoading ||
     captains.isLoading;
@@ -182,6 +215,7 @@ function PlayerProfilePage() {
     fixtures.isError ||
     tournaments.isError ||
     events.isError ||
+    mrIconMatches.isError ||
     appearances.isError ||
     achievements.isError ||
     captains.isError;
@@ -230,6 +264,12 @@ function PlayerProfilePage() {
                 <div className="flex gap-2">
                   <Badge variant="secondary">{history.length} finalized matches</Badge>
                   <Badge variant="secondary">{goals} goals</Badge>
+                  <Badge variant="secondary">
+                    {Number.isInteger(playerRating.overall_score)
+                      ? playerRating.overall_score
+                      : playerRating.overall_score.toFixed(1)}{" "}
+                    MR. ICON points
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
@@ -287,6 +327,78 @@ function PlayerProfilePage() {
                   })}
                 </div>
               )}
+            </section>
+
+            <section>
+              <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-bold">
+                <Trophy className="size-5 text-primary" />
+                MR. ICON rating breakdown
+              </h2>
+              {(mrIconMatches.data ?? []).length === 0 ? (
+                <EmptyState message="No finalized match rating records are available for this player." />
+              ) : (
+                <div className="space-y-3">
+                  {(mrIconMatches.data ?? []).map((match) => {
+                    const matchRating = match;
+                    const home = (teams.data ?? []).find((item) => item.id === match.home_team_id);
+                    const away = (teams.data ?? []).find((item) => item.id === match.away_team_id);
+                    const tournament = match.tournament_id
+                      ? tournamentsById.get(match.tournament_id)
+                      : undefined;
+                    return (
+                      <Card key={match.fixture_id}>
+                        <CardContent className="flex flex-wrap items-center gap-3 p-4">
+                          <div className="min-w-56 flex-1">
+                            <Link
+                              to="/match/$fixtureId"
+                              params={{ fixtureId: match.fixture_id }}
+                              className="font-semibold hover:text-primary hover:underline"
+                            >
+                              {home?.name ?? "Home"} {match.home_score}–{match.away_score}{" "}
+                              {away?.name ?? "Away"}
+                            </Link>
+                            <p className="text-sm text-muted-foreground">
+                              {tournament?.tournament_name ?? "Unassigned tournament"} ·{" "}
+                              {formatDate(match.kickoff)}
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground sm:grid-cols-3">
+                            <span>
+                              Goals: {match.goals} (+{matchRating.goals_points})
+                            </span>
+                            <span>
+                              Saves: {match.saves} (+{matchRating.saves_points})
+                            </span>
+                            <span>
+                              Hat-tricks: {match.hattricks} (+{matchRating.hattricks_points})
+                            </span>
+                            <span>
+                              Braces: {match.braces} (+{matchRating.braces_points})
+                            </span>
+                            <span>
+                              Clean sheets: {match.clean_sheets} (+{matchRating.clean_sheets_points}
+                              )
+                            </span>
+                          </div>
+                          <strong className="font-display text-lg tabular-nums text-primary">
+                            +
+                            {Number.isInteger(matchRating.overall_score)
+                              ? matchRating.overall_score
+                              : matchRating.overall_score.toFixed(1)}
+                          </strong>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="mt-3 text-sm font-semibold">
+                Career total:{" "}
+                {Number.isInteger(playerRating.overall_score)
+                  ? playerRating.overall_score
+                  : playerRating.overall_score.toFixed(1)}{" "}
+                points
+              </p>
             </section>
 
             <section>

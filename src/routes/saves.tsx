@@ -169,6 +169,8 @@ function SavesPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["saves", tournamentId] });
       void queryClient.invalidateQueries({ queryKey: ["standings"] });
+      void queryClient.invalidateQueries({ queryKey: ["mr-icon-match-ratings"] });
+      void queryClient.invalidateQueries({ queryKey: ["mr-icon-review-flags"] });
     },
   });
 
