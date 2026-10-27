@@ -116,7 +116,7 @@ function AchievementsPage() {
                 const Icon = achievement.icon;
                 return (
                   <Link
-                    key={`${item.player_id}-${item.achievement_key}`}
+                    key={`${item.player_id}-${item.achievement_key}-${item.evidence_fixture_id ?? "none"}`}
                     to="/players/$playerId"
                     params={{ playerId: player.id }}
                     className="block"

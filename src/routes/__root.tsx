@@ -7,11 +7,10 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { LeagueLoadingScreen } from "../components/LeagueLoadingScreen";
 
 function NotFoundComponent() {
   return (
@@ -97,7 +96,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   }),
   shellComponent: RootShell,
   component: RootComponent,
-  pendingComponent: LeagueLoadingScreen,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
@@ -124,14 +122,6 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const [isStarting, setIsStarting] = useState(true);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setIsStarting(false), 7300);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  if (isStarting) return <LeagueLoadingScreen />;
 
   return (
     <QueryClientProvider client={queryClient}>

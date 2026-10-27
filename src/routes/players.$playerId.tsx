@@ -301,7 +301,9 @@ function PlayerProfilePage() {
                       ? tournamentsById.get(achievementFixture.tournament_id)
                       : undefined;
                     return (
-                      <Card key={achievement.achievement_key}>
+                      <Card
+                        key={`${achievement.achievement_key}-${achievement.evidence_fixture_id ?? "none"}`}
+                      >
                         <CardContent className="flex items-center gap-3 p-4">
                           <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
                             <Icon className="size-5" />

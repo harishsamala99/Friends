@@ -340,12 +340,20 @@ export async function fetchFixtures(
   competitionId?: string,
   tournamentId?: string,
 ): Promise<Fixture[]> {
-  let q = db.from("fixtures").select("*").order("kickoff");
-  if (tournamentId) q = q.eq("tournament_id", tournamentId);
-  else if (competitionId) q = q.eq("competition_id", competitionId);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []) as Fixture[];
+  const pageSize = 1000;
+  const fixtures: Fixture[] = [];
+  for (let from = 0; ; from += pageSize) {
+    let q = db.from("fixtures").select("*").order("kickoff").order("id");
+    if (tournamentId) q = q.eq("tournament_id", tournamentId);
+    else if (competitionId) q = q.eq("competition_id", competitionId);
+
+    const { data, error } = await q.range(from, from + pageSize - 1);
+    if (error) throw error;
+
+    const page = (data ?? []) as Fixture[];
+    fixtures.push(...page);
+    if (page.length < pageSize) return fixtures;
+  }
 }
 
 export async function fetchFixture(id: string): Promise<Fixture | null> {
@@ -384,9 +392,21 @@ export async function fetchEventsForFixtures(fixtureIds: string[]): Promise<Matc
 }
 
 export async function fetchAllMatchEvents(): Promise<MatchEvent[]> {
-  const { data, error } = await db.from("match_events").select("*");
-  if (error) throw error;
-  return (data ?? []) as MatchEvent[];
+  const pageSize = 1000;
+  const events: MatchEvent[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await db
+      .from("match_events")
+      .select("*")
+      .order("created_at")
+      .order("id")
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+
+    const page = (data ?? []) as MatchEvent[];
+    events.push(...page);
+    if (page.length < pageSize) return events;
+  }
 }
 
 function isMissingRelation(error: { code?: string; message?: string }, table: string): boolean {
@@ -418,14 +438,17 @@ export async function fetchPlayerAchievements(playerId?: string): Promise<Player
   const derivedHatTricks = deriveHatTrickAchievements(fixtures, events).filter(
     (achievement) => !playerId || achievement.player_id === playerId,
   );
+  const achievementIdentity = (achievement: PlayerAchievement) =>
+    `${achievement.player_id}:${achievement.achievement_key}:${
+      achievement.achievement_key === "hat_trick_hero"
+        ? (achievement.evidence_fixture_id ?? "")
+        : ""
+    }`;
   const merged = new Map(
-    stored.map((achievement) => [
-      `${achievement.player_id}:${achievement.achievement_key}`,
-      achievement,
-    ]),
+    stored.map((achievement) => [achievementIdentity(achievement), achievement]),
   );
   for (const achievement of derivedHatTricks) {
-    const key = `${achievement.player_id}:${achievement.achievement_key}`;
+    const key = achievementIdentity(achievement);
     if (!merged.has(key)) merged.set(key, achievement);
   }
   return [...merged.values()].sort((left, right) =>
@@ -473,7 +496,7 @@ export function deriveHatTrickAchievements(
     playerGoals.set(playerKey, (playerGoals.get(playerKey) ?? 0) + 1);
   }
 
-  const earliestHatTricks = new Map<string, PlayerAchievement>();
+  const hatTricks: PlayerAchievement[] = [];
   for (const [key, goals] of playerGoals) {
     if (goals < 3) continue;
     const [fixtureId, teamId, playerId] = key.split(":");
@@ -490,12 +513,9 @@ export function deriveHatTrickAchievements(
       unlocked_at: fixture.kickoff,
       evidence_fixture_id: fixtureId,
     };
-    const previous = earliestHatTricks.get(playerId);
-    if (!previous || achievement.unlocked_at < previous.unlocked_at) {
-      earliestHatTricks.set(playerId, achievement);
-    }
+    hatTricks.push(achievement);
   }
-  return [...earliestHatTricks.values()];
+  return hatTricks;
 }
 
 export async function fetchFixtureAppearances(fixtureId: string): Promise<FixtureAppearance[]> {

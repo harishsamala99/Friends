@@ -1901,6 +1901,7 @@ export function FinalMatchScorecard() {
         await queryClient.invalidateQueries({ queryKey: ["fixtures"] });
         await queryClient.invalidateQueries({ queryKey: ["scorers"] });
         await queryClient.invalidateQueries({ queryKey: ["saves"] });
+        await queryClient.invalidateQueries({ queryKey: ["achievements"] });
         await queryClient.invalidateQueries({
           queryKey: ["tournament-event-stats", tournamentId],
         });
