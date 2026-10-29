@@ -134,6 +134,7 @@ function ScorersPage() {
                   <tr>
                     <th className="p-3 text-left font-medium">#</th>
                     <th className="p-3 text-left font-medium">Player</th>
+                    <th className="p-3 text-left font-medium">Position</th>
                     <th className="p-3 text-left font-medium">Team</th>
                     <th className="p-3 text-center font-medium">Goals</th>
                     <th className="p-3 text-right font-medium">Actions</th>
@@ -152,6 +153,7 @@ function ScorersPage() {
                       >
                         {s.player_name}
                       </td>
+                      <td className="p-3 text-muted-foreground">{s.position}</td>
                       <td className="p-3 text-muted-foreground">{s.team_name}</td>
                       <td
                         className={`p-3 text-center tabular-nums ${s.goals === leadingGoals ? "font-bold text-primary" : "font-semibold"}`}

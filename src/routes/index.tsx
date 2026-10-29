@@ -622,7 +622,12 @@ function Home() {
                     className="flex items-center gap-3 border-b border-border/50 p-3 last:border-0"
                   >
                     <span className="w-5 text-center text-sm text-muted-foreground">{i + 1}</span>
-                    <span className="flex-1 truncate font-medium">{s.player_name}</span>
+                    <span className="flex-1 truncate font-medium">
+                      {s.player_name}
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {s.position}
+                      </span>
+                    </span>
                     <span className="truncate text-sm text-muted-foreground">{s.team_name}</span>
                     <span className="w-8 text-right font-semibold tabular-nums">{s.goals}</span>
                   </div>
