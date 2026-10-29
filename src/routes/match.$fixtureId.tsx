@@ -13,14 +13,17 @@ import {
   EVENT_TYPES,
   fetchEvents,
   fetchFixtureAppearances,
+  fetchFixturePlayerRatings,
   fetchFixture,
   fetchPlayers,
   fetchTeams,
   saveFixtureAppearances,
+  saveFixturePlayerRating,
   replaceFixturePlayerGoals,
   replaceFixturePlayerSaves,
   updateFixture,
   type FixtureAppearance,
+  type FixturePlayerRating,
 } from "@/lib/football";
 
 const EMPTY_APPEARANCES: FixtureAppearance[] = [];
@@ -77,6 +80,10 @@ function MatchPage() {
   const appearances = useQuery({
     queryKey: ["appearances", fixtureId],
     queryFn: () => fetchFixtureAppearances(fixtureId),
+  });
+  const playerRatings = useQuery({
+    queryKey: ["fixture-player-ratings", fixtureId],
+    queryFn: () => fetchFixturePlayerRatings(fixtureId),
   });
 
   const f = fixture.data;
@@ -136,6 +143,15 @@ function MatchPage() {
               players={[...appearanceRoster.values()]}
               appearances={appearances.data ?? EMPTY_APPEARANCES}
               events={events.data ?? []}
+              playerRatings={playerRatings.data ?? []}
+              playerRatingsLoading={playerRatings.isLoading}
+              playerRatingsError={
+                playerRatings.isError
+                  ? playerRatings.error instanceof Error
+                    ? playerRatings.error.message
+                    : "Unable to load saved match ratings. Confirm the latest Supabase migration is applied."
+                  : null
+              }
               onSaved={() => {
                 void fixture.refetch();
                 void events.refetch();
@@ -145,6 +161,7 @@ function MatchPage() {
                 void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
                 void queryClient.invalidateQueries({ queryKey: ["achievements"] });
                 void queryClient.invalidateQueries({ queryKey: ["appearances"] });
+                void queryClient.invalidateQueries({ queryKey: ["fixture-player-ratings"] });
                 void queryClient.invalidateQueries({ queryKey: ["mr-icon-match-ratings"] });
                 void queryClient.invalidateQueries({ queryKey: ["mr-icon-review-flags"] });
               }}
@@ -195,6 +212,9 @@ function MatchEditor({
   players,
   appearances,
   events,
+  playerRatings,
+  playerRatingsLoading,
+  playerRatingsError,
   onSaved,
 }: {
   fixture: { id: string; home_score: number | null; away_score: number | null };
@@ -203,6 +223,9 @@ function MatchEditor({
   players: { id: string; name: string; team_id: string | null; position: string }[];
   appearances: FixtureAppearance[];
   events: { id: string; player_id: string | null; team_id: string | null; event_type: string }[];
+  playerRatings: FixturePlayerRating[];
+  playerRatingsLoading: boolean;
+  playerRatingsError: string | null;
   onSaved: () => void;
 }) {
   const [homeScore, setHomeScore] = useState(fixture.home_score?.toString() ?? "");
@@ -215,11 +238,16 @@ function MatchEditor({
   const [awayGKId, setAwayGKId] = useState("");
   const [homeSaves, setHomeSaves] = useState("0");
   const [awaySaves, setAwaySaves] = useState("0");
+  const [homeRatingPlayerId, setHomeRatingPlayerId] = useState("");
+  const [awayRatingPlayerId, setAwayRatingPlayerId] = useState("");
+  const [homePlayerRating, setHomePlayerRating] = useState("");
+  const [awayPlayerRating, setAwayPlayerRating] = useState("");
   const [savingScore, setSavingScore] = useState(false);
   const [savingHomeScorer, setSavingHomeScorer] = useState(false);
   const [savingAwayScorer, setSavingAwayScorer] = useState(false);
   const [savingHomeGK, setSavingHomeGK] = useState(false);
   const [savingAwayGK, setSavingAwayGK] = useState(false);
+  const [savingPlayerRating, setSavingPlayerRating] = useState(false);
   const fixtureAppearancesRef =
     useRef<Array<Pick<FixtureAppearance, "player_id" | "team_id">>>(appearances);
   useEffect(() => {
@@ -229,6 +257,9 @@ function MatchEditor({
   // Filter players by team
   const homeTeamPlayers = players.filter((p) => p.team_id === homeTeamId);
   const awayTeamPlayers = players.filter((p) => p.team_id === awayTeamId);
+  const playerRatingsById = new Map(
+    playerRatings.map((playerRating) => [playerRating.player_id, playerRating.rating]),
+  );
 
   // Filter goalkeepers
   const homeGKs = homeTeamPlayers.filter((p) => p.position?.toLowerCase().includes("goalkeeper"));
@@ -276,6 +307,14 @@ function MatchEditor({
   const awayGKSaves = awayGKs.filter((p) => {
     const key = `${p.id}-${awayTeamId}`;
     return savesByPlayerAndTeam[key];
+  });
+  const homeRatedPlayers = homeTeamPlayers.flatMap((player) => {
+    const rating = playerRatingsById.get(player.id);
+    return rating === undefined ? [] : [{ player, rating }];
+  });
+  const awayRatedPlayers = awayTeamPlayers.flatMap((player) => {
+    const rating = playerRatingsById.get(player.id);
+    return rating === undefined ? [] : [{ player, rating }];
   });
 
   async function saveGoalkeeperAppearance(playerId: string, teamId: string): Promise<void> {
@@ -399,6 +438,37 @@ function MatchEditor({
       toast.error(error instanceof Error ? error.message : "Could not save goalkeeper saves");
     } finally {
       setSavingAwayGK(false);
+    }
+  }
+
+  async function savePlayerMatchRating(playerId: string, ratingText: string): Promise<void> {
+    const player = players.find((candidate) => candidate.id === playerId);
+    if (!player) {
+      toast.error("Select a player before saving a rating");
+      return;
+    }
+
+    const normalizedRating = ratingText.trim();
+    const rating = Number(normalizedRating);
+    if (
+      !/^\d+(?:\.\d)?$/.test(normalizedRating) ||
+      !Number.isFinite(rating) ||
+      rating < 1 ||
+      rating > 10
+    ) {
+      toast.error("Enter a player rating from 1 to 10, with at most one decimal place");
+      return;
+    }
+
+    setSavingPlayerRating(true);
+    try {
+      await saveFixturePlayerRating(fixture.id, player.id, rating);
+      toast.success(`${player.name}'s match rating set to ${rating.toFixed(1)}`);
+      onSaved();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save player rating");
+    } finally {
+      setSavingPlayerRating(false);
     }
   }
 
@@ -640,6 +710,164 @@ function MatchEditor({
             </div>
           </div>
         </div>
+
+        <div className="border-t border-border/60 pt-4">
+          <h3 className="mb-1 text-sm font-semibold">Defender Player Ratings</h3>
+          <p className="mb-4 text-xs text-muted-foreground">
+            Rate any player from 1 to 10. Ratings are added to the player&apos;s career total.
+          </p>
+          {playerRatingsError && (
+            <p role="alert" className="mb-4 text-sm text-destructive">
+              {playerRatingsError}
+            </p>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-3 rounded-lg border border-border/40 p-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Home Team
+              </h4>
+              <label className="space-y-2 text-sm font-medium">
+                Player
+                <PlayerPicker
+                  className="w-full"
+                  players={homeTeamPlayers}
+                  value={homeRatingPlayerId}
+                  onValueChange={(playerId) => {
+                    setHomeRatingPlayerId(playerId);
+                    setHomePlayerRating(String(playerRatingsById.get(playerId) ?? ""));
+                  }}
+                  disabled={
+                    homeTeamPlayers.length === 0 ||
+                    playerRatingsLoading ||
+                    Boolean(playerRatingsError)
+                  }
+                  placeholder="Search or select home player"
+                />
+              </label>
+              {homeTeamPlayers.length === 0 && (
+                <span className="text-xs text-muted-foreground">
+                  No players available for home team
+                </span>
+              )}
+              <label className="space-y-2 text-sm font-medium">
+                Rating (1–10)
+                <Input
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="0.1"
+                  value={homePlayerRating}
+                  disabled={playerRatingsLoading || Boolean(playerRatingsError)}
+                  onChange={(event) => setHomePlayerRating(event.target.value)}
+                />
+              </label>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => void savePlayerMatchRating(homeRatingPlayerId, homePlayerRating)}
+                disabled={
+                  savingPlayerRating ||
+                  playerRatingsLoading ||
+                  Boolean(playerRatingsError) ||
+                  !homeRatingPlayerId
+                }
+              >
+                {savingPlayerRating ? "Saving…" : "Save Rating"}
+              </Button>
+            </div>
+            <div className="space-y-3 rounded-lg border border-border/40 p-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Away Team
+              </h4>
+              <label className="space-y-2 text-sm font-medium">
+                Player
+                <PlayerPicker
+                  className="w-full"
+                  players={awayTeamPlayers}
+                  value={awayRatingPlayerId}
+                  onValueChange={(playerId) => {
+                    setAwayRatingPlayerId(playerId);
+                    setAwayPlayerRating(String(playerRatingsById.get(playerId) ?? ""));
+                  }}
+                  disabled={
+                    awayTeamPlayers.length === 0 ||
+                    playerRatingsLoading ||
+                    Boolean(playerRatingsError)
+                  }
+                  placeholder="Search or select away player"
+                />
+              </label>
+              {awayTeamPlayers.length === 0 && (
+                <span className="text-xs text-muted-foreground">
+                  No players available for away team
+                </span>
+              )}
+              <label className="space-y-2 text-sm font-medium">
+                Rating (1–10)
+                <Input
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="0.1"
+                  value={awayPlayerRating}
+                  disabled={playerRatingsLoading || Boolean(playerRatingsError)}
+                  onChange={(event) => setAwayPlayerRating(event.target.value)}
+                />
+              </label>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => void savePlayerMatchRating(awayRatingPlayerId, awayPlayerRating)}
+                disabled={
+                  savingPlayerRating ||
+                  playerRatingsLoading ||
+                  Boolean(playerRatingsError) ||
+                  !awayRatingPlayerId
+                }
+              >
+                {savingPlayerRating ? "Saving…" : "Save Rating"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {(homeRatedPlayers.length > 0 || awayRatedPlayers.length > 0) && (
+          <div className="border-t border-border/60 pt-4">
+            <h3 className="mb-3 text-sm font-semibold">Defender Player Ratings This Match</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { label: "Home Team", players: homeRatedPlayers },
+                { label: "Away Team", players: awayRatedPlayers },
+              ].map(({ label, players: ratedPlayers }) =>
+                ratedPlayers.length > 0 ? (
+                  <div key={label} className="space-y-2">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {label}
+                    </h4>
+                    <div className="space-y-1">
+                      {ratedPlayers.map(({ player, rating }) => (
+                        <div
+                          key={player.id}
+                          className="flex items-center justify-between rounded-sm bg-muted/40 px-2 py-1.5 text-sm"
+                        >
+                          <span className="font-medium">
+                            {player.name}
+                            <span className="ml-2 font-normal text-muted-foreground">
+                              {player.position}
+                            </span>
+                          </span>
+                          <span className="font-semibold tabular-nums text-foreground">
+                            {rating.toFixed(1)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null,
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Scorecard Display */}
         {(homeScorers.length > 0 || awayScorers.length > 0) && (

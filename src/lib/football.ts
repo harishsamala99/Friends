@@ -88,6 +88,13 @@ export type FixtureAppearance = {
   created_at: string;
 };
 
+export type FixturePlayerRating = {
+  fixture_id: string;
+  player_id: string;
+  rating: number;
+  created_at: string;
+};
+
 export type TournamentChampionCaptain = {
   tournament_id: string;
   team_id: string;
@@ -532,6 +539,57 @@ export async function fetchFixtureAppearances(fixtureId: string): Promise<Fixtur
     throw error;
   }
   return (data ?? []) as FixtureAppearance[];
+}
+
+export async function fetchFixturePlayerRatings(fixtureId: string): Promise<FixturePlayerRating[]> {
+  const { data, error } = await db
+    .from("fixture_player_ratings")
+    .select("*")
+    .eq("fixture_id", fixtureId);
+  if (error) throwFixturePlayerRatingsError(error);
+  return (data ?? []) as FixturePlayerRating[];
+}
+
+export async function fetchAllFixturePlayerRatings(): Promise<FixturePlayerRating[]> {
+  const pageSize = 1000;
+  const ratings: FixturePlayerRating[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await db
+      .from("fixture_player_ratings")
+      .select("*")
+      .order("created_at")
+      .order("fixture_id")
+      .order("player_id")
+      .range(from, from + pageSize - 1);
+    if (error) throwFixturePlayerRatingsError(error);
+
+    const page = (data ?? []) as FixturePlayerRating[];
+    ratings.push(...page);
+    if (page.length < pageSize) return ratings;
+  }
+}
+
+export async function saveFixturePlayerRating(
+  fixtureId: string,
+  playerId: string,
+  rating: number,
+): Promise<void> {
+  const { error } = await db
+    .from("fixture_player_ratings")
+    .upsert(
+      { fixture_id: fixtureId, player_id: playerId, rating },
+      { onConflict: "fixture_id,player_id" },
+    );
+  if (error) throwFixturePlayerRatingsError(error);
+}
+
+function throwFixturePlayerRatingsError(error: { code?: string; message?: string }): never {
+  if (error.code === "42P01" || error.code === "PGRST205") {
+    throw new Error(
+      "Player match ratings are not set up in Supabase yet. Apply the latest migration and try again.",
+    );
+  }
+  throw error;
 }
 
 export async function fetchAllFixtureAppearances(): Promise<FixtureAppearance[]> {

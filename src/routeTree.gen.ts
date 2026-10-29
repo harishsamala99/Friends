@@ -15,6 +15,7 @@ import { Route as AchievementsRouteImport } from './routes/achievements'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BestXiRouteImport } from './routes/best-xi'
 import { Route as CodeOfConductRouteImport } from './routes/code-of-conduct'
+import { Route as DefendingRatingsRouteImport } from './routes/defending-ratings'
 import { Route as FinalRouteImport } from './routes/final'
 import { Route as FixturesRouteImport } from './routes/fixtures'
 import { Route as HallOfFameRouteImport } from './routes/hall-of-fame'
@@ -57,6 +58,11 @@ const BestXiRoute = BestXiRouteImport.update({
 const CodeOfConductRoute = CodeOfConductRouteImport.update({
   id: '/code-of-conduct',
   path: '/code-of-conduct',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DefendingRatingsRoute = DefendingRatingsRouteImport.update({
+  id: '/defending-ratings',
+  path: '/defending-ratings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinalRoute = FinalRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/best-xi': typeof BestXiRoute
   '/code-of-conduct': typeof CodeOfConductRoute
+  '/defending-ratings': typeof DefendingRatingsRoute
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
   '/hall-of-fame': typeof HallOfFameRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/best-xi': typeof BestXiRoute
   '/code-of-conduct': typeof CodeOfConductRoute
+  '/defending-ratings': typeof DefendingRatingsRoute
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
   '/hall-of-fame': typeof HallOfFameRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/best-xi': typeof BestXiRoute
   '/code-of-conduct': typeof CodeOfConductRoute
+  '/defending-ratings': typeof DefendingRatingsRoute
   '/final': typeof FinalRoute
   '/fixtures': typeof FixturesRoute
   '/hall-of-fame': typeof HallOfFameRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/best-xi'
     | '/code-of-conduct'
+    | '/defending-ratings'
     | '/final'
     | '/fixtures'
     | '/hall-of-fame'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/best-xi'
     | '/code-of-conduct'
+    | '/defending-ratings'
     | '/final'
     | '/fixtures'
     | '/hall-of-fame'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/best-xi'
     | '/code-of-conduct'
+    | '/defending-ratings'
     | '/final'
     | '/fixtures'
     | '/hall-of-fame'
@@ -269,6 +281,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BestXiRoute: typeof BestXiRoute
   CodeOfConductRoute: typeof CodeOfConductRoute
+  DefendingRatingsRoute: typeof DefendingRatingsRoute
   FinalRoute: typeof FinalRoute
   FixturesRoute: typeof FixturesRoute
   HallOfFameRoute: typeof HallOfFameRoute
@@ -326,6 +339,13 @@ declare module '@tanstack/react-router' {
       path: '/code-of-conduct'
       fullPath: '/code-of-conduct'
       preLoaderRoute: typeof CodeOfConductRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/defending-ratings': {
+      id: '/defending-ratings'
+      path: '/defending-ratings'
+      fullPath: '/defending-ratings'
+      preLoaderRoute: typeof DefendingRatingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/final': {
@@ -447,6 +467,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BestXiRoute: BestXiRoute,
   CodeOfConductRoute: CodeOfConductRoute,
+  DefendingRatingsRoute: DefendingRatingsRoute,
   FinalRoute: FinalRoute,
   FixturesRoute: FixturesRoute,
   HallOfFameRoute: HallOfFameRoute,

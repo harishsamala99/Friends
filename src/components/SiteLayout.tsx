@@ -9,6 +9,7 @@ const NAV = [
   { to: "/standings", label: "Standings" },
   { to: "/scorers", label: "Top Scorers" },
   { to: "/saves", label: "Top Saves" },
+  { to: "/defending-ratings", label: "Defender Player Ratings" },
   { to: "/statistics", label: "Statistics" },
   { to: "/mr-icon", label: "MR. ICON 🏆" },
   { to: "/best-xi", label: "THE BEST XI" },

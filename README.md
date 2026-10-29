@@ -1401,6 +1401,8 @@ Hat-tricks are awarded once for three or more goals in a match; braces are award
 
 Ratings are computed by the `mr_icon_player_match_ratings` database view rather than stored as cumulative totals. As a result, match edits and deletions, event corrections, and new finalized fixtures are reflected without duplicate scoring or a historical reset. The separate 10-tournament MR. ICON archive preserves its original finalized award snapshots.
 
+The Defender Player Ratings page (`/defending-ratings`) is a separate manual rating table. On each fixture, select any player from either team and enter a rating from 1 to 10 (in increments of 0.1). The page totals each player's saved ratings across fixtures and displays their position and team. These ratings are stored in `fixture_player_ratings`; apply the latest Supabase migration to enable the feature.
+
 ## Build with Lovable
 
 Continue developing this project in the [Lovable editor](https://lovable.dev/projects/b1ed4cfb-650e-4643-8cbf-83374a2594e7).

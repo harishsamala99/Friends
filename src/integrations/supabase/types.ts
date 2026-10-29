@@ -80,6 +80,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      fixture_player_ratings: {
+        Row: {
+          created_at: string;
+          fixture_id: string;
+          player_id: string;
+          rating: number;
+        };
+        Insert: {
+          created_at?: string;
+          fixture_id: string;
+          player_id: string;
+          rating: number;
+        };
+        Update: {
+          created_at?: string;
+          fixture_id?: string;
+          player_id?: string;
+          rating?: number;
+        };
+        Relationships: [];
+      };
       player_achievements: {
         Row: {
           player_id: string;
