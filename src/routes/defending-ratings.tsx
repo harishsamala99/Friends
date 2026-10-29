@@ -90,6 +90,7 @@ function DefendingRatingsPage() {
             <table className="data-table w-full min-w-140 text-sm">
               <thead>
                 <tr>
+                  <th className="p-3 text-left font-medium">#</th>
                   <th className="p-3 text-left font-medium">Player</th>
                   <th className="p-3 text-left font-medium">Position</th>
                   <th className="p-3 text-left font-medium">Team</th>
@@ -97,8 +98,9 @@ function DefendingRatingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {playerTotals.map((player) => (
+                {playerTotals.map((player, index) => (
                   <tr key={player.id} className="border-t border-border/60">
+                    <td className="p-3 text-muted-foreground">{index + 1}</td>
                     <td className="p-3 font-medium">{player.name}</td>
                     <td className="p-3 text-muted-foreground">{player.position}</td>
                     <td className="p-3 text-muted-foreground">{player.team_name}</td>
