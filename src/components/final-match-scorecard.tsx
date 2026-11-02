@@ -29,7 +29,9 @@ import {
   fetchPlayers,
   fetchFixtures,
   fetchEvents,
+  fetchFixturePlayerRatings,
   replaceFixtureEvents,
+  saveFixturePlayerRating,
   sortStandings,
   insertFixtures,
   updateFixture,
@@ -810,6 +812,7 @@ export function FinalMatchScorecard() {
   const [editingPlayerTeam, setEditingPlayerTeam] = useState<"home" | "away" | null>(null);
   const [editingPlayerIndex, setEditingPlayerIndex] = useState<number | null>(null);
   const [editingPlayerName, setEditingPlayerName] = useState<string>("");
+  const [playerRatings, setPlayerRatings] = useState<Record<string, string>>({});
   const [saveTournamentOpen, setSaveTournamentOpen] = useState(false);
   const [savingTournament, setSavingTournament] = useState(false);
   const savingTournamentRef = useRef(false);
@@ -852,6 +855,16 @@ export function FinalMatchScorecard() {
       const isChangingTeam =
         side === "home" ? selectedHomeTeam !== teamId : selectedAwayTeam !== teamId;
       if (isChangingTeam) editingFinalFixtureId.current = null;
+      const currentPlayers = side === "home" ? home.players : away.players;
+      if (isChangingTeam) {
+        setPlayerRatings((current) =>
+          Object.fromEntries(
+            Object.entries(current).filter(
+              ([playerId]) => !currentPlayers.some((player) => player.id === playerId),
+            ),
+          ),
+        );
+      }
 
       if (side === "home") {
         setHome((current) => ({
@@ -1374,8 +1387,9 @@ export function FinalMatchScorecard() {
         return;
       }
 
-      const [finalEvents, allPlayers] = await Promise.all([
+      const [finalEvents, finalPlayerRatings, allPlayers] = await Promise.all([
         fetchEvents(finalFixture.id),
+        fetchFixturePlayerRatings(finalFixture.id),
         fetchPlayers(),
       ]);
       const homeTeamName =
@@ -1445,6 +1459,14 @@ export function FinalMatchScorecard() {
         assists: [],
         saves: savesFor(finalFixture.away_team_id),
       });
+      setPlayerRatings(
+        Object.fromEntries(
+          finalPlayerRatings.map((playerRating) => [
+            playerRating.player_id,
+            String(playerRating.rating),
+          ]),
+        ),
+      );
       setTournamentForm((current) => ({
         ...current,
         name: tournament.tournamentName,
@@ -1799,6 +1821,17 @@ export function FinalMatchScorecard() {
   // Save tournament
   const saveTournament = async () => {
     if (savingTournamentRef.current) return;
+    const enteredRatings = Object.entries(playerRatings).filter(([, value]) => value.trim() !== "");
+    if (
+      enteredRatings.some(([, value]) => {
+        const rating = Number(value.trim());
+        return !/^\d+(?:\.\d)?$/.test(value.trim()) || rating < 1 || rating > 10;
+      })
+    ) {
+      toast.error("Enter player ratings from 1 to 10, with at most one decimal place.");
+      return;
+    }
+
     const homeScore = home.goals.length;
     const awayScore = away.goals.length;
     const winner = homeScore > awayScore ? home.name : awayScore > homeScore ? away.name : "Draw";
@@ -1897,6 +1930,15 @@ export function FinalMatchScorecard() {
           away_score: awayScore,
           status: "Full Time",
         });
+        await Promise.all(
+          enteredRatings.map(([playerId, value]) =>
+            saveFixturePlayerRating(finalFixture.id, playerId, Number(value.trim())),
+          ),
+        );
+        await queryClient.invalidateQueries({
+          queryKey: ["fixture-player-ratings", finalFixture.id],
+        });
+        await queryClient.invalidateQueries({ queryKey: ["fixture-player-ratings"] });
         await queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
         await queryClient.invalidateQueries({ queryKey: ["fixtures"] });
         await queryClient.invalidateQueries({ queryKey: ["scorers"] });
@@ -1908,7 +1950,7 @@ export function FinalMatchScorecard() {
         await queryClient.invalidateQueries({ queryKey: ["tournaments"] });
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Could not save the final goals and saves",
+          error instanceof Error ? error.message : "Could not save the final match details",
         );
         return;
       }
@@ -1993,6 +2035,7 @@ export function FinalMatchScorecard() {
 
   // Reset match
   const resetMatch = () => {
+    setPlayerRatings({});
     setHome({
       name: "Team 1",
       players: INITIAL_HOME_PLAYERS,
@@ -2782,6 +2825,85 @@ export function FinalMatchScorecard() {
                 </Button>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Defensive Player Ratings */}
+          <div className="mb-8 grid gap-8 lg:grid-cols-2">
+            {[
+              {
+                side: "home" as const,
+                team: home,
+                cardClassName:
+                  "border-3 border-primary/40 bg-linear-to-br from-card/98 via-card/96 to-card/94 shadow-lg",
+                headerClassName:
+                  "bg-linear-to-r from-primary/20 to-primary/5 border-b-2 border-primary/20",
+              },
+              {
+                side: "away" as const,
+                team: away,
+                cardClassName:
+                  "border-3 border-secondary/40 bg-linear-to-br from-card/98 via-card/96 to-card/94 shadow-lg",
+                headerClassName:
+                  "bg-linear-to-r from-secondary/20 to-secondary/5 border-b-2 border-secondary/20",
+              },
+            ].map(({ side, team, cardClassName, headerClassName }) => {
+              const ratedPlayers = team.players.filter((player) =>
+                playersQuery.data?.some((savedPlayer) => savedPlayer.id === player.id),
+              );
+
+              return (
+                <Card key={side} className={cardClassName}>
+                  <CardHeader className={headerClassName}>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <span className="text-2xl">🛡️</span>
+                      {team.name} — Defensive Player Ratings
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 p-6">
+                    <p className="text-sm text-muted-foreground">
+                      Rate each player from 1 to 10. Ratings are optional.
+                    </p>
+                    {ratedPlayers.length === 0 ? (
+                      <p className="py-4 text-center text-sm italic text-muted-foreground">
+                        Select a team to rate its players.
+                      </p>
+                    ) : (
+                      ratedPlayers.map((player) => (
+                        <label
+                          key={player.id}
+                          className="flex items-center gap-3 rounded-lg border border-border/50 p-3 text-sm font-medium"
+                        >
+                          <span className="min-w-0 flex-1 truncate">
+                            {player.name}
+                            {player.isGK && (
+                              <span className="ml-2 text-xs text-muted-foreground">(GK)</span>
+                            )}
+                          </span>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="10"
+                            step="0.1"
+                            inputMode="decimal"
+                            value={playerRatings[player.id] ?? ""}
+                            onChange={(event) =>
+                              setPlayerRatings((current) => ({
+                                ...current,
+                                [player.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="1–10"
+                            aria-label={`${player.name} defensive rating`}
+                            className="w-24 text-right"
+                          />
+                          <span className="text-xs text-muted-foreground">/ 10</span>
+                        </label>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
 
           {/* Player Management Section */}

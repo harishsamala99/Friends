@@ -82,13 +82,11 @@ function DefendingRatingsPage() {
       .map(([teamId, total]) => ({
         teamId,
         teamName: teamById.get(teamId) ?? teamId,
+        totalRating: total.ratingTenths / 10,
         averageRating: total.ratingTenths / total.count / 10,
-        defensePercentage: total.ratingTenths / total.count,
         ratingsCount: total.count,
       }))
-      .sort(
-        (a, b) => b.defensePercentage - a.defensePercentage || a.teamName.localeCompare(b.teamName),
-      );
+      .sort((a, b) => b.totalRating - a.totalRating || a.teamName.localeCompare(b.teamName));
   }, [playersQuery.data, ratings.data, teamsQuery.data]);
   const queryError = ratings.error ?? playersQuery.error ?? teamsQuery.error;
   const isLoading = ratings.isLoading || playersQuery.isLoading || teamsQuery.isLoading;
@@ -129,7 +127,14 @@ function DefendingRatingsPage() {
                   {playerTotals.map((player, index) => (
                     <tr key={player.id} className="border-t border-border/60">
                       <td className="p-3 text-muted-foreground">{index + 1}</td>
-                      <td className="p-3 font-medium">{player.name}</td>
+                      <td className="p-3 font-medium">
+                        {player.name}
+                        {index === 0 && (
+                          <span className="ml-2 text-xs font-semibold text-primary">
+                            Top defender
+                          </span>
+                        )}
+                      </td>
                       <td className="p-3 text-muted-foreground">{player.position}</td>
                       <td className="p-3 text-muted-foreground">{player.team_name}</td>
                       <td className="p-3 text-right font-semibold tabular-nums">
@@ -144,9 +149,10 @@ function DefendingRatingsPage() {
             </div>
             <section className="mt-10 space-y-4">
               <div>
-                <h2 className="font-display text-xl font-bold">Team Defense Average</h2>
+                <h2 className="font-display text-xl font-bold">Team Defensive Ratings</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Average of available player match ratings, shown as a percentage of 10.
+                  Teams are ranked by cumulative player rating points. Average rating is shown
+                  separately.
                 </p>
               </div>
               {teamDefenseAverages.length === 0 ? (
@@ -157,8 +163,8 @@ function DefendingRatingsPage() {
                     <thead>
                       <tr>
                         <th className="p-3 text-left font-medium">Team</th>
+                        <th className="p-3 text-right font-medium">Total Rating Points</th>
                         <th className="p-3 text-right font-medium">Average Rating</th>
-                        <th className="p-3 text-right font-medium">Defense</th>
                         <th className="p-3 text-right font-medium">Ratings</th>
                       </tr>
                     </thead>
@@ -169,15 +175,17 @@ function DefendingRatingsPage() {
                             {team.teamName}
                             {index === 0 && (
                               <span className="ml-2 text-xs font-semibold text-primary">
-                                Best defense
+                                Most rating points
                               </span>
                             )}
                           </td>
                           <td className="p-3 text-right tabular-nums">
-                            {team.averageRating.toFixed(1)} / 10
+                            {Number.isInteger(team.totalRating)
+                              ? team.totalRating
+                              : team.totalRating.toFixed(1)}
                           </td>
                           <td className="p-3 text-right font-semibold tabular-nums text-primary">
-                            {team.defensePercentage.toFixed(1)}%
+                            {team.averageRating.toFixed(1)} / 10
                           </td>
                           <td className="p-3 text-right tabular-nums text-muted-foreground">
                             {team.ratingsCount}
