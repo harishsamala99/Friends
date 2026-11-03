@@ -95,6 +95,16 @@ export type FixturePlayerRating = {
   created_at: string;
 };
 
+export type TournamentTeamDefensiveRating = {
+  tournament_id: string;
+  team_id: string;
+  team_name: string;
+  total_rating: number;
+  average_rating: number;
+  ratings_count: number;
+  updated_at: string;
+};
+
 export type TournamentChampionCaptain = {
   tournament_id: string;
   team_id: string;
@@ -567,6 +577,44 @@ export async function fetchAllFixturePlayerRatings(): Promise<FixturePlayerRatin
     ratings.push(...page);
     if (page.length < pageSize) return ratings;
   }
+}
+
+export async function fetchTournamentTeamDefensiveRatings(): Promise<
+  TournamentTeamDefensiveRating[]
+> {
+  const pageSize = 1000;
+  const ratings: TournamentTeamDefensiveRating[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await db
+      .from("tournament_team_defensive_ratings")
+      .select("*")
+      .order("tournament_id")
+      .order("team_name")
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+
+    const page = (data ?? []) as TournamentTeamDefensiveRating[];
+    ratings.push(...page);
+    if (page.length < pageSize) return ratings;
+  }
+}
+
+export async function deleteTournamentDefensiveRatings(tournamentId: string): Promise<void> {
+  const { error } = await db.rpc("delete_tournament_defensive_ratings", {
+    p_tournament_id: tournamentId,
+  });
+  if (error) throw error;
+}
+
+export async function deletePlayerTournamentDefensiveRatings(
+  tournamentId: string,
+  playerId: string,
+): Promise<void> {
+  const { error } = await db.rpc("delete_player_tournament_defensive_ratings", {
+    p_tournament_id: tournamentId,
+    p_player_id: playerId,
+  });
+  if (error) throw error;
 }
 
 export async function saveFixturePlayerRating(

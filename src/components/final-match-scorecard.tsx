@@ -484,9 +484,31 @@ function TournamentSetup({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" onClick={onCreateTournament} disabled={creating || !name.trim()}>
-            {creating ? "Creating tournament..." : "Create tournament"}
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button type="button" disabled={creating || !name.trim()}>
+                {creating ? "Creating tournament..." : "Create tournament"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Start a new tournament?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This clears previous tournament results, fixtures, match events, player ratings,
+                  appearances, achievements, award history, Best XI, and champion captain records.
+                  Player and team profiles, tournament names, and team defensive rating history will
+                  be kept. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogAction
+                onClick={onCreateTournament}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Create and reset tournament data
+              </AlertDialogAction>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button
             type="button"
             variant="outline"
@@ -743,6 +765,15 @@ export function FinalMatchScorecard() {
         ...(existingTournaments ?? []).filter((t) => t.id !== createdId),
       ]);
       void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
+      void queryClient.invalidateQueries({ queryKey: ["fixtures"] });
+      void queryClient.invalidateQueries({ queryKey: ["fixture-player-ratings"] });
+      void queryClient.invalidateQueries({ queryKey: ["scorers"] });
+      void queryClient.invalidateQueries({ queryKey: ["saves"] });
+      void queryClient.invalidateQueries({ queryKey: ["standings"] });
+      void queryClient.invalidateQueries({ queryKey: ["achievements"] });
+      void queryClient.invalidateQueries({ queryKey: ["player-appearances"] });
+      void queryClient.invalidateQueries({ queryKey: ["tournament-event-stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["tournament-team-defensive-ratings"] });
       toast.success("Tournament created. You can now add fixtures.");
     },
     onError: (error) => {

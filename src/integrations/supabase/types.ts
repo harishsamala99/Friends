@@ -101,6 +101,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      tournament_team_defensive_ratings: {
+        Row: {
+          average_rating: number;
+          ratings_count: number;
+          team_id: string;
+          team_name: string;
+          total_rating: number;
+          tournament_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          average_rating: number;
+          ratings_count: number;
+          team_id: string;
+          team_name: string;
+          total_rating: number;
+          tournament_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          average_rating?: number;
+          ratings_count?: number;
+          team_id?: string;
+          team_name?: string;
+          total_rating?: number;
+          tournament_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       player_achievements: {
         Row: {
           player_id: string;
@@ -896,6 +926,14 @@ export type Database = {
     Functions: {
       can_manage: { Args: { _user_id: string }; Returns: boolean };
       can_officiate: { Args: { _user_id: string }; Returns: boolean };
+      delete_tournament_defensive_ratings: {
+        Args: { p_tournament_id: string };
+        Returns: undefined;
+      };
+      delete_player_tournament_defensive_ratings: {
+        Args: { p_player_id: string; p_tournament_id: string };
+        Returns: undefined;
+      };
       mr_icon_calculate_rating: {
         Args: {
           p_braces: number;
