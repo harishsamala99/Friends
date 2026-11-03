@@ -54,6 +54,7 @@ type HallData = {
 };
 
 type CompletedFixture = Fixture & { home_score: number; away_score: number };
+type TournamentAwardLeader = { name: string; count: number; player?: Player };
 
 async function fetchAllBestXIs(tournaments: Tournament[]) {
   const completedTournamentIds = new Set(
@@ -64,6 +65,53 @@ async function fetchAllBestXIs(tournaments: Tournament[]) {
   return (await fetchBestXIs())
     .filter((selection) => completedTournamentIds.has(selection.tournament_id))
     .map((selection) => ({ tournamentId: selection.tournament_id, selection }));
+}
+
+function getTournamentAwardLeaders(
+  tournament: Tournament,
+  eventType: "goal" | "save",
+  events: Awaited<ReturnType<typeof fetchAllMatchEvents>>,
+  fixturesById: Map<string, Fixture>,
+  playersById: Map<string, Player>,
+  savedName: string | null,
+  savedCount: number | null,
+): TournamentAwardLeader[] {
+  if (savedName?.trim() && (savedCount ?? 0) > 0) {
+    const player = [...playersById.values()].find(
+      (candidate) => normalize(candidate.name) === normalize(savedName),
+    );
+    return [{ name: savedName.trim(), count: savedCount ?? 0, player }];
+  }
+
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    const fixture = fixturesById.get(event.fixture_id);
+    if (
+      event.event_type !== eventType ||
+      !event.player_id ||
+      fixture?.tournament_id !== tournament.id ||
+      !playersById.has(event.player_id) ||
+      (eventType === "goal" &&
+        event.goal_type
+          ?.trim()
+          .toLowerCase()
+          .replace(/[\s_-]/g, "") === "owngoal")
+    ) {
+      continue;
+    }
+    counts.set(event.player_id, (counts.get(event.player_id) ?? 0) + 1);
+  }
+
+  const topCount = Math.max(0, ...counts.values());
+  if (topCount === 0) return [];
+
+  return [...counts.entries()]
+    .filter(([, count]) => count === topCount)
+    .flatMap(([playerId, count]) => {
+      const player = playersById.get(playerId);
+      return player ? [{ name: player.name, count, player }] : [];
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function HallOfFamePage() {
@@ -284,6 +332,29 @@ function HallOfFamePage() {
   const managerLeaders = [...managerWins.values()].sort(
     (a, b) => b.tournaments.length - a.tournaments.length || a.name.localeCompare(b.name),
   );
+  const tournamentAwardLeaders = tournaments
+    .map((tournament) => ({
+      tournament,
+      scorers: getTournamentAwardLeaders(
+        tournament,
+        "goal",
+        events,
+        fixturesById,
+        playersById,
+        tournament.top_scorer_name,
+        tournament.top_scorer_goals,
+      ),
+      savers: getTournamentAwardLeaders(
+        tournament,
+        "save",
+        events,
+        fixturesById,
+        playersById,
+        tournament.top_saver_name,
+        tournament.top_saver_saves,
+      ),
+    }))
+    .sort((a, b) => +new Date(b.tournament.date) - +new Date(a.tournament.date));
 
   const finals = [...tournaments].sort((a, b) => +new Date(b.date) - +new Date(a.date));
   const highestScoring = getHighestScoringMatches(completedFixtures);
@@ -360,6 +431,46 @@ function HallOfFamePage() {
               tournamentsById={tournamentsById}
               emptyMessage="Tournament title-winning goal scorers and the leaders in recorded goals will appear here."
             />
+
+            <section>
+              <SectionTitle icon={<Award />} title="Top Scorer & Top Saves by Tournament" />
+              {tournamentAwardLeaders.length === 0 ? (
+                <EmptyState message="Tournament scorer and save awards will appear here after tournaments are completed." />
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {tournamentAwardLeaders.map(({ tournament, scorers, savers }) => (
+                    <Card key={`${tournament.id}-player-awards`} className="overflow-hidden">
+                      <div className="bg-linear-to-r from-primary/10 via-transparent to-amber-500/10 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                          Tournament awards
+                        </p>
+                        <h3 className="mt-1 font-display text-xl font-bold">
+                          {tournament.tournament_name || tournament.type}
+                        </h3>
+                      </div>
+                      <CardContent className="grid gap-3 p-4 sm:grid-cols-2">
+                        <TournamentAward
+                          title="Top Scorer"
+                          icon={<Goal className="size-4" />}
+                          leaders={scorers}
+                          statLabel="goals"
+                          playersById={playersById}
+                          teamsById={teamsById}
+                        />
+                        <TournamentAward
+                          title="Top Saves"
+                          icon={<Shield className="size-4" />}
+                          leaders={savers}
+                          statLabel="saves"
+                          playersById={playersById}
+                          teamsById={teamsById}
+                        />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </section>
 
             <section>
               <SectionTitle icon={<Trophy />} title="Most Successful Managers" />
@@ -750,6 +861,60 @@ function PlayerAvatar({ player }: { player: Player }) {
       <AvatarImage src={player.photo_url ?? undefined} alt={player.name} />
       <AvatarFallback>{player.name.slice(0, 2).toUpperCase()}</AvatarFallback>
     </Avatar>
+  );
+}
+
+function TournamentAward({
+  title,
+  icon,
+  leaders,
+  statLabel,
+  playersById,
+  teamsById,
+}: {
+  title: string;
+  icon: ReactNode;
+  leaders: TournamentAwardLeader[];
+  statLabel: string;
+  playersById: Map<string, Player>;
+  teamsById: Map<string, Team>;
+}) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
+      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <span className="text-primary">{icon}</span>
+        {title}
+      </p>
+      {leaders.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">Not recorded</p>
+      ) : (
+        <div className="mt-3 space-y-3">
+          {leaders.map((leader) => {
+            const player =
+              leader.player ??
+              [...playersById.values()].find(
+                (candidate) => normalize(candidate.name) === normalize(leader.name),
+              );
+            const team = player?.team_id ? teamsById.get(player.team_id) : undefined;
+            return (
+              <div
+                key={`${leader.name}-${leader.count}`}
+                className="flex min-w-0 items-center gap-2"
+              >
+                {player && <PlayerAvatar player={player} />}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{leader.name}</p>
+                  {team && <p className="truncate text-xs text-muted-foreground">{team.name}</p>}
+                </div>
+                <Badge variant="secondary">
+                  {leader.count} {statLabel}
+                </Badge>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
