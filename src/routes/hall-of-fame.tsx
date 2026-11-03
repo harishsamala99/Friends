@@ -15,14 +15,16 @@ import {
   fetchFixtures,
   fetchPlayerAchievements,
   fetchPlayers,
-  fetchTournamentChampionCaptains,
+  fetchTournamentTeamDefensiveRatings,
   fetchTeams,
   fetchTournaments,
+  type BestXI,
   type Fixture,
   type Competition,
   type Player,
   type Team,
   type Tournament,
+  type TournamentTeamDefensiveRating,
 } from "@/lib/football";
 
 export const Route = createFileRoute("/hall-of-fame")({
@@ -47,8 +49,8 @@ type HallData = {
   events: Awaited<ReturnType<typeof fetchAllMatchEvents>>;
   appearances: Awaited<ReturnType<typeof fetchAllFixtureAppearances>>;
   achievements: Awaited<ReturnType<typeof fetchPlayerAchievements>>;
-  captains: Awaited<ReturnType<typeof fetchTournamentChampionCaptains>>;
   bestXIs: Awaited<ReturnType<typeof fetchAllBestXIs>>;
+  defensiveRatings: TournamentTeamDefensiveRating[];
 };
 
 type CompletedFixture = Fixture & { home_score: number; away_score: number };
@@ -77,7 +79,7 @@ function HallOfFamePage() {
         events,
         appearances,
         achievements,
-        captains,
+        defensiveRatings,
       ] = await Promise.all([
         fetchFixtures(),
         fetchCompetitions(),
@@ -87,7 +89,7 @@ function HallOfFamePage() {
         fetchAllMatchEvents(),
         fetchAllFixtureAppearances(),
         fetchPlayerAchievements(),
-        fetchTournamentChampionCaptains(),
+        fetchTournamentTeamDefensiveRatings(),
       ]);
       const bestXIs = await fetchAllBestXIs(tournaments);
       return {
@@ -99,8 +101,8 @@ function HallOfFamePage() {
         events,
         appearances,
         achievements,
-        captains,
         bestXIs,
+        defensiveRatings,
       };
     },
   });
@@ -270,26 +272,18 @@ function HallOfFamePage() {
     .map(([teamId, wins]) => ({ team: teamsById.get(teamId), wins }))
     .filter((item): item is typeof item & { team: Team } => Boolean(item.team))
     .sort((a, b) => b.wins.length - a.wins.length || a.team.name.localeCompare(b.team.name));
-  const captainTitles = new Map<string, Tournament[]>();
-  for (const assignment of d?.captains ?? []) {
-    const tournament = tournamentsById.get(assignment.tournament_id);
-    const officialChampion = tournament ? teamByRecordedName(tournament.winner) : undefined;
-    if (
-      !tournament ||
-      !officialChampion ||
-      officialChampion.id !== assignment.team_id ||
-      !playersById.has(assignment.player_id)
-    ) {
-      continue;
-    }
-    const wins = captainTitles.get(assignment.player_id) ?? [];
-    wins.push(tournament);
-    captainTitles.set(assignment.player_id, wins);
+  const managerWins = new Map<string, { name: string; tournaments: Tournament[] }>();
+  for (const tournament of tournaments) {
+    const managerName = tournament.manager?.trim();
+    if (!managerName || !teamByRecordedName(tournament.winner)) continue;
+    const managerKey = normalize(managerName);
+    const entry = managerWins.get(managerKey) ?? { name: managerName, tournaments: [] };
+    entry.tournaments.push(tournament);
+    managerWins.set(managerKey, entry);
   }
-  const captainLeaders = [...captainTitles.entries()]
-    .map(([playerId, wins]) => ({ player: playersById.get(playerId), wins }))
-    .filter((item): item is typeof item & { player: Player } => Boolean(item.player))
-    .sort((a, b) => b.wins.length - a.wins.length || a.player.name.localeCompare(b.player.name));
+  const managerLeaders = [...managerWins.values()].sort(
+    (a, b) => b.tournaments.length - a.tournaments.length || a.name.localeCompare(b.name),
+  );
 
   const finals = [...tournaments].sort((a, b) => +new Date(b.date) - +new Date(a.date));
   const highestScoring = getHighestScoringMatches(completedFixtures);
@@ -302,7 +296,36 @@ function HallOfFamePage() {
     teams,
     playersById,
   );
-  const bestXIByTournament = new Set((d?.bestXIs ?? []).map((item) => item.tournamentId));
+  const bestDefenseByTournament = new Map<string, TournamentTeamDefensiveRating>();
+  for (const rating of d?.defensiveRatings ?? []) {
+    const current = bestDefenseByTournament.get(rating.tournament_id);
+    if (
+      !current ||
+      rating.total_rating > current.total_rating ||
+      (rating.total_rating === current.total_rating &&
+        rating.average_rating > current.average_rating)
+    ) {
+      bestDefenseByTournament.set(rating.tournament_id, rating);
+    }
+  }
+  const bestXISelections = (d?.bestXIs ?? [])
+    .map(({ tournamentId, selection }) => ({
+      tournament: tournamentsById.get(tournamentId),
+      selection,
+    }))
+    .filter((item): item is { tournament: Tournament; selection: BestXI } =>
+      Boolean(item.tournament),
+    )
+    .sort((a, b) => +new Date(b.tournament.date) - +new Date(a.tournament.date));
+  const bestDefenseAwards = [...bestDefenseByTournament.entries()]
+    .map(([tournamentId, team]) => ({
+      tournament: tournamentsById.get(tournamentId),
+      team,
+    }))
+    .filter((item): item is { tournament: Tournament; team: TournamentTeamDefensiveRating } =>
+      Boolean(item.tournament),
+    )
+    .sort((a, b) => +new Date(b.tournament.date) - +new Date(a.tournament.date));
 
   return (
     <SiteLayout>
@@ -339,37 +362,31 @@ function HallOfFamePage() {
             />
 
             <section>
-              <SectionTitle icon={<Shield />} title="Most Successful Captains" />
-              {captainLeaders.length === 0 ? (
-                <EmptyState message="No official champion-captain assignments are recorded yet. The section will rank captains only after their winning-team assignments are confirmed." />
+              <SectionTitle icon={<Trophy />} title="Most Successful Managers" />
+              {managerLeaders.length === 0 ? (
+                <EmptyState message="Managers will be ranked here after their completed tournament wins are recorded." />
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {captainLeaders.map(({ player, wins }, index) => (
-                    <Card key={player.id}>
+                  {managerLeaders.map(({ name, tournaments: wins }, index) => (
+                    <Card key={normalize(name)}>
                       <CardContent className="flex items-center gap-3 p-4">
                         <span className="font-display text-2xl font-bold text-primary">
                           {sharedRank(
-                            captainLeaders,
+                            managerLeaders,
                             index,
-                            (a, b) => a.wins.length === b.wins.length,
+                            (a, b) => a.tournaments.length === b.tournaments.length,
                           )}
                         </span>
-                        <PlayerAvatar player={player} />
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold">{player.name}</p>
+                          <p className="font-semibold">{name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {player.team_id
-                              ? (teamsById.get(player.team_id)?.name ?? "Team not recorded")
-                              : "Team not recorded"}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {wins.length} champion captaincy{wins.length === 1 ? "" : "s"}
+                            {wins.length} tournament win{wins.length === 1 ? "" : "s"}
                           </p>
                         </div>
                         <div className="flex flex-wrap justify-end gap-1">
                           {wins.map((tournament) => (
                             <Badge key={tournament.id} variant="secondary">
-                              {tournament.tournament_name}
+                              {tournament.tournament_name || tournament.type}
                             </Badge>
                           ))}
                         </div>
@@ -525,8 +542,8 @@ function HallOfFamePage() {
 
             <section>
               <SectionTitle icon={<Award />} title="Best Tournament Performances" />
-              {bestPerformances.length === 0 && bestXIByTournament.size === 0 ? (
-                <EmptyState message="No recorded tournament goal totals or Best XI selections are available yet." />
+              {bestPerformances.length === 0 ? (
+                <EmptyState message="Tournament goal records will appear here as matches are completed." />
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                   {bestPerformances.map((performance) => (
@@ -545,25 +562,151 @@ function HallOfFamePage() {
                       </CardContent>
                     </Card>
                   ))}
-                  {[...bestXIByTournament]
-                    .filter(
-                      (tournamentId) =>
-                        !bestPerformances.some((p) => p.tournamentId === tournamentId),
-                    )
-                    .map((tournamentId) => {
-                      const tournament = tournamentsById.get(tournamentId);
-                      return tournament ? (
-                        <Card key={`${tournamentId}-best-xi`}>
-                          <CardContent className="flex items-center gap-3 p-4">
-                            <Award className="size-5 text-primary" />
-                            <span className="font-semibold">Best XI finalized</span>
-                            <span className="ml-auto text-sm text-muted-foreground">
-                              {tournament.tournament_name}
-                            </span>
-                          </CardContent>
-                        </Card>
-                      ) : null;
-                    })}
+                </div>
+              )}
+            </section>
+
+            <section>
+              <SectionTitle icon={<Award />} title="Tournament Best XI" />
+              {bestXISelections.length === 0 ? (
+                <EmptyState message="Finalized tournament lineups will appear here." />
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {bestXISelections.map(({ tournament, selection }) => {
+                    const lineup = [
+                      {
+                        label: "Forwards",
+                        players: [selection.forward_1, selection.forward_2, selection.forward_3],
+                      },
+                      {
+                        label: "Midfielders",
+                        players: [
+                          selection.midfielder_1,
+                          selection.midfielder_2,
+                          selection.midfielder_3,
+                        ],
+                      },
+                      {
+                        label: "Defenders",
+                        players: [
+                          selection.defender_1,
+                          selection.defender_2,
+                          selection.defender_3,
+                          selection.defender_4,
+                        ],
+                      },
+                      { label: "Goalkeeper", players: [selection.goalkeeper] },
+                    ];
+                    return (
+                      <Card
+                        key={`${tournament.id}-best-xi`}
+                        className="overflow-hidden border-primary/20"
+                      >
+                        <div className="bg-linear-to-r from-primary/10 via-transparent to-emerald-500/10 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                                Official lineup · 4-3-3
+                              </p>
+                              <h3 className="mt-1 font-display text-xl font-bold">
+                                {tournament.tournament_name || tournament.type}
+                              </h3>
+                            </div>
+                            <Award className="size-8 shrink-0 text-primary" />
+                          </div>
+                        </div>
+                        <CardContent className="grid gap-3 p-4 sm:grid-cols-2">
+                          {lineup.map((group) => (
+                            <div key={group.label} className="rounded-lg bg-muted/40 p-3">
+                              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                {group.label}
+                              </p>
+                              <ul className="space-y-1">
+                                {group.players.map((playerId) => {
+                                  const player = playersById.get(playerId);
+                                  return (
+                                    <li key={playerId} className="text-sm font-medium">
+                                      {player?.name ?? "Player unavailable"}
+                                      {player?.team_id && (
+                                        <span className="ml-1 font-normal text-muted-foreground">
+                                          · {teamsById.get(player.team_id)?.name ?? "Team"}
+                                        </span>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section>
+              <SectionTitle icon={<Shield />} title="Best Defense" />
+              {bestDefenseAwards.length === 0 ? (
+                <EmptyState message="Team defensive awards will appear here after player ratings are recorded." />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {bestDefenseAwards.map(({ tournament, team }) => {
+                    const teamDetails = teamsById.get(team.team_id);
+                    return (
+                      <Card
+                        key={`${tournament.id}-${team.team_id}-best-defense`}
+                        className="overflow-hidden border-emerald-700/20"
+                      >
+                        <div className="bg-linear-to-br from-emerald-950 via-emerald-900 to-teal-800 p-5 text-white">
+                          <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
+                            Best defense
+                          </p>
+                          <div className="mt-3 flex items-center gap-3">
+                            {teamDetails ? (
+                              <TeamBadge team={teamDetails} size={44} />
+                            ) : (
+                              <Shield className="size-10 text-emerald-200" />
+                            )}
+                            <div className="min-w-0">
+                              <h3 className="truncate font-display text-xl font-bold">
+                                {team.team_name}
+                              </h3>
+                              <p className="truncate text-sm text-white/70">
+                                {tournament.tournament_name || tournament.type}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <CardContent className="grid grid-cols-2 gap-3 p-4">
+                          <div>
+                            <p className="text-xs font-semibold uppercase text-muted-foreground">
+                              Rating points
+                            </p>
+                            <p className="mt-1 font-display text-2xl font-bold">
+                              {Number.isInteger(team.total_rating)
+                                ? team.total_rating
+                                : team.total_rating.toFixed(1)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold uppercase text-muted-foreground">
+                              Average
+                            </p>
+                            <p className="mt-1 font-display text-2xl font-bold text-primary">
+                              {team.average_rating.toFixed(1)}
+                              <span className="text-sm"> / 10</span>
+                            </p>
+                          </div>
+                          <p className="col-span-2 text-xs text-muted-foreground">
+                            Based on {team.ratings_count} player match{" "}
+                            {team.ratings_count === 1 ? "rating" : "ratings"}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </section>
