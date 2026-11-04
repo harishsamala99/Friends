@@ -385,6 +385,31 @@ function TournamentSetup({
   }
 
   const teamNames = new Map(teams.map((team) => [team.id, team.name]));
+  const fixturesByTeams = new Map<
+    string,
+    { key: string; teamNames: [string, string]; fixtures: Fixture[] }
+  >();
+  for (const fixture of fixtures) {
+    const sortedNames = [
+      teamNames.get(fixture.home_team_id) ?? "Home team",
+      teamNames.get(fixture.away_team_id) ?? "Away team",
+    ].sort((a, b) => a.localeCompare(b));
+    const names: [string, string] = [sortedNames[0] ?? "Home team", sortedNames[1] ?? "Away team"];
+    const key = [fixture.home_team_id, fixture.away_team_id].sort().join(":");
+    const group = fixturesByTeams.get(key);
+    if (group) {
+      group.fixtures.push(fixture);
+    } else {
+      fixturesByTeams.set(key, { key, teamNames: names, fixtures: [fixture] });
+    }
+  }
+  const fixtureGroups = [...fixturesByTeams.values()].sort(
+    (a, b) =>
+      a.teamNames[0].localeCompare(b.teamNames[0]) || a.teamNames[1].localeCompare(b.teamNames[1]),
+  );
+  for (const group of fixtureGroups) {
+    group.fixtures.sort((a, b) => a.matchday - b.matchday || a.kickoff.localeCompare(b.kickoff));
+  }
 
   return (
     <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] text-foreground shadow-lg dark:from-[#18212d] dark:via-card dark:to-[#1b2a2c]">
@@ -520,36 +545,45 @@ function TournamentSetup({
               No fixtures yet. Add the first fixture above.
             </p>
           ) : (
-            <div className="divide-y rounded-md border">
-              {fixtures.map((fixture) => (
-                <div key={fixture.id} className="flex flex-wrap items-center gap-3 p-3">
-                  <span className="w-20 text-xs text-muted-foreground">
-                    Matchday {fixture.matchday}
-                  </span>
-                  <span className="min-w-45 flex-1 font-medium">
-                    {teamNames.get(fixture.home_team_id) ?? "Home team"}{" "}
-                    <span className="text-muted-foreground">vs</span>{" "}
-                    {teamNames.get(fixture.away_team_id) ?? "Away team"}
-                  </span>
-                  <span className="rounded bg-muted px-2 py-1 text-sm font-semibold tabular-nums">
-                    {fixture.home_score ?? "-"} - {fixture.away_score ?? "-"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{fixture.status}</span>
-                  <Button asChild variant="outline" size="sm">
-                    <Link to="/match/$fixtureId" params={{ fixtureId: fixture.id }}>
-                      Edit
-                    </Link>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Delete fixture"
-                    onClick={() => void removeFixture(fixture.id)}
-                  >
-                    <X className="size-4 text-destructive" />
-                  </Button>
-                </div>
+            <div className="space-y-4">
+              {fixtureGroups.map((group) => (
+                <section key={group.key} className="overflow-hidden rounded-md border">
+                  <h4 className="bg-muted/50 px-3 py-2 text-sm font-semibold">
+                    {group.teamNames[0]} vs {group.teamNames[1]}
+                    <span className="ml-2 font-normal text-muted-foreground">
+                      ({group.fixtures.length} {group.fixtures.length === 1 ? "match" : "matches"})
+                    </span>
+                  </h4>
+                  <div className="divide-y">
+                    {group.fixtures.map((fixture) => (
+                      <div key={fixture.id} className="flex flex-wrap items-center gap-3 p-3">
+                        <span className="min-w-45 flex-1 font-medium">
+                          {teamNames.get(fixture.home_team_id) ?? "Home team"}{" "}
+                          <span className="text-muted-foreground">vs</span>{" "}
+                          {teamNames.get(fixture.away_team_id) ?? "Away team"}
+                        </span>
+                        <span className="rounded bg-muted px-2 py-1 text-sm font-semibold tabular-nums">
+                          {fixture.home_score ?? "-"} - {fixture.away_score ?? "-"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{fixture.status}</span>
+                        <Button asChild variant="outline" size="sm">
+                          <Link to="/match/$fixtureId" params={{ fixtureId: fixture.id }}>
+                            Edit
+                          </Link>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Delete fixture"
+                          onClick={() => void removeFixture(fixture.id)}
+                        >
+                          <X className="size-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           )}
