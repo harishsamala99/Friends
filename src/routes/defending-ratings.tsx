@@ -13,7 +13,6 @@ import {
   fetchPlayers,
   fetchTeams,
   fetchTournaments,
-  fetchTournamentTeamDefensiveRatings,
   type Tournament,
 } from "@/lib/football";
 
@@ -23,7 +22,7 @@ export const Route = createFileRoute("/defending-ratings")({
       { title: "Defender Player Ratings — FRIENDS LEAGUE" },
       {
         name: "description",
-        content: "Current tournament player ratings and team defensive rating history.",
+        content: "Current tournament player ratings grouped by team.",
       },
     ],
   }),
@@ -36,12 +35,6 @@ function DefendingRatingsPage() {
   const tournamentsQuery = useQuery({
     queryKey: ["tournaments"],
     queryFn: fetchTournaments,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
-  });
-  const teamRatingsQuery = useQuery({
-    queryKey: ["tournament-team-defensive-ratings"],
-    queryFn: fetchTournamentTeamDefensiveRatings,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
@@ -108,26 +101,46 @@ function DefendingRatingsPage() {
             ]
           : [];
       })
-      .sort((a, b) => b.total_rating - a.total_rating || a.name.localeCompare(b.name));
+      .sort(
+        (a, b) =>
+          (a.team_name === "—" ? 1 : 0) - (b.team_name === "—" ? 1 : 0) ||
+          a.team_name.localeCompare(b.team_name) ||
+          b.total_rating - a.total_rating ||
+          a.name.localeCompare(b.name),
+      );
   }, [fixturesQuery.data, playerRatingsQuery.data, playersQuery.data, teamsQuery.data]);
-  const teamDefenseHistory = useMemo(
-    () =>
-      (teamRatingsQuery.data ?? [])
-        .filter((rating) => rating.tournament_id === tournamentId)
-        .sort((a, b) => b.total_rating - a.total_rating || a.team_name.localeCompare(b.team_name)),
-    [teamRatingsQuery.data, tournamentId],
-  );
-  const highestTeamRating = teamDefenseHistory[0]?.total_rating;
+  const playersByTeam = useMemo(() => {
+    const groups = new Map<
+      string,
+      { teamId: string; teamName: string; players: typeof playerTotals }
+    >();
+    for (const player of playerTotals) {
+      const key = player.team_id ?? "unassigned";
+      const group = groups.get(key);
+      if (group) {
+        group.players.push(player);
+      } else {
+        groups.set(key, {
+          teamId: key,
+          teamName: player.team_name === "—" ? "Unassigned players" : player.team_name,
+          players: [player],
+        });
+      }
+    }
+    return [...groups.values()];
+  }, [playerTotals]);
+  const topDefenderId = playerTotals.reduce(
+    (top, player) => (player.total_rating > (top?.total_rating ?? -Infinity) ? player : top),
+    playerTotals[0],
+  )?.id;
   const queryError =
     tournamentsQuery.error ??
-    teamRatingsQuery.error ??
     playerRatingsQuery.error ??
     playersQuery.error ??
     teamsQuery.error ??
     fixturesQuery.error;
   const isLoading =
     tournamentsQuery.isLoading ||
-    teamRatingsQuery.isLoading ||
     playerRatingsQuery.isLoading ||
     playersQuery.isLoading ||
     teamsQuery.isLoading ||
@@ -152,7 +165,7 @@ function DefendingRatingsPage() {
     <SiteLayout>
       <PageHeader
         title="Defender Player Ratings"
-        subtitle={`Player and team defensive ratings${currentTournament ? ` for ${currentTournament.tournament_name || currentTournament.type}` : " by tournament"}.`}
+        subtitle={`Player defensive ratings${currentTournament ? ` for ${currentTournament.tournament_name || currentTournament.type}` : " by tournament"}.`}
       />
       <div className="page-content mx-auto max-w-4xl space-y-10 px-4 py-10">
         {tournamentList.length > 0 && (
@@ -204,121 +217,71 @@ function DefendingRatingsPage() {
               {playerTotals.length === 0 ? (
                 <EmptyState message="No player ratings recorded for the selected tournament yet." />
               ) : (
-                <div className="data-table-wrap overflow-x-auto">
-                  <table className="data-table w-full min-w-140 text-sm">
-                    <thead>
-                      <tr>
-                        <th className="p-3 text-left font-medium">#</th>
-                        <th className="p-3 text-left font-medium">Player</th>
-                        <th className="p-3 text-left font-medium">Position</th>
-                        <th className="p-3 text-left font-medium">Team</th>
-                        <th className="p-3 text-right font-medium">Total Rating</th>
-                        <th className="p-3 text-right font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {playerTotals.map((player, index) => (
-                        <tr key={player.id} className="border-t border-border/60">
-                          <td className="p-3 text-muted-foreground">{index + 1}</td>
-                          <td className="p-3 font-medium">
-                            {player.name}
-                            {index === 0 && (
-                              <span className="ml-2 text-xs font-semibold text-primary">
-                                Top defender
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-muted-foreground">{player.position}</td>
-                          <td className="p-3 text-muted-foreground">{player.team_name}</td>
-                          <td className="p-3 text-right font-semibold tabular-nums">
-                            {Number.isInteger(player.total_rating)
-                              ? player.total_rating
-                              : player.total_rating.toFixed(1)}
-                          </td>
-                          <td className="p-3 text-right">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              title="Delete player ratings"
-                              aria-label={`Delete ${player.name}'s ratings`}
-                              disabled={deletePlayerRatings.isPending}
-                              onClick={() => {
-                                const tournamentName =
-                                  currentTournament?.tournament_name ||
-                                  currentTournament?.type ||
-                                  "selected tournament";
-                                if (
-                                  window.confirm(
-                                    `Delete ${player.name}'s defender ratings from ${tournamentName}? The remaining team defensive rating will be recalculated.`,
-                                  )
-                                ) {
-                                  deletePlayerRatings.mutate(player.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-            <section className="space-y-4">
-              <div>
-                <h2 className="font-display text-xl font-bold">Team Defensive Ratings</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Team totals and averages are kept for each tournament when player match data is
-                  reset.
-                </p>
-              </div>
-              {teamDefenseHistory.length === 0 ? (
-                <EmptyState message="No team defensive ratings are available yet." />
-              ) : (
-                <div className="data-table-wrap overflow-x-auto">
-                  <table className="data-table w-full min-w-160 text-sm">
-                    <thead>
-                      <tr>
-                        <th className="p-3 text-right font-medium">#</th>
-                        <th className="p-3 text-left font-medium">Team</th>
-                        <th className="p-3 text-right font-medium">Total Rating Points</th>
-                        <th className="p-3 text-right font-medium">Average Rating</th>
-                        <th className="p-3 text-right font-medium">Ratings</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {teamDefenseHistory.map((team, index) => (
-                        <tr
-                          key={`${team.tournament_id}-${team.team_id}`}
-                          className="border-t border-border/60"
-                        >
-                          <td className="p-3 text-right font-semibold tabular-nums">{index + 1}</td>
-                          <td className="p-3 font-medium">
-                            {team.team_name}
-                            {team.total_rating === highestTeamRating && (
-                              <span className="ml-2 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-bold tracking-wide text-primary">
-                                BEST DEFENSE
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-right tabular-nums">
-                            {Number.isInteger(team.total_rating)
-                              ? team.total_rating
-                              : team.total_rating.toFixed(1)}
-                          </td>
-                          <td className="p-3 text-right font-semibold tabular-nums text-primary">
-                            {team.average_rating.toFixed(1)} / 10
-                          </td>
-                          <td className="p-3 text-right tabular-nums text-muted-foreground">
-                            {team.ratings_count}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="space-y-6">
+                  {playersByTeam.map((group) => (
+                    <section key={group.teamId} className="space-y-3">
+                      <h3 className="font-display text-lg font-bold">{group.teamName}</h3>
+                      <div className="data-table-wrap overflow-x-auto">
+                        <table className="data-table w-full min-w-120 text-sm">
+                          <thead>
+                            <tr>
+                              <th className="p-3 text-left font-medium">#</th>
+                              <th className="p-3 text-left font-medium">Player</th>
+                              <th className="p-3 text-left font-medium">Position</th>
+                              <th className="p-3 text-right font-medium">Total Rating</th>
+                              <th className="p-3 text-right font-medium">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.players.map((player, index) => (
+                              <tr key={player.id} className="border-t border-border/60">
+                                <td className="p-3 text-muted-foreground">{index + 1}</td>
+                                <td className="p-3 font-medium">
+                                  {player.name}
+                                  {player.id === topDefenderId && (
+                                    <span className="ml-2 text-xs font-semibold text-primary">
+                                      Top defender
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-3 text-muted-foreground">{player.position}</td>
+                                <td className="p-3 text-right font-semibold tabular-nums">
+                                  {Number.isInteger(player.total_rating)
+                                    ? player.total_rating
+                                    : player.total_rating.toFixed(1)}
+                                </td>
+                                <td className="p-3 text-right">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Delete player ratings"
+                                    aria-label={`Delete ${player.name}'s ratings`}
+                                    disabled={deletePlayerRatings.isPending}
+                                    onClick={() => {
+                                      const tournamentName =
+                                        currentTournament?.tournament_name ||
+                                        currentTournament?.type ||
+                                        "selected tournament";
+                                      if (
+                                        window.confirm(
+                                          `Delete ${player.name}'s defender ratings from ${tournamentName}? The remaining team defensive rating will be recalculated.`,
+                                        )
+                                      ) {
+                                        deletePlayerRatings.mutate(player.id);
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  ))}
                 </div>
               )}
             </section>
