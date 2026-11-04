@@ -2100,6 +2100,7 @@ export function FinalMatchScorecard() {
       <TabsList className="sticky top-0 z-10 w-full justify-start rounded-none border-b-2 border-pitch-foreground/20 bg-card/95 backdrop-blur-xl p-0 shadow-lg">
         <TabsTrigger
           value="tournament"
+          
           className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary"
         >
           <Trophy className="h-4 w-4 mr-2" />

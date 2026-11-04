@@ -117,6 +117,7 @@ function DefendingRatingsPage() {
         .sort((a, b) => b.total_rating - a.total_rating || a.team_name.localeCompare(b.team_name)),
     [teamRatingsQuery.data, tournamentId],
   );
+  const highestTeamRating = teamDefenseHistory[0]?.total_rating;
   const queryError =
     tournamentsQuery.error ??
     teamRatingsQuery.error ??
@@ -281,6 +282,7 @@ function DefendingRatingsPage() {
                   <table className="data-table w-full min-w-160 text-sm">
                     <thead>
                       <tr>
+                        <th className="p-3 text-right font-medium">#</th>
                         <th className="p-3 text-left font-medium">Team</th>
                         <th className="p-3 text-right font-medium">Total Rating Points</th>
                         <th className="p-3 text-right font-medium">Average Rating</th>
@@ -288,12 +290,20 @@ function DefendingRatingsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {teamDefenseHistory.map((team) => (
+                      {teamDefenseHistory.map((team, index) => (
                         <tr
                           key={`${team.tournament_id}-${team.team_id}`}
                           className="border-t border-border/60"
                         >
-                          <td className="p-3 font-medium">{team.team_name}</td>
+                          <td className="p-3 text-right font-semibold tabular-nums">{index + 1}</td>
+                          <td className="p-3 font-medium">
+                            {team.team_name}
+                            {team.total_rating === highestTeamRating && (
+                              <span className="ml-2 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-bold tracking-wide text-primary">
+                                BEST DEFENSE
+                              </span>
+                            )}
+                          </td>
                           <td className="p-3 text-right tabular-nums">
                             {Number.isInteger(team.total_rating)
                               ? team.total_rating
