@@ -154,7 +154,6 @@ function HallOfFamePage() {
       };
     },
   });
-
   const d = data.data;
   const teams = d?.teams ?? [];
   const players = d?.players ?? [];

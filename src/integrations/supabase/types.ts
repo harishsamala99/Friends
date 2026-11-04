@@ -173,6 +173,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      house_of_icons: {
+        Row: {
+          group_id: string;
+          group_start: number;
+          group_end: number;
+          tournament_ids: string[];
+          status: string;
+          selections: Json;
+          review_reasons: Json;
+          source_fingerprint: string;
+          selection_history: Json;
+          updated_at: string;
+        };
+        Insert: {
+          group_id: string;
+          group_start: number;
+          group_end: number;
+          tournament_ids: string[];
+          status: string;
+          selections?: Json;
+          review_reasons?: Json;
+          source_fingerprint: string;
+          selection_history?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          group_id?: string;
+          group_start?: number;
+          group_end?: number;
+          tournament_ids?: string[];
+          status?: string;
+          selections?: Json;
+          review_reasons?: Json;
+          source_fingerprint?: string;
+          selection_history?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       competitions: {
         Row: {
           archived: boolean;

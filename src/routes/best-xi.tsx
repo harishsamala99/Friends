@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, EmptyState, ListSkeleton } from "@/components/football-ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { syncHouseOfIcons } from "@/lib/house-of-icons";
 import {
   fetchBestXI,
   fetchPlayers,
@@ -104,10 +105,20 @@ function BestXIPage() {
 
   const save = useMutation({
     mutationFn: () => saveBestXI(tournamentId, selection),
-    onSuccess: (saved) => {
+    onSuccess: async (saved) => {
       setSavedBestXI(saved);
       toast.success("Best XI saved and finalized");
       void queryClient.invalidateQueries({ queryKey: ["best-xi", tournamentId] });
+      try {
+        await syncHouseOfIcons();
+        void queryClient.invalidateQueries({ queryKey: ["house-of-icons"] });
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? `Best XI was saved, but HOUSE OF THE ICONS could not be refreshed: ${error.message}`
+            : "Best XI was saved, but HOUSE OF THE ICONS could not be refreshed.",
+        );
+      }
     },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : "Unable to save Best XI"),

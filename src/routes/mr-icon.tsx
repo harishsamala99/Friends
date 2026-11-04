@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Crown, Medal, Search, Shield, Trophy } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Award, Crown, Medal, Search, Shield, Trophy } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { EmptyState, ListSkeleton, PageHeader } from "@/components/football-ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   fetchMrIconMatchRatings,
@@ -11,6 +12,7 @@ import {
   fetchTournaments,
   type MrIconMatchRating,
 } from "@/lib/football";
+import { HOUSE_ICON_POSITIONS, syncHouseOfIcons } from "@/lib/house-of-icons";
 import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/mr-icon")({
@@ -49,6 +51,7 @@ type RankedPlayer = Pick<
 >;
 
 function MrIconPage() {
+  const [selectedIconsGroupId, setSelectedIconsGroupId] = useState("");
   const [tournamentId, setTournamentId] = useState("");
   const [teamId, setTeamId] = useState("");
   const [position, setPosition] = useState("");
@@ -68,6 +71,21 @@ function MrIconPage() {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
+  const houseIcons = useQuery({
+    queryKey: ["house-of-icons"],
+    queryFn: syncHouseOfIcons,
+    refetchOnMount: "always",
+  });
+  const iconGroups = useMemo(() => houseIcons.data ?? [], [houseIcons.data]);
+  const selectedIconsGroup =
+    iconGroups.find((group) => group.group_id === selectedIconsGroupId) ??
+    iconGroups[iconGroups.length - 1];
+
+  useEffect(() => {
+    if (!iconGroups.some((group) => group.group_id === selectedIconsGroupId)) {
+      setSelectedIconsGroupId(iconGroups[iconGroups.length - 1]?.group_id ?? "");
+    }
+  }, [iconGroups, selectedIconsGroupId]);
 
   const allRows = useMemo(() => ratings.data ?? [], [ratings.data]);
   const teams = useMemo(
@@ -143,6 +161,7 @@ function MrIconPage() {
   }, [allRows, tournamentId, teamId, position, playerName, periodStart, periodEnd]);
 
   const leaderScore = leaderboard[0]?.overall_score;
+  const topTenLeaderboard = leaderboard.slice(0, 10);
   const coLeaders =
     leaderScore === undefined
       ? []
@@ -231,6 +250,148 @@ function MrIconPage() {
                 )}
               </CardContent>
             </Card>
+
+            <section>
+              <div className="mb-3 flex items-center gap-2">
+                <Award className="size-5 text-primary" />
+                <h2 className="font-display text-xl font-bold">HOUSE OF THE ICONS</h2>
+              </div>
+              {houseIcons.isLoading ? (
+                <ListSkeleton rows={5} />
+              ) : houseIcons.isError ? (
+                <EmptyState
+                  message={
+                    houseIcons.error instanceof Error
+                      ? houseIcons.error.message
+                      : "Unable to load HOUSE OF THE ICONS. Refresh the page and try again."
+                  }
+                />
+              ) : iconGroups.length === 0 ? (
+                <EmptyState message="Icon selections will appear here when Tournaments 4–6 are completed and each has a finalized Best XI." />
+              ) : selectedIconsGroup ? (
+                <div className="space-y-4">
+                  <div className="tournament-switcher flex flex-wrap items-center gap-3">
+                    <label
+                      htmlFor="house-of-icons-group"
+                      className="text-sm font-semibold uppercase tracking-wider"
+                    >
+                      Tournament group
+                    </label>
+                    <select
+                      id="house-of-icons-group"
+                      className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                      value={selectedIconsGroup.group_id}
+                      onChange={(event) => setSelectedIconsGroupId(event.target.value)}
+                    >
+                      {iconGroups.map((group) => (
+                        <option key={group.group_id} value={group.group_id}>
+                          Tournaments {group.group_start}–{group.group_end}
+                        </option>
+                      ))}
+                    </select>
+                    <Badge
+                      variant={selectedIconsGroup.status === "complete" ? "default" : "outline"}
+                    >
+                      {selectedIconsGroup.status === "complete"
+                        ? "Selections complete"
+                        : "Review required"}
+                    </Badge>
+                  </div>
+                  {selectedIconsGroup.review_reasons.length > 0 && (
+                    <Card className="border-amber-500/40 bg-amber-500/5">
+                      <CardContent className="p-4">
+                        <p className="font-semibold">Insufficient data for review</p>
+                        <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                          {selectedIconsGroup.review_reasons.map((reason) => (
+                            <li key={reason}>{reason}</li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  )}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {HOUSE_ICON_POSITIONS.map(({ key, label }) => {
+                      const icon = selectedIconsGroup.selections[key];
+                      return (
+                        <Card key={key} className="overflow-hidden border-primary/20">
+                          <div className="bg-linear-to-r from-primary/10 via-transparent to-emerald-500/10 p-4">
+                            <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                              {label}
+                            </p>
+                            <h3 className="mt-1 font-display text-xl font-bold">
+                              {icon?.playerName ?? "Selection pending"}
+                            </h3>
+                            {icon && (
+                              <p className="text-sm text-muted-foreground">
+                                {icon.teamName ?? "Team unavailable"} · {icon.position}
+                              </p>
+                            )}
+                          </div>
+                          <CardContent className="space-y-3 p-4">
+                            {icon ? (
+                              <>
+                                <p className="text-sm font-semibold">
+                                  Best XI appearances: {icon.bestXiAppearances} of 3
+                                </p>
+                                <div>
+                                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                    Tournament history
+                                  </p>
+                                  <ul className="mt-1 space-y-1 text-sm">
+                                    {icon.tournamentHistory.map((entry) => (
+                                      <li
+                                        key={entry.tournamentId}
+                                        className="flex justify-between gap-2"
+                                      >
+                                        <span>{entry.tournamentName}</span>
+                                        <span className="font-medium">
+                                          {entry.selected ? "Best XI" : "Not selected"}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                                {[
+                                  ["Relevant awards", icon.supportingStats.awards],
+                                  ["Goals", icon.supportingStats.goals],
+                                  ["Assists", icon.supportingStats.assists],
+                                  ["Saves", icon.supportingStats.saves],
+                                  ["Match rating points", icon.supportingStats.ratingPoints],
+                                  [
+                                    "Average match rating",
+                                    icon.supportingStats.averageRating?.toFixed(1) ?? null,
+                                  ],
+                                  ["Matches played", icon.supportingStats.matchesPlayed],
+                                  ["Tournaments played", icon.supportingStats.tournamentsPlayed],
+                                ]
+                                  .filter(([, value]) => value !== null)
+                                  .map(([labelText, value]) => (
+                                    <p
+                                      key={labelText}
+                                      className="flex justify-between gap-2 text-sm text-muted-foreground"
+                                    >
+                                      <span>{labelText}</span>
+                                      <span className="font-semibold text-foreground">{value}</span>
+                                    </p>
+                                  ))}
+                                <p className="border-t pt-3 text-sm text-muted-foreground">
+                                  {icon.rationale}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                No selection recorded. Available data was insufficient to identify a
+                                clear leader.
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </section>
 
             <section
               aria-label="Leaderboard filters"
@@ -322,82 +483,95 @@ function MrIconPage() {
               {leaderboard.length === 0 ? (
                 <EmptyState message="No player rating records match these filters." />
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card">
-                  <table className="w-full min-w-[1180px] text-sm">
-                    <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                      <tr>
-                        <th className="p-3 text-left">Rank</th>
-                        <th className="p-3 text-left">Player</th>
-                        <th className="p-3 text-left">Team</th>
-                        <th className="p-3 text-center">Goals</th>
-                        <th className="p-3 text-center">Saves</th>
-                        <th className="p-3 text-center">Hat-tricks</th>
-                        <th className="p-3 text-center">Braces</th>
-                        <th className="p-3 text-center">Clean sheets</th>
-                        <th className="p-3 text-right">Goal pts</th>
-                        <th className="p-3 text-right">Save pts</th>
-                        <th className="p-3 text-right">Hat-trick pts</th>
-                        <th className="p-3 text-right">Brace pts</th>
-                        <th className="p-3 text-right">Clean-sheet pts</th>
-                        <th className="p-3 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leaderboard.map((player, index) => {
-                        const tied =
-                          leaderboard[index - 1]?.overall_score === player.overall_score ||
-                          leaderboard[index + 1]?.overall_score === player.overall_score;
-                        return (
-                          <tr
-                            key={player.player_id}
-                            className={`border-t border-border/50 ${index === 0 ? "bg-primary/5" : ""}`}
-                          >
-                            <td className="p-3">
-                              <span
-                                className={`rank-badge ${rankFor(index) === 1 ? "rank-badge--gold" : ""}`}
-                              >
-                                {tied ? `${rankFor(index)} · Tied` : rankFor(index)}
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              <Link
-                                to="/players/$playerId"
-                                params={{ playerId: player.player_id }}
-                                className="font-semibold hover:text-primary hover:underline"
-                              >
-                                {index === 0 && (
-                                  <Crown className="mr-1 inline size-4 text-amber-500" />
-                                )}
-                                {player.player_name}
-                              </Link>
-                              <div className="text-xs text-muted-foreground">{player.position}</div>
-                            </td>
-                            <td className="p-3 text-muted-foreground">{player.team_name}</td>
-                            <td className="p-3 text-center tabular-nums">{player.goals}</td>
-                            <td className="p-3 text-center tabular-nums">{player.saves}</td>
-                            <td className="p-3 text-center tabular-nums">{player.hattricks}</td>
-                            <td className="p-3 text-center tabular-nums">{player.braces}</td>
-                            <td className="p-3 text-center tabular-nums">{player.clean_sheets}</td>
-                            <td className="p-3 text-right tabular-nums">{player.goals_points}</td>
-                            <td className="p-3 text-right tabular-nums">
-                              {formatScore(player.saves_points)}
-                            </td>
-                            <td className="p-3 text-right tabular-nums">
-                              {player.hattricks_points}
-                            </td>
-                            <td className="p-3 text-right tabular-nums">{player.braces_points}</td>
-                            <td className="p-3 text-right tabular-nums">
-                              {player.clean_sheets_points}
-                            </td>
-                            <td className="p-3 text-right font-bold tabular-nums">
-                              {formatScore(player.overall_score)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  {leaderboard.length > topTenLeaderboard.length && (
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      Showing the top 10 of {leaderboard.length} players.
+                    </p>
+                  )}
+                  <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card">
+                    <table className="w-full min-w-[1180px] text-sm">
+                      <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                        <tr>
+                          <th className="p-3 text-left">Rank</th>
+                          <th className="p-3 text-left">Player</th>
+                          <th className="p-3 text-left">Team</th>
+                          <th className="p-3 text-center">Goals</th>
+                          <th className="p-3 text-center">Saves</th>
+                          <th className="p-3 text-center">Hat-tricks</th>
+                          <th className="p-3 text-center">Braces</th>
+                          <th className="p-3 text-center">Clean sheets</th>
+                          <th className="p-3 text-right">Goal pts</th>
+                          <th className="p-3 text-right">Save pts</th>
+                          <th className="p-3 text-right">Hat-trick pts</th>
+                          <th className="p-3 text-right">Brace pts</th>
+                          <th className="p-3 text-right">Clean-sheet pts</th>
+                          <th className="p-3 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topTenLeaderboard.map((player, index) => {
+                          const tied =
+                            leaderboard[index - 1]?.overall_score === player.overall_score ||
+                            leaderboard[index + 1]?.overall_score === player.overall_score;
+                          return (
+                            <tr
+                              key={player.player_id}
+                              className={`border-t border-border/50 ${index === 0 ? "bg-primary/5" : ""}`}
+                            >
+                              <td className="p-3">
+                                <span
+                                  className={`rank-badge ${rankFor(index) === 1 ? "rank-badge--gold" : ""}`}
+                                >
+                                  {tied ? `${rankFor(index)} · Tied` : rankFor(index)}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <Link
+                                  to="/players/$playerId"
+                                  params={{ playerId: player.player_id }}
+                                  className="font-semibold hover:text-primary hover:underline"
+                                >
+                                  {index === 0 && (
+                                    <Crown className="mr-1 inline size-4 text-amber-500" />
+                                  )}
+                                  {player.player_name}
+                                </Link>
+                                <div className="text-xs text-muted-foreground">
+                                  {player.position}
+                                </div>
+                              </td>
+                              <td className="p-3 text-muted-foreground">{player.team_name}</td>
+                              <td className="p-3 text-center tabular-nums">{player.goals}</td>
+                              <td className="p-3 text-center tabular-nums">{player.saves}</td>
+                              <td className="p-3 text-center tabular-nums">{player.hattricks}</td>
+                              <td className="p-3 text-center tabular-nums">{player.braces}</td>
+                              <td className="p-3 text-center tabular-nums">
+                                {player.clean_sheets}
+                              </td>
+                              <td className="p-3 text-right tabular-nums">{player.goals_points}</td>
+                              <td className="p-3 text-right tabular-nums">
+                                {formatScore(player.saves_points)}
+                              </td>
+                              <td className="p-3 text-right tabular-nums">
+                                {player.hattricks_points}
+                              </td>
+                              <td className="p-3 text-right tabular-nums">
+                                {player.braces_points}
+                              </td>
+                              <td className="p-3 text-right tabular-nums">
+                                {player.clean_sheets_points}
+                              </td>
+                              <td className="p-3 text-right font-bold tabular-nums">
+                                {formatScore(player.overall_score)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
               <p className="mt-3 text-xs text-muted-foreground">
                 Rating = goals × 10 + saves × 1.5 + hat-tricks × 5 + braces × 3 + clean sheets × 10.
