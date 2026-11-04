@@ -128,7 +128,7 @@ export function SiteLayout({ children }: { children: ReactNode }) {
       </header>
       <main>{children}</main>
       <footer className="mt-16 border-t border-border/60 py-8 text-center text-sm text-muted-foreground">
-        FRIENDS LEAGUE &middot; Fixtures, results and statistics
+        FRIENDS LEAGUE &middot;
       </footer>
     </div>
   );

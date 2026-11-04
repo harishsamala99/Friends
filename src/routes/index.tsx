@@ -48,6 +48,10 @@ interface Tournament {
   top_saver_saves?: number | null;
 }
 
+interface NormalizedTournament extends Tournament {
+  stats: NonNullable<Tournament["stats"]>;
+}
+
 const EMPTY_TOURNAMENT_STATS = {
   topScorer: { name: "None", goals: 0 },
   topAssister: { name: "None", assists: 0 },
@@ -64,7 +68,7 @@ function teamInitials(name?: string) {
     .toUpperCase();
 }
 
-function normalizeTournament(tournament: Tournament): Tournament {
+function normalizeTournament(tournament: Tournament): NormalizedTournament {
   return {
     ...tournament,
     stats: {
@@ -106,7 +110,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const [latestTournament, setLatestTournament] = useState<Tournament | null>(null);
+  const [latestTournament, setLatestTournament] = useState<NormalizedTournament | null>(null);
   const tournament = useQuery({
     queryKey: ["tournaments"],
     queryFn: () => fetchTournaments(),
@@ -156,9 +160,8 @@ function Home() {
     if (saved) {
       try {
         const tournaments: Tournament[] = JSON.parse(saved);
-        if (tournaments.length > 0) {
-          setLatestTournament(normalizeTournament(tournaments[0]));
-        }
+        const savedTournament = tournaments[0];
+        if (savedTournament) setLatestTournament(normalizeTournament(savedTournament));
       } catch {
         setLatestTournament(null);
       }
@@ -222,14 +225,14 @@ function Home() {
     : savedFinal
       ? byId.get(savedFinal.home_team_id)?.name
       : hasTournamentFinalTeams
-        ? latestTournament.homeTeam
+        ? latestTournament?.homeTeam
         : finalistRows[0]?.team_name;
   const finalAwayName = scheduledFinal
     ? byId.get(scheduledFinal.away_team_id)?.name
     : savedFinal
       ? byId.get(savedFinal.away_team_id)?.name
       : hasTournamentFinalTeams
-        ? latestTournament.awayTeam
+        ? latestTournament?.awayTeam
         : finalistRows[1]?.team_name;
   const finalIsToBePlayed = Boolean(
     scheduledFinal ||
