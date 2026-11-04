@@ -301,7 +301,15 @@ export const MATCH_STATUSES = [
   "Abandoned",
 ] as const;
 
-export const POSITIONS = ["Goalkeeper", "Defender", "Midfielder", "Forward"] as const;
+export const POSITIONS = [
+  "Goalkeeper",
+  "Defender",
+  "Left Back",
+  "Right Back",
+  "Midfielder",
+  "Winger",
+  "Forward",
+] as const;
 
 export const COMPETITION_FORMATS = [
   "League",

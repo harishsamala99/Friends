@@ -1,19 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  Plus,
-  X,
-  Trash2,
-  RotateCcw,
-  Trophy,
-  Save,
-  Zap,
-  Crown,
-  Users,
-  ChevronDown,
-  ChevronUp,
-  Pencil,
-} from "lucide-react";
+import { Plus, X, Trash2, RotateCcw, Trophy, Save, Zap, Crown, Users } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,7 +16,6 @@ import {
   fetchPlayers,
   fetchFixtures,
   fetchEvents,
-  fetchFixturePlayerRatings,
   replaceFixtureEvents,
   saveFixturePlayerRating,
   sortStandings,
@@ -246,8 +232,6 @@ function TournamentSetup({
   onSaveFinalistTeams,
   tournaments,
   onCreateTournament,
-  onSelectTournament,
-  onEditTournament,
   onDeleteTournament,
   creating,
   isCreated,
@@ -262,8 +246,6 @@ function TournamentSetup({
   onSaveFinalistTeams: (homeTeam: string, awayTeam: string) => Promise<void>;
   tournaments: Tournament[];
   onCreateTournament: () => void;
-  onSelectTournament: (tournament: Tournament) => void;
-  onEditTournament: (tournament: Tournament) => void;
   onDeleteTournament: (tournamentId: string) => void;
   creating: boolean;
   isCreated: boolean;
@@ -581,56 +563,42 @@ function TournamentSetup({
           ) : (
             <div className="space-y-2">
               {tournaments.slice(0, 5).map((tournament) => (
-                <div key={tournament.id} className="rounded-md border bg-muted/20 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <span className="font-semibold">{tournament.tournamentName}</span>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {tournament.status === "completed"
-                          ? "Tournament completed"
-                          : "Tournament in progress"}
-                      </p>
+                <div key={tournament.id} className="relative">
+                  <Link
+                    to="/fixtures"
+                    search={{ tournamentId: tournament.id }}
+                    className="block rounded-md border bg-muted/20 p-3 pr-14 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <span className="font-semibold">{tournament.tournamentName}</span>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {tournament.status === "completed"
+                            ? "Tournament completed"
+                            : "Tournament in progress"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant={tournament.id === tournamentId ? "secondary" : "outline"}
-                        size="sm"
-                        onClick={() => onSelectTournament(tournament)}
-                      >
-                        <Plus className="size-4" />
-                        {tournament.id === tournamentId ? "Selected" : "Create fixtures"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1"
-                        onClick={() => onEditTournament(tournament)}
-                      >
-                        <Pencil className="size-3.5" />
-                        Edit final
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${tournament.tournamentName}`}
-                        onClick={() => onDeleteTournament(tournament.id)}
-                      >
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-sm">
-                    Final: {tournament.homeTeam} {tournament.homeScore} - {tournament.awayScore}{" "}
-                    {tournament.awayTeam}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Top scorer: {tournament.stats.topScorer.name} (
-                    {tournament.stats.topScorer.goals}) | Top saves:{" "}
-                    {tournament.stats.topSaver.name} ({tournament.stats.topSaver.saves})
-                  </p>
+                    <p className="mt-1 text-sm">
+                      Final: {tournament.homeTeam} {tournament.homeScore} - {tournament.awayScore}{" "}
+                      {tournament.awayTeam}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Top scorer: {tournament.stats.topScorer.name} (
+                      {tournament.stats.topScorer.goals}) | Top saves:{" "}
+                      {tournament.stats.topSaver.name} ({tournament.stats.topSaver.saves})
+                    </p>
+                  </Link>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-2"
+                    aria-label={`Delete ${tournament.tournamentName}`}
+                    onClick={() => onDeleteTournament(tournament.id)}
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
                 </div>
               ))}
               {tournaments.length > 5 && (
@@ -662,18 +630,10 @@ export function FinalMatchScorecard() {
     teamsQuery.data?.find((team) => team.competition_id)?.competition_id;
   const [tournamentId, setTournamentId] = useState("");
   const [activeTab, setActiveTab] = useState("tournament");
-  const [expandedTournamentId, setExpandedTournamentId] = useState<string | null>(null);
   const fixturesQuery = useQuery({
     queryKey: ["fixtures", tournamentId],
     queryFn: () => fetchFixtures(undefined, tournamentId),
     enabled: Boolean(tournamentId),
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
-  });
-  const tournamentFixturesQuery = useQuery({
-    queryKey: ["fixtures", expandedTournamentId],
-    queryFn: () => fetchFixtures(undefined, expandedTournamentId ?? undefined),
-    enabled: Boolean(expandedTournamentId),
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
@@ -849,7 +809,6 @@ export function FinalMatchScorecard() {
   const savingTournamentRef = useRef(false);
   const [savingFinalTeams, setSavingFinalTeams] = useState(false);
   const finalFixtureCreationKey = useRef<string | null>(null);
-  const editingFinalFixtureId = useRef<string | null>(null);
   const [tournamentForm, setTournamentForm] = useState({
     name: "",
     type: "League",
@@ -885,7 +844,6 @@ export function FinalMatchScorecard() {
       }));
       const isChangingTeam =
         side === "home" ? selectedHomeTeam !== teamId : selectedAwayTeam !== teamId;
-      if (isChangingTeam) editingFinalFixtureId.current = null;
       const currentPlayers = side === "home" ? home.players : away.players;
       if (isChangingTeam) {
         setPlayerRatings((current) =>
@@ -1393,8 +1351,6 @@ export function FinalMatchScorecard() {
       resetMatch();
       return;
     }
-    if (editingFinalFixtureId.current === savedFinal.id) return;
-
     setSelectedHomeTeam(savedFinal.home_team_id);
     setSelectedAwayTeam(savedFinal.away_team_id);
     loadTeamPlayers(savedFinal.home_team_id, "home");
@@ -1406,121 +1362,6 @@ export function FinalMatchScorecard() {
     teamsQuery.data,
     tournamentId,
   ]);
-
-  const loadTournamentFinalForEditing = async (tournament: Tournament) => {
-    try {
-      const fixtures = await fetchFixtures(undefined, tournament.id);
-      const homeTeam = teamsQuery.data?.find((team) => team.name === tournament.homeTeam);
-      const awayTeam = teamsQuery.data?.find((team) => team.name === tournament.awayTeam);
-      const finalFixture = findTournamentFinalFixture(fixtures, homeTeam?.id, awayTeam?.id);
-      if (!finalFixture) {
-        toast.error("No final fixture was found for this tournament.");
-        return;
-      }
-
-      const [finalEvents, finalPlayerRatings, allPlayers] = await Promise.all([
-        fetchEvents(finalFixture.id),
-        fetchFixturePlayerRatings(finalFixture.id),
-        fetchPlayers(),
-      ]);
-      const homeTeamName =
-        teamsQuery.data?.find((team) => team.id === finalFixture.home_team_id)?.name ??
-        tournament.homeTeam;
-      const awayTeamName =
-        teamsQuery.data?.find((team) => team.id === finalFixture.away_team_id)?.name ??
-        tournament.awayTeam;
-      const homePlayers = allPlayers
-        .filter(
-          (player) => player.team_id === finalFixture.home_team_id && player.status === "Active",
-        )
-        .map((player) => ({
-          id: player.id,
-          name: player.name,
-          isGK: player.position?.toLowerCase().includes("goalkeeper") ?? false,
-        }));
-      const awayPlayers = allPlayers
-        .filter(
-          (player) => player.team_id === finalFixture.away_team_id && player.status === "Active",
-        )
-        .map((player) => ({
-          id: player.id,
-          name: player.name,
-          isGK: player.position?.toLowerCase().includes("goalkeeper") ?? false,
-        }));
-      const playerNames = new Map(allPlayers.map((player) => [player.id, player.name]));
-      const goalsFor = (teamId: string) =>
-        finalEvents
-          .filter(
-            (event) => event.event_type === "goal" && event.team_id === teamId && event.player_id,
-          )
-          .map((event, index) => ({
-            id: event.id || `goal-${teamId}-${index}`,
-            playerId: event.player_id ?? "",
-            playerName: playerNames.get(event.player_id ?? "") ?? "",
-            minute: event.minute,
-          }));
-      const savesFor = (teamId: string) =>
-        finalEvents
-          .filter(
-            (event) => event.event_type === "save" && event.team_id === teamId && event.player_id,
-          )
-          .map((event, index) => ({
-            id: event.id || `save-${teamId}-${index}`,
-            playerId: event.player_id ?? "",
-            playerName: playerNames.get(event.player_id ?? "") ?? "",
-            minute: event.minute,
-          }));
-
-      setTournamentId(tournament.id);
-      localStorage.setItem("current-tournament-id", tournament.id);
-      editingFinalFixtureId.current = finalFixture.id;
-      setSelectedHomeTeam(finalFixture.home_team_id);
-      setSelectedAwayTeam(finalFixture.away_team_id);
-      setHome({
-        name: homeTeamName,
-        players: homePlayers,
-        goals: goalsFor(finalFixture.home_team_id),
-        assists: [],
-        saves: savesFor(finalFixture.home_team_id),
-      });
-      setAway({
-        name: awayTeamName,
-        players: awayPlayers,
-        goals: goalsFor(finalFixture.away_team_id),
-        assists: [],
-        saves: savesFor(finalFixture.away_team_id),
-      });
-      setPlayerRatings(
-        Object.fromEntries(
-          finalPlayerRatings.map((playerRating) => [
-            playerRating.player_id,
-            String(playerRating.rating),
-          ]),
-        ),
-      );
-      setTournamentForm((current) => ({
-        ...current,
-        name: tournament.tournamentName,
-        type: tournament.type,
-        manager: tournament.manager,
-        participants: tournament.participants,
-        topScorerName:
-          tournament.stats.topScorer.name === "None" ? "" : tournament.stats.topScorer.name,
-        topScorerGoals: String(tournament.stats.topScorer.goals),
-        topSaverName:
-          tournament.stats.topSaver.name === "None" ? "" : tournament.stats.topSaver.name,
-        topSaverSaves: String(tournament.stats.topSaver.saves),
-      }));
-      setActiveTab("match");
-      toast.success("Final loaded for editing.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not load the final for editing");
-    }
-  };
-
-  const editTournamentFinal = (tournament: Tournament) => {
-    void loadTournamentFinalForEditing(tournament);
-  };
 
   useEffect(() => {
     const selectedTournament = tournaments.find((tournament) => tournament.id === tournamentId);
@@ -2100,7 +1941,6 @@ export function FinalMatchScorecard() {
       <TabsList className="sticky top-0 z-10 w-full justify-start rounded-none border-b-2 border-pitch-foreground/20 bg-card/95 backdrop-blur-xl p-0 shadow-lg">
         <TabsTrigger
           value="tournament"
-          
           className="rounded-none px-4 sm:px-6 py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary"
         >
           <Trophy className="h-4 w-4 mr-2" />
@@ -2141,8 +1981,6 @@ export function FinalMatchScorecard() {
             }
             tournaments={tournaments}
             onCreateTournament={createTournament}
-            onSelectTournament={selectTournamentForFixtures}
-            onEditTournament={editTournamentFinal}
             onDeleteTournament={(id) => void handleDeleteTournament(id)}
             creating={createTournamentMutation.isPending}
             isCreated={isCurrentTournamentCreated}
@@ -3141,170 +2979,71 @@ export function FinalMatchScorecard() {
                 <Card
                   key={tournament.id}
                   className="border-2 border-primary/30 bg-linear-to-br from-card/98 via-card/96 to-card/94 hover:shadow-lg transition-shadow"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() =>
-                    setExpandedTournamentId((current) =>
-                      current === tournament.id ? null : tournament.id,
-                    )
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setExpandedTournamentId((current) =>
-                        current === tournament.id ? null : tournament.id,
-                      );
-                    }
-                  }}
                 >
                   <CardContent className="p-6">
-                    <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2 border-b pb-4">
-                      <h2 className="font-display text-2xl font-bold">
-                        {tournament.tournamentName}
-                      </h2>
-                    </div>
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1 font-semibold">Match</p>
-                        <p className="font-bold text-lg">
-                          {tournament.homeTeam} <span className="text-muted-foreground">vs</span>{" "}
-                          {tournament.awayTeam}
-                        </p>
-                        <p className="text-3xl font-display font-bold mt-2 text-primary">
-                          {tournament.homeScore} — {tournament.awayScore}
-                        </p>
+                    <Link
+                      to="/fixtures"
+                      search={{ tournamentId: tournament.id }}
+                      className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2 border-b pb-4">
+                        <h2 className="font-display text-2xl font-bold">
+                          {tournament.tournamentName}
+                        </h2>
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1 font-semibold">
-                          Tournament Info
-                        </p>
-                        <p className="font-semibold">{tournament.type}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Participants: {tournament.participants}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Manager: {tournament.manager || "N/A"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1 font-semibold">Winner</p>
-                        <p className="font-semibold text-primary text-lg flex items-center gap-2">
-                          <Crown className="h-4 w-4" />
-                          {tournament.winner}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1 font-semibold">
-                          Top Stats
-                        </p>
-                        <div className="space-y-1 text-sm">
-                          <p>
-                            ⚽ Scorer:{" "}
-                            <span className="font-semibold">{tournament.stats.topScorer.name}</span>{" "}
-                            ({tournament.stats.topScorer.goals})
+                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1 font-semibold">Match</p>
+                          <p className="font-bold text-lg">
+                            {tournament.homeTeam} <span className="text-muted-foreground">vs</span>{" "}
+                            {tournament.awayTeam}
                           </p>
-                          <p>
-                            🥅 Saver:{" "}
-                            <span className="font-semibold">{tournament.stats.topSaver.name}</span>{" "}
-                            ({tournament.stats.topSaver.saves})
+                          <p className="text-3xl font-display font-bold mt-2 text-primary">
+                            {tournament.homeScore} — {tournament.awayScore}
                           </p>
                         </div>
-                      </div>
-                    </div>
-                    <div className="mt-5 border-t pt-4">
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="default"
-                          size="sm"
-                          className="gap-2"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void editTournamentFinal(tournament);
-                          }}
-                        >
-                          <Pencil className="size-4" />
-                          Edit final
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setExpandedTournamentId((current) =>
-                              current === tournament.id ? null : tournament.id,
-                            );
-                          }}
-                        >
-                          {expandedTournamentId === tournament.id ? (
-                            <ChevronUp className="size-4" />
-                          ) : (
-                            <ChevronDown className="size-4" />
-                          )}
-                          {expandedTournamentId === tournament.id
-                            ? "Hide fixtures"
-                            : "View fixtures"}
-                        </Button>
-                      </div>
-                      {expandedTournamentId === tournament.id && (
-                        <div className="mt-4 space-y-2">
-                          {tournamentFixturesQuery.isLoading ? (
-                            <p className="text-sm text-muted-foreground">Loading fixtures...</p>
-                          ) : tournamentFixturesQuery.isError ? (
-                            <p className="text-sm text-destructive">
-                              Could not load this tournament&apos;s fixtures. Apply the tournament
-                              fixture migration in Supabase, then refresh.
-                            </p>
-                          ) : (tournamentFixturesQuery.data ?? []).length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                              No fixtures created for this tournament yet.
-                            </p>
-                          ) : (
-                            <div className="divide-y rounded-md border">
-                              {(tournamentFixturesQuery.data ?? []).map((fixture) => {
-                                const homeTeam = teamsQuery.data?.find(
-                                  (team) => team.id === fixture.home_team_id,
-                                );
-                                const awayTeam = teamsQuery.data?.find(
-                                  (team) => team.id === fixture.away_team_id,
-                                );
-                                return (
-                                  <div
-                                    key={fixture.id}
-                                    className="flex flex-wrap items-center gap-3 p-3 text-sm"
-                                  >
-                                    <span className="w-20 text-xs text-muted-foreground">
-                                      Matchday {fixture.matchday}
-                                    </span>
-                                    <span className="min-w-50 flex-1 font-medium">
-                                      {homeTeam?.name ?? "Home team"}{" "}
-                                      <span className="text-muted-foreground">vs</span>{" "}
-                                      {awayTeam?.name ?? "Away team"}
-                                    </span>
-                                    <span className="rounded bg-muted px-2 py-1 font-semibold tabular-nums">
-                                      {fixture.home_score ?? "-"} - {fixture.away_score ?? "-"}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {fixture.status}
-                                    </span>
-                                    <Button asChild variant="ghost" size="sm">
-                                      <Link
-                                        to="/match/$fixtureId"
-                                        params={{ fixtureId: fixture.id }}
-                                      >
-                                        Edit
-                                      </Link>
-                                    </Button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1 font-semibold">
+                            Tournament Info
+                          </p>
+                          <p className="font-semibold">{tournament.type}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Participants: {tournament.participants}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Manager: {tournament.manager || "N/A"}
+                          </p>
                         </div>
-                      )}
-                    </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1 font-semibold">Winner</p>
+                          <p className="font-semibold text-primary text-lg flex items-center gap-2">
+                            <Crown className="h-4 w-4" />
+                            {tournament.winner}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1 font-semibold">
+                            Top Stats
+                          </p>
+                          <div className="space-y-1 text-sm">
+                            <p>
+                              ⚽ Scorer:{" "}
+                              <span className="font-semibold">
+                                {tournament.stats.topScorer.name}
+                              </span>{" "}
+                              ({tournament.stats.topScorer.goals})
+                            </p>
+                            <p>
+                              🥅 Saver:{" "}
+                              <span className="font-semibold">
+                                {tournament.stats.topSaver.name}
+                              </span>{" "}
+                              ({tournament.stats.topSaver.saves})
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
                     <div className="mt-4 flex justify-end">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

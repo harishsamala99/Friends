@@ -18,16 +18,12 @@ import {
 } from "@/components/ui/accordion";
 import {
   POSITIONS,
-  deleteFixture,
   deletePlayer,
   deleteTeam,
   fetchCompetitions,
-  fetchFixtures,
   fetchPlayers,
   fetchTeams,
-  fetchTournaments,
   insertTeams,
-  insertFixtures,
   savePlayer,
   upsertTeam,
   updateTeam,
@@ -40,12 +36,12 @@ export const Route = createFileRoute("/_authenticated/admin")({
       { title: "League Editor — FRIENDS LEAGUE" },
       {
         name: "description",
-        content: "Update FRIENDS LEAGUE teams, players, fixtures and results.",
+        content: "Update FRIENDS LEAGUE teams and players.",
       },
       { property: "og:title", content: "League Editor — FRIENDS LEAGUE" },
       {
         property: "og:description",
-        content: "Update teams, players, fixtures and results for FRIENDS LEAGUE.",
+        content: "Update teams and players for FRIENDS LEAGUE.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -60,8 +56,6 @@ function AdminPage() {
   const competitions = useQuery({ queryKey: ["competitions"], queryFn: fetchCompetitions });
   const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
   const players = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
-  const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: fetchTournaments });
-  const fixtures = useQuery({ queryKey: ["fixtures"], queryFn: () => fetchFixtures() });
 
   const competition = competitions.data?.[0];
   const invalidate = () => {
@@ -72,7 +66,7 @@ function AdminPage() {
     <SiteLayout>
       <PageHeader
         title="League Editor"
-        subtitle="Add your team names and players, then manage fixtures and results for everyone in FRIENDS LEAGUE."
+        subtitle="Add your team names and players for everyone in FRIENDS LEAGUE."
       />
       <div className="mx-auto max-w-5xl px-4 py-8">
         <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -82,10 +76,9 @@ function AdminPage() {
         </div>
 
         <Tabs defaultValue="teams">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="teams">Teams</TabsTrigger>
             <TabsTrigger value="players">Players</TabsTrigger>
-            <TabsTrigger value="fixtures">Fixtures</TabsTrigger>
           </TabsList>
 
           <TabsContent value="teams" className="mt-6 space-y-6">
@@ -108,7 +101,7 @@ function AdminPage() {
           <TabsContent value="players" className="mt-6 space-y-6">
             <PlayerForm teams={teams.data ?? []} onSaved={invalidate} />
             {(players.data ?? []).length === 0 ? (
-              <EmptyState message="Add players here, then record their goals under Fixtures. Their names will appear in Top Scorers." />
+              <EmptyState message="Add players here. Their names will appear in Top Scorers." />
             ) : (
               <Card>
                 <CardContent className="p-0">
@@ -171,42 +164,6 @@ function AdminPage() {
                       );
                     })}
                   </Accordion>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="fixtures" className="mt-6 space-y-6">
-            <FixtureTools
-              competitionId={competition?.id ?? null}
-              teams={teams.data ?? []}
-              tournamentId={
-                (typeof window !== "undefined"
-                  ? localStorage.getItem("current-tournament-id")
-                  : null) ??
-                tournaments.data?.[0]?.id ??
-                null
-              }
-              onSaved={invalidate}
-            />
-            {(fixtures.data ?? []).length === 0 ? (
-              <EmptyState message="No fixtures yet." />
-            ) : (
-              <Card>
-                <CardContent className="p-0">
-                  {(fixtures.data ?? []).map((f) => {
-                    const home = (teams.data ?? []).find((t) => t.id === f.home_team_id);
-                    const away = (teams.data ?? []).find((t) => t.id === f.away_team_id);
-                    return (
-                      <FixtureRow
-                        key={f.id}
-                        fixture={f}
-                        homeName={home?.name}
-                        awayName={away?.name}
-                        onSaved={invalidate}
-                      />
-                    );
-                  })}
                 </CardContent>
               </Card>
             )}
@@ -297,57 +254,6 @@ function TeamRow({ team, onSaved }: { team: Team; onSaved: () => void }) {
           try {
             await deleteTeam(team.id);
             toast.success("Team deleted");
-            onSaved();
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Delete failed");
-          }
-        }}
-      >
-        <Trash2 className="size-4" />
-      </Button>
-    </div>
-  );
-}
-
-function FixtureRow({
-  fixture,
-  homeName,
-  awayName,
-  onSaved,
-}: {
-  fixture: {
-    id: string;
-    matchday: number;
-    home_score: number | null;
-    away_score: number | null;
-    status: string;
-  };
-  homeName?: string;
-  awayName?: string;
-  onSaved: () => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-3 border-b border-border/50 p-3 last:border-0">
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">MD {fixture.matchday}</span>
-        <span className="min-w-0 truncate text-sm font-medium">
-          {homeName} vs {awayName}
-        </span>
-      </div>
-      <span className="rounded-md bg-secondary px-3 py-1 text-sm font-semibold tabular-nums">
-        {fixture.home_score ?? "-"} - {fixture.away_score ?? "-"}
-      </span>
-      <span className="text-xs text-muted-foreground">Open the match to edit its score</span>
-      <Button
-        className="justify-self-end sm:ml-auto"
-        variant="ghost"
-        size="icon"
-        title="Delete fixture"
-        aria-label="Delete fixture"
-        onClick={async () => {
-          try {
-            await deleteFixture(fixture.id);
-            toast.success("Fixture deleted");
             onSaved();
           } catch (e) {
             toast.error(e instanceof Error ? e.message : "Delete failed");
@@ -492,7 +398,6 @@ function PlayerForm({
   const [name, setName] = useState("");
   const [teamId, setTeamId] = useState("");
   const [position, setPosition] = useState<string>("Midfielder");
-  const [jersey, setJersey] = useState("");
 
   const save = useMutation({
     mutationFn: async () =>
@@ -500,12 +405,10 @@ function PlayerForm({
         name,
         team_id: teamId || null,
         position,
-        jersey_number: jersey ? Number(jersey) : null,
       }),
     onSuccess: () => {
       toast.success("Player saved");
       setName("");
-      setJersey("");
       onSaved();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -514,9 +417,9 @@ function PlayerForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add a player for Top Scorers</CardTitle>
+        <CardTitle>Add Your Player</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-4">
+      <CardContent className="grid gap-4 sm:grid-cols-3">
         <Field id="p-name" label="Name">
           <Input id="p-name" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
@@ -549,116 +452,12 @@ function PlayerForm({
             ))}
           </select>
         </Field>
-        <Field id="p-jersey" label="Jersey #">
-          <Input
-            id="p-jersey"
-            type="number"
-            value={jersey}
-            onChange={(e) => setJersey(e.target.value)}
-          />
-        </Field>
-        <div className="sm:col-span-4">
+        <div className="sm:col-span-3">
           <Button onClick={() => save.mutate()} disabled={!name || !teamId || save.isPending}>
             {save.isPending ? "Saving…" : "Add player"}
           </Button>
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function FixtureTools({
-  competitionId,
-  teams,
-  tournamentId,
-  onSaved,
-}: {
-  competitionId: string | null;
-  teams: { id: string; name: string }[];
-  tournamentId: string | null;
-  onSaved: () => void;
-}) {
-  const [homeId, setHomeId] = useState("");
-  const [awayId, setAwayId] = useState("");
-  const [matchCount, setMatchCount] = useState("1");
-
-  async function scheduleMatches() {
-    if (!competitionId) return toast.error("No competition is configured yet");
-    if (homeId === awayId) return toast.error("Pick two different teams");
-    const count = Math.max(1, Math.min(50, Number(matchCount) || 1));
-    const start = Date.now();
-    try {
-      await insertFixtures(
-        Array.from({ length: count }, (_, index) => ({
-          competition_id: competitionId,
-          tournament_id: tournamentId,
-          home_team_id: homeId,
-          away_team_id: awayId,
-          matchday: index + 1,
-          kickoff: new Date(start + index * 7 * 24 * 3600 * 1000).toISOString(),
-        })),
-      );
-      toast.success(`${count} match${count === 1 ? "" : "es"} scheduled`);
-      onSaved();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not add fixture");
-    }
-  }
-
-  return (
-    <div className="grid gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Schedule matches</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-3">
-          <Field id="f-home" label="Home team">
-            <select
-              id="f-home"
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-              value={homeId}
-              onChange={(e) => setHomeId(e.target.value)}
-            >
-              <option value="">Select</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field id="f-away" label="Away team">
-            <select
-              id="f-away"
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-              value={awayId}
-              onChange={(e) => setAwayId(e.target.value)}
-            >
-              <option value="">Select</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field id="f-count" label="Number of matches">
-            <Input
-              id="f-count"
-              type="number"
-              min="1"
-              max="50"
-              value={matchCount}
-              onChange={(e) => setMatchCount(e.target.value)}
-            />
-          </Field>
-          <div className="sm:col-span-3">
-            <Button onClick={scheduleMatches} disabled={!homeId || !awayId}>
-              Schedule matches
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
   );
 }

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { EmptyState, ListSkeleton, PageHeader } from "@/components/football-ui";
 import { SiteLayout } from "@/components/SiteLayout";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   deletePlayerTournamentDefensiveRatings,
   fetchAllFixturePlayerRatings,
@@ -133,6 +134,7 @@ function DefendingRatingsPage() {
     (top, player) => (player.total_rating > (top?.total_rating ?? -Infinity) ? player : top),
     playerTotals[0],
   )?.id;
+  const topDefender = playerTotals.find((player) => player.id === topDefenderId);
   const queryError =
     tournamentsQuery.error ??
     playerRatingsQuery.error ??
@@ -202,6 +204,32 @@ function DefendingRatingsPage() {
           />
         ) : (
           <>
+            {topDefender && (
+              <Card className="border-primary/40 bg-primary/5">
+                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+                  <div>
+                    <p className="text-sm font-semibold text-primary">Top player by rating</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <h2 className="font-display text-xl font-bold">{topDefender.name}</h2>
+                      <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary">
+                        Best Defender
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">{topDefender.team_name}</p>
+                  </div>
+                  <div className="text-left sm:text-right">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Rating points
+                    </p>
+                    <p className="font-display text-2xl font-bold tabular-nums">
+                      {Number.isInteger(topDefender.total_rating)
+                        ? topDefender.total_rating
+                        : topDefender.total_rating.toFixed(1)}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             <section className="space-y-4">
               <div>
                 <h2 className="font-display text-xl font-bold">
@@ -236,14 +264,7 @@ function DefendingRatingsPage() {
                             {group.players.map((player, index) => (
                               <tr key={player.id} className="border-t border-border/60">
                                 <td className="p-3 text-muted-foreground">{index + 1}</td>
-                                <td className="p-3 font-medium">
-                                  {player.name}
-                                  {player.id === topDefenderId && (
-                                    <span className="ml-2 text-xs font-semibold text-primary">
-                                      Top defender
-                                    </span>
-                                  )}
-                                </td>
+                                <td className="p-3 font-medium">{player.name}</td>
                                 <td className="p-3 text-muted-foreground">{player.position}</td>
                                 <td className="p-3 text-right font-semibold tabular-nums">
                                   {Number.isInteger(player.total_rating)
