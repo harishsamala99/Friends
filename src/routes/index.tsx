@@ -751,11 +751,11 @@ function WinningTeamLineup({
         ) : teamPlayers.length === 0 ? (
           <p className="text-sm text-muted-foreground">No active players are registered.</p>
         ) : (
-          <ul className="grid gap-x-3 rounded-lg border border-border/60 bg-card/60 p-2 sm:grid-cols-2">
+          <ul className="grid gap-x-3 rounded-lg border border-amber-400/70 bg-linear-to-br from-amber-100 via-yellow-50 to-amber-200/80 p-2 shadow-[0_0_24px_rgba(234,179,8,0.28)] ring-1 ring-amber-300/50 dark:from-amber-950/70 dark:via-yellow-950/40 dark:to-amber-900/60 sm:grid-cols-2">
             {teamPlayers.map((player) => (
               <li
                 key={player.id}
-                className="flex min-w-0 items-center gap-2 border-b border-border/50 px-2 py-1.5 text-xs last:border-0"
+                className="flex min-w-0 items-center gap-2 border-b border-amber-300/50 px-2 py-1.5 text-xs last:border-0"
               >
                 {player.jersey_number != null && (
                   <span className="w-6 shrink-0 text-center text-muted-foreground tabular-nums">
