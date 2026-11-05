@@ -9,11 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   fetchFixtures,
+  fetchPlayers,
   fetchStandings,
   fetchTeams,
   fetchTopScorers,
   fetchTopSaves,
   fetchTournaments,
+  type Player as FootballPlayer,
   type Team,
 } from "@/lib/football";
 
@@ -32,6 +34,10 @@ interface Tournament {
   awayScore?: number;
   away_score?: number;
   winner: string;
+  winner_team_id?: string | null;
+  winner_player_ids?: string[] | null;
+  winnerTeamId?: string | null;
+  winnerPlayerIds?: string[] | null;
   status?: "draft" | "completed";
   manager?: string | null;
   participants?: number | null;
@@ -71,6 +77,8 @@ function teamInitials(name?: string) {
 function normalizeTournament(tournament: Tournament): NormalizedTournament {
   return {
     ...tournament,
+    winner_team_id: tournament.winner_team_id ?? tournament.winnerTeamId ?? null,
+    winner_player_ids: tournament.winner_player_ids ?? tournament.winnerPlayerIds ?? null,
     stats: {
       topScorer: tournament.stats?.topScorer ?? {
         name: tournament.top_scorer_name || EMPTY_TOURNAMENT_STATS.topScorer.name,
@@ -134,6 +142,8 @@ function Home() {
         homeScore: selectedTournament.home_score,
         awayScore: selectedTournament.away_score,
         winner: selectedTournament.winner,
+        winner_team_id: selectedTournament.winner_team_id,
+        winner_player_ids: selectedTournament.winner_player_ids,
         status: selectedTournament.status,
         manager: selectedTournament.manager,
         participants: selectedTournament.participants,
@@ -169,6 +179,7 @@ function Home() {
   }, [tournament.data]);
 
   const teams = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
+  const players = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
   const fixtures = useQuery({
     queryKey: ["fixtures", latestTournament?.id],
     queryFn: () => fetchFixtures(undefined, latestTournament?.id),
@@ -261,6 +272,27 @@ function Home() {
             ? finalAwayName
             : "Draw"
         : "Not recorded";
+  const normalizedWinnerName = finalWinner?.trim().toLowerCase();
+  const winningTeamByName =
+    normalizedWinnerName && normalizedWinnerName !== "draw"
+      ? (teams.data ?? []).find((team) => team.name.trim().toLowerCase() === normalizedWinnerName)
+      : undefined;
+  const scoreWinnerTeamId =
+    savedFinal?.home_score != null &&
+    savedFinal.away_score != null &&
+    savedFinal.home_score !== savedFinal.away_score
+      ? savedFinal.home_score > savedFinal.away_score
+        ? savedFinal.home_team_id
+        : savedFinal.away_team_id
+      : undefined;
+  const winningTeam =
+    finalCompleted && !finalIsToBePlayed
+      ? latestTournament?.winner_team_id
+        ? byId.get(latestTournament.winner_team_id)
+        : scoreWinnerTeamId
+          ? byId.get(scoreWinnerTeamId)
+          : winningTeamByName
+      : undefined;
   const goldenBootPlayer = (scorers.data ?? []).find(
     (scorer) =>
       scorer.player_name.trim().toLowerCase() ===
@@ -504,6 +536,15 @@ function Home() {
                     </Button>
                   </div>
                 </div>
+                {winningTeam && (
+                  <WinningTeamLineup
+                    team={winningTeam}
+                    players={players.data ?? []}
+                    playerIds={latestTournament?.winner_player_ids ?? null}
+                    playersLoading={players.isLoading}
+                    playersError={players.error}
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -641,6 +682,96 @@ function Home() {
         </section>
       </div>
     </SiteLayout>
+  );
+}
+
+function WinningTeamLineup({
+  team,
+  players,
+  playerIds,
+  playersLoading,
+  playersError,
+}: {
+  team: Team;
+  players: FootballPlayer[];
+  playerIds?: string[] | null;
+  playersLoading: boolean;
+  playersError: Error | null;
+}) {
+  const positionOrder = [
+    (position: string) => position.includes("forward"),
+    (position: string) => position.includes("winger"),
+    (position: string) => position.includes("midfielder"),
+    (position: string) => position.includes("left back"),
+    (position: string) => position.includes("right back"),
+    (position: string) =>
+      position.includes("defender") ||
+      position.includes("center back") ||
+      position.includes("centre back") ||
+      position === "cb",
+    (position: string) =>
+      position.includes("goalkeeper") || position.includes("goal keeper") || position === "gk",
+  ];
+  const teamPlayers = players
+    .filter((player) =>
+      playerIds == null
+        ? player.team_id === team.id && player.status === "Active"
+        : playerIds.includes(player.id),
+    )
+    .sort((first, second) => {
+      const firstPosition = first.position.trim().toLowerCase();
+      const secondPosition = second.position.trim().toLowerCase();
+      const firstOrder = positionOrder.findIndex((matches) => matches(firstPosition));
+      const secondOrder = positionOrder.findIndex((matches) => matches(secondPosition));
+      const firstRank = firstOrder === -1 ? positionOrder.length : firstOrder;
+      const secondRank = secondOrder === -1 ? positionOrder.length : secondOrder;
+      return (
+        firstRank - secondRank ||
+        (first.jersey_number ?? Number.MAX_SAFE_INTEGER) -
+          (second.jersey_number ?? Number.MAX_SAFE_INTEGER) ||
+        first.name.localeCompare(second.name)
+      );
+    });
+
+  return (
+    <section className="border-t border-border/70 bg-muted/10 p-5 sm:p-8">
+      <div className="min-w-0">
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h3 className="font-display text-xl font-bold">{team.name} players</h3>
+          <p className="text-sm font-semibold text-primary">
+            Formation: {team.formation || "Not set"}
+          </p>
+        </div>
+        {playersLoading ? (
+          <ListSkeleton rows={3} />
+        ) : playersError ? (
+          <p className="text-sm text-destructive">
+            Could not load registered players: {playersError.message}
+          </p>
+        ) : teamPlayers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No active players are registered.</p>
+        ) : (
+          <ul className="grid gap-x-3 rounded-lg border border-border/60 bg-card/60 p-2 sm:grid-cols-2">
+            {teamPlayers.map((player) => (
+              <li
+                key={player.id}
+                className="flex min-w-0 items-center gap-2 border-b border-border/50 px-2 py-1.5 text-xs last:border-0"
+              >
+                {player.jersey_number != null && (
+                  <span className="w-6 shrink-0 text-center text-muted-foreground tabular-nums">
+                    {player.jersey_number}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1 truncate font-medium">{player.name}</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground">
+                  {player.position}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 

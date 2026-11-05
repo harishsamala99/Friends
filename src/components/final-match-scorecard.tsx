@@ -97,6 +97,8 @@ interface Tournament {
   tournamentName: string;
   status: "draft" | "completed";
   fixtureStatus?: "in_progress" | "fixtures_completed";
+  winnerTeamId?: string | null;
+  winnerPlayerIds?: string[] | null;
   type: string;
   date: string;
   homeTeam: string;
@@ -729,6 +731,8 @@ export function FinalMatchScorecard() {
         date: createdTournament?.date || new Date().toISOString().slice(0, 10),
         homeTeam: createdTournament?.home_team || "TBD",
         awayTeam: createdTournament?.away_team || "TBD",
+        winnerTeamId: createdTournament?.winner_team_id ?? null,
+        winnerPlayerIds: createdTournament?.winner_player_ids ?? null,
         homeScore: createdTournament?.home_score ?? 0,
         awayScore: createdTournament?.away_score ?? 0,
         winner: createdTournament?.winner || "TBD",
@@ -1061,6 +1065,8 @@ export function FinalMatchScorecard() {
         date: t.date,
         homeTeam: t.home_team,
         awayTeam: t.away_team,
+        winnerTeamId: t.winner_team_id,
+        winnerPlayerIds: t.winner_player_ids,
         homeScore: t.home_score,
         awayScore: t.away_score,
         winner: t.winner,
@@ -1103,6 +1109,8 @@ export function FinalMatchScorecard() {
       home_score: 0,
       away_score: 0,
       winner: "TBD",
+      winner_team_id: null,
+      winner_player_ids: null,
       manager: tournamentForm.manager || null,
       participants: tournamentForm.participants,
       top_scorer_name: null,
@@ -1741,6 +1749,13 @@ export function FinalMatchScorecard() {
     const homeScore = home.goals.length;
     const awayScore = away.goals.length;
     const winner = homeScore > awayScore ? home.name : awayScore > homeScore ? away.name : "Draw";
+    const winnerTeamId =
+      homeScore === awayScore ? null : homeScore > awayScore ? selectedHomeTeam : selectedAwayTeam;
+    const winnerPlayerIds = winnerTeamId
+      ? (playersQuery.data ?? [])
+          .filter((player) => player.team_id === winnerTeamId && player.status === "Active")
+          .map((player) => player.id)
+      : null;
     const stats = calculateStats();
     const topScorerName = tournamentForm.topScorerName.trim() || stats.topScorer.name;
     const topSaverName = tournamentForm.topSaverName.trim() || stats.topSaver.name;
@@ -1767,6 +1782,8 @@ export function FinalMatchScorecard() {
       home_score: homeScore,
       away_score: awayScore,
       winner,
+      winner_team_id: winnerTeamId || null,
+      winner_player_ids: winnerPlayerIds,
       manager: tournamentForm.manager || null,
       participants: tournamentForm.participants,
       top_scorer_name: topScorerName,
@@ -1899,6 +1916,8 @@ export function FinalMatchScorecard() {
         date: newTournament.date,
         homeTeam: newTournament.home_team,
         awayTeam: newTournament.away_team,
+        winnerTeamId: newTournament.winner_team_id,
+        winnerPlayerIds: newTournament.winner_player_ids,
         homeScore: newTournament.home_score,
         awayScore: newTournament.away_score,
         winner: newTournament.winner,

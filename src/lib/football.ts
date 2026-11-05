@@ -185,6 +185,8 @@ export type Tournament = {
   home_score: number;
   away_score: number;
   winner: string;
+  winner_team_id: string | null;
+  winner_player_ids: string[] | null;
   manager: string | null;
   participants: number | null;
   top_scorer_name: string | null;

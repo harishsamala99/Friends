@@ -658,6 +658,8 @@ export type Database = {
           manager: string | null;
           participants: number | null;
           status: string;
+          winner_player_ids: string[] | null;
+          winner_team_id: string | null;
           top_assister_assists: number | null;
           top_assister_name: string | null;
           top_saver_name: string | null;
@@ -678,6 +680,8 @@ export type Database = {
           manager?: string | null;
           participants?: number | null;
           status?: string;
+          winner_player_ids?: string[] | null;
+          winner_team_id?: string | null;
           top_assister_assists?: number | null;
           top_assister_name?: string | null;
           top_saver_name?: string | null;
@@ -698,6 +702,8 @@ export type Database = {
           manager?: string | null;
           participants?: number | null;
           status?: string;
+          winner_player_ids?: string[] | null;
+          winner_team_id?: string | null;
           top_assister_assists?: number | null;
           top_assister_name?: string | null;
           top_saver_name?: string | null;
