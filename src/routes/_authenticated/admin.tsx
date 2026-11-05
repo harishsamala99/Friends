@@ -177,18 +177,24 @@ function AdminPage() {
 function TeamRow({ team, onSaved }: { team: Team; onSaved: () => void }) {
   const [editing, setEditing] = useState(false);
   const [manager, setManager] = useState(team.manager ?? "");
+  const [formation, setFormation] = useState(team.formation ?? "");
   const save = useMutation({
-    mutationFn: () => updateTeam(team.id, { manager: manager.trim() || null }),
+    mutationFn: () =>
+      updateTeam(team.id, {
+        manager: manager.trim() || null,
+        formation: formation.trim() || null,
+      }),
     onSuccess: () => {
-      toast.success("Manager updated");
+      toast.success("Team details updated");
       setEditing(false);
       onSaved();
     },
-    onError: (e: Error) => toast.error(`Could not update manager: ${e.message}`),
+    onError: (e: Error) => toast.error(`Could not update team details: ${e.message}`),
   });
 
   function cancelEditing() {
     setManager(team.manager ?? "");
+    setFormation(team.formation ?? "");
     setEditing(false);
   }
 
@@ -199,7 +205,7 @@ function TeamRow({ team, onSaved }: { team: Team; onSaved: () => void }) {
         <p className="truncate font-medium">{team.name}</p>
         {editing ? (
           <form
-            className="mt-2 flex max-w-sm items-center gap-2"
+            className="mt-2 flex max-w-lg flex-wrap items-center gap-2"
             onSubmit={(event) => {
               event.preventDefault();
               save.mutate();
@@ -212,10 +218,16 @@ function TeamRow({ team, onSaved }: { team: Team; onSaved: () => void }) {
               value={manager}
               onChange={(event) => setManager(event.target.value)}
             />
+            <Input
+              aria-label={`${team.name} formation`}
+              placeholder="Formation (e.g. 4-3-3)"
+              value={formation}
+              onChange={(event) => setFormation(event.target.value)}
+            />
             <Button
               type="submit"
               size="icon"
-              aria-label={`Save manager for ${team.name}`}
+              aria-label={`Save details for ${team.name}`}
               disabled={save.isPending}
             >
               <Check className="size-4" />
@@ -231,16 +243,17 @@ function TeamRow({ team, onSaved }: { team: Team; onSaved: () => void }) {
             </Button>
           </form>
         ) : (
-          <p className="truncate text-xs text-muted-foreground">
-            Manager: {team.manager ?? "Not assigned"}
-          </p>
+          <div className="space-y-0.5 text-xs text-muted-foreground">
+            <p className="truncate">Manager: {team.manager ?? "Not assigned"}</p>
+            <p className="truncate">Formation: {team.formation ?? "Not set"}</p>
+          </div>
         )}
       </div>
       {!editing && (
         <Button
           variant="ghost"
           size="icon"
-          aria-label={`Edit manager for ${team.name}`}
+          aria-label={`Edit details for ${team.name}`}
           onClick={() => setEditing(true)}
         >
           <Pencil className="size-4" />
@@ -282,7 +295,7 @@ function TeamForm({
   competitionId: string | null;
   onSaved: () => void;
 }) {
-  const [teams, setTeams] = useState([{ name: "", color: "#e4573d", manager: "" }]);
+  const [teams, setTeams] = useState([{ name: "", color: "#e4573d", manager: "", formation: "" }]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -294,13 +307,14 @@ function TeamForm({
           name: team.name,
           crest_color: team.color,
           manager: team.manager.trim() || null,
+          formation: team.formation.trim() || null,
         }));
       if (!rows.length) throw new Error("Enter at least one team name.");
       return insertTeams(rows);
     },
     onSuccess: () => {
       toast.success("Teams saved");
-      setTeams([{ name: "", color: "#e4573d", manager: "" }]);
+      setTeams([{ name: "", color: "#e4573d", manager: "", formation: "" }]);
       onSaved();
     },
     onError: (e: Error) => toast.error(`Could not save teams: ${e.message}`),
@@ -312,14 +326,18 @@ function TeamForm({
         <CardTitle>Add your teams</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="hidden grid-cols-[1fr_1fr_1fr_auto_auto] gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
           <span>Team name</span>
           <span>Manager</span>
+          <span>Formation</span>
           <span>Color</span>
           <span className="sr-only">Remove</span>
         </div>
         {teams.map((team, index) => (
-          <div key={index} className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-3">
+          <div
+            key={index}
+            className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[1fr_1fr_1fr_auto_auto]"
+          >
             <Input
               aria-label={`Team ${index + 1} name`}
               placeholder={`Team ${index + 1}`}
@@ -340,6 +358,18 @@ function TeamForm({
                 setTeams((current) =>
                   current.map((item, i) =>
                     i === index ? { ...item, manager: e.target.value } : item,
+                  ),
+                )
+              }
+            />
+            <Input
+              aria-label={`Team ${index + 1} formation`}
+              placeholder="Formation (e.g. 4-3-3)"
+              value={team.formation}
+              onChange={(e) =>
+                setTeams((current) =>
+                  current.map((item, i) =>
+                    i === index ? { ...item, formation: e.target.value } : item,
                   ),
                 )
               }
@@ -374,7 +404,10 @@ function TeamForm({
             type="button"
             variant="outline"
             onClick={() =>
-              setTeams((current) => [...current, { name: "", color: "#e4573d", manager: "" }])
+              setTeams((current) => [
+                ...current,
+                { name: "", color: "#e4573d", manager: "", formation: "" },
+              ])
             }
           >
             Add another team

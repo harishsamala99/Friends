@@ -26,6 +26,7 @@ export type Team = {
   logo_url: string | null;
   crest_color: string | null;
   manager: string | null;
+  formation: string | null;
   stadium: string | null;
   city: string | null;
   founded_year: number | null;
@@ -956,7 +957,13 @@ export async function updateTeam(id: string, changes: Partial<Team>) {
 }
 
 export async function insertTeams(
-  rows: { competition_id: string | null; name: string; crest_color: string }[],
+  rows: {
+    competition_id: string | null;
+    name: string;
+    crest_color: string;
+    manager: string | null;
+    formation: string | null;
+  }[],
 ) {
   const { data, error } = await db.from("teams").insert(rows).select();
   if (error) throw error;

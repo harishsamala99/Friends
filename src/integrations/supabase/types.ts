@@ -597,6 +597,7 @@ export type Database = {
           contact: string | null;
           created_at: string;
           crest_color: string | null;
+          formation: string | null;
           founded_year: number | null;
           id: string;
           logo_url: string | null;
@@ -611,6 +612,7 @@ export type Database = {
           contact?: string | null;
           created_at?: string;
           crest_color?: string | null;
+          formation?: string | null;
           founded_year?: number | null;
           id?: string;
           logo_url?: string | null;
@@ -625,6 +627,7 @@ export type Database = {
           contact?: string | null;
           created_at?: string;
           crest_color?: string | null;
+          formation?: string | null;
           founded_year?: number | null;
           id?: string;
           logo_url?: string | null;

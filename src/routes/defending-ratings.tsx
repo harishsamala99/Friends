@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { EmptyState, ListSkeleton, PageHeader } from "@/components/football-ui";
 import { SiteLayout } from "@/components/SiteLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   deletePlayerTournamentDefensiveRatings,
   fetchAllFixturePlayerRatings,
@@ -130,11 +129,17 @@ function DefendingRatingsPage() {
     }
     return [...groups.values()];
   }, [playerTotals]);
-  const topDefenderId = playerTotals.reduce(
-    (top, player) => (player.total_rating > (top?.total_rating ?? -Infinity) ? player : top),
-    playerTotals[0],
-  )?.id;
-  const topDefender = playerTotals.find((player) => player.id === topDefenderId);
+  const topDefenders = playerTotals
+    .filter((player) => {
+      const position = player.position.trim().toLowerCase();
+      return position === "defender" || position.includes("back");
+    })
+    .sort((a, b) => b.total_rating - a.total_rating || a.name.localeCompare(b.name))
+    .slice(0, 2);
+  const topMidfielders = playerTotals
+    .filter((player) => player.position.trim().toLowerCase().includes("midfielder"))
+    .sort((a, b) => b.total_rating - a.total_rating || a.name.localeCompare(b.name))
+    .slice(0, 2);
   const queryError =
     tournamentsQuery.error ??
     playerRatingsQuery.error ??
@@ -204,31 +209,85 @@ function DefendingRatingsPage() {
           />
         ) : (
           <>
-            {topDefender && (
-              <Card className="border-primary/40 bg-primary/5">
-                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
-                  <div>
-                    <p className="text-sm font-semibold text-primary">Top player by rating</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <h2 className="font-display text-xl font-bold">{topDefender.name}</h2>
-                      <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary">
-                        Best Defender
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{topDefender.team_name}</p>
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Rating points
-                    </p>
-                    <p className="font-display text-2xl font-bold tabular-nums">
-                      {Number.isInteger(topDefender.total_rating)
-                        ? topDefender.total_rating
-                        : topDefender.total_rating.toFixed(1)}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+            {topDefenders.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="font-display text-xl font-bold">Best Defender</h2>
+                <div className="data-table-wrap overflow-x-auto">
+                  <table className="data-table w-full min-w-120 text-sm">
+                    <thead>
+                      <tr>
+                        <th className="p-3 text-left font-medium">#</th>
+                        <th className="p-3 text-left font-medium">Player</th>
+                        <th className="p-3 text-left font-medium">Team</th>
+                        <th className="p-3 text-right font-medium">Total Rating</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topDefenders.map((player, index) => (
+                        <tr key={player.id} className="border-t border-border/60">
+                          <td className="p-3 text-muted-foreground">{index + 1}</td>
+                          <td className="p-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium">{player.name}</span>
+                              {index === 0 && (
+                                <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary">
+                                  Best Defender
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3 text-muted-foreground">{player.team_name}</td>
+                          <td className="p-3 text-right font-semibold tabular-nums">
+                            {Number.isInteger(player.total_rating)
+                              ? player.total_rating
+                              : player.total_rating.toFixed(1)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+            {topMidfielders.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="font-display text-xl font-bold">Best MidFielder</h2>
+                <div className="data-table-wrap overflow-x-auto">
+                  <table className="data-table w-full min-w-120 text-sm">
+                    <thead>
+                      <tr>
+                        <th className="p-3 text-left font-medium">#</th>
+                        <th className="p-3 text-left font-medium">Player</th>
+                        <th className="p-3 text-left font-medium">Team</th>
+                        <th className="p-3 text-right font-medium">Total Rating</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topMidfielders.map((player, index) => (
+                        <tr key={player.id} className="border-t border-border/60">
+                          <td className="p-3 text-muted-foreground">{index + 1}</td>
+                          <td className="p-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium">{player.name}</span>
+                              {index === 0 && (
+                                <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary">
+                                  Best MidFielder
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3 text-muted-foreground">{player.team_name}</td>
+                          <td className="p-3 text-right font-semibold tabular-nums">
+                            {Number.isInteger(player.total_rating)
+                              ? player.total_rating
+                              : player.total_rating.toFixed(1)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
             )}
             <section className="space-y-4">
               <div>

@@ -80,6 +80,8 @@ function TeamsPage() {
                     <h2 className="truncate font-display text-xl font-bold">{t.name}</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {t.manager ? `Manager: ${t.manager}` : "Manager TBD"}
+                      {" · "}
+                      {t.formation ? `Formation: ${t.formation}` : "Formation not set"}
                     </p>
                     <p className="mt-2 text-xs font-medium text-primary">
                       {counts.get(t.id) ?? 0} players
