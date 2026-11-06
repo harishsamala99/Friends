@@ -5,6 +5,7 @@ import { Check, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, EmptyState, ListSkeleton } from "@/components/football-ui";
+import { PlayerPicker } from "@/components/player-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { syncHouseOfIcons } from "@/lib/house-of-icons";
 import {
@@ -46,11 +47,11 @@ const slots = [
 type SlotKey = (typeof slots)[number]["key"];
 type Selection = Record<SlotKey, string>;
 const EMPTY_TOURNAMENTS: Tournament[] = [];
-const positionForGroup = {
-  FORWARDS: "Forward",
-  MIDFIELDERS: "Midfielder",
-  DEFENDERS: "Defender",
-  GOALKEEPER: "Goalkeeper",
+const positionsForGroup = {
+  FORWARDS: ["Forward"],
+  MIDFIELDERS: ["Midfielder"],
+  DEFENDERS: ["Defender", "Left Back", "Right Back"],
+  GOALKEEPER: ["Goalkeeper"],
 } as const;
 
 function getStoredTournamentId() {
@@ -221,34 +222,34 @@ function BestXIPage() {
                         .map((slot) => (
                           <label key={slot.key} className="space-y-1 text-sm font-medium">
                             {slot.label}
-                            <select
-                              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-normal"
+                            <PlayerPicker
+                              className="w-full"
+                              players={playerList
+                                .filter((player) => {
+                                  const position = player.position?.trim().toLowerCase();
+                                  return (
+                                    player.status === "Active" &&
+                                    position !== undefined &&
+                                    positionsForGroup[group as keyof typeof positionsForGroup].some(
+                                      (allowedPosition) =>
+                                        allowedPosition.toLowerCase() === position,
+                                    )
+                                  );
+                                })
+                                .map((player) => ({
+                                  id: player.id,
+                                  name: `${player.name} — ${teamById.get(player.team_id ?? "") ?? "Team unavailable"}`,
+                                }))}
                               value={selection[slot.key]}
+                              placeholder={`Enter ${slot.label}`}
                               disabled={save.isPending}
-                              onChange={(event) =>
+                              onValueChange={(playerId) =>
                                 setSelection((current) => ({
                                   ...current,
-                                  [slot.key]: event.target.value,
+                                  [slot.key]: playerId,
                                 }))
                               }
-                            >
-                              <option value="">Enter {slot.label}</option>
-                              {playerList
-                                .filter(
-                                  (player) =>
-                                    player.status === "Active" &&
-                                    player.position?.trim().toLowerCase() ===
-                                      positionForGroup[
-                                        group as keyof typeof positionForGroup
-                                      ].toLowerCase(),
-                                )
-                                .map((player) => (
-                                  <option key={player.id} value={player.id}>
-                                    {player.name} —{" "}
-                                    {teamById.get(player.team_id ?? "") ?? "Team unavailable"}
-                                  </option>
-                                ))}
-                            </select>
+                            />
                           </label>
                         ))}
                     </div>
