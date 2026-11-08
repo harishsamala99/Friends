@@ -493,31 +493,9 @@ function TournamentSetup({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button type="button" disabled={creating || !name.trim()}>
-                {creating ? "Creating tournament..." : "Create tournament"}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Start a new tournament?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This clears previous tournament results, fixtures, match events, player ratings,
-                  appearances, achievements, award history, Best XI, and champion captain records.
-                  Player and team profiles, tournament names, and team defensive rating history will
-                  be kept. This cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogAction
-                onClick={onCreateTournament}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Create and reset tournament data
-              </AlertDialogAction>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-            </AlertDialogContent>
-          </AlertDialog>
+          <Button type="button" onClick={onCreateTournament} disabled={creating || !name.trim()}>
+            {creating ? "Creating tournament..." : "Create tournament"}
+          </Button>
           <Button
             type="button"
             variant="outline"
