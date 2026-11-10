@@ -414,8 +414,8 @@ function TournamentSetup({
   }
 
   return (
-    <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] text-foreground shadow-lg dark:from-[#18212d] dark:via-card dark:to-[#1b2a2c]">
-      <CardHeader className="border-b border-[#f28c5b]/25 bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10 dark:from-[#3b2932] dark:to-[#173d3d]">
+    <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] text-foreground shadow-lg dark:from-[#12100b] dark:via-card dark:to-[#1b170d]">
+      <CardHeader className="border-b border-[#f28c5b]/25 bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10 dark:from-[#211a0c] dark:to-[#2c220e]">
         <CardTitle className="flex items-center gap-2">🏆 Create your tournament</CardTitle>
         <p className="text-sm text-muted-foreground">
           Name it, schedule fixtures, then create the final below.
@@ -2068,10 +2068,10 @@ export function FinalMatchScorecard() {
           </Card>
 
           {homeFinalist && awayFinalist && !finalHasBeenPosted && isCurrentTournamentCreated && (
-            <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-white text-slate-900 shadow-lg dark:bg-[#18212d] dark:text-foreground">
+            <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-white text-slate-900 shadow-lg dark:bg-[#15120b] dark:text-foreground">
               <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-bold uppercase tracking-wider text-[#16756b]">
+                  <p className="text-sm font-bold uppercase tracking-wider text-[#16756b] dark:text-primary">
                     {leagueComplete ? "Finalists qualified automatically" : "Current final places"}
                   </p>
                   <p className="mt-1 font-semibold text-slate-800 dark:text-foreground">
@@ -2097,8 +2097,8 @@ export function FinalMatchScorecard() {
           )}
 
           {/* Current Teams Selection */}
-          <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] backdrop-blur-sm shadow-lg dark:from-[#18212d] dark:via-card dark:to-[#1b2a2c]">
-            <CardHeader className="bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10 border-b border-[#f28c5b]/25 dark:from-[#3b2932] dark:to-[#173d3d]">
+          <Card className="mb-8 border-2 border-[#f28c5b]/40 bg-linear-to-br from-[#fff8f1] via-card to-[#e9f5f1] backdrop-blur-sm shadow-lg dark:from-[#12100b] dark:via-card dark:to-[#1b170d]">
+            <CardHeader className="bg-linear-to-r from-[#f28c5b]/20 to-[#2f8f83]/10 border-b border-[#f28c5b]/25 dark:from-[#211a0c] dark:to-[#2c220e]">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 📋 Select Current Teams
@@ -2204,7 +2204,7 @@ export function FinalMatchScorecard() {
           </Card>
 
           {/* Main Match Display */}
-          <Card className="mb-8 overflow-hidden border-3 border-[#f28c5b]/35 bg-linear-to-b from-[#fffaf5] to-[#e9f5f1] text-foreground shadow-2xl backdrop-blur-sm dark:from-[#18212d] dark:to-[#1b2a2c]">
+          <Card className="mb-8 overflow-hidden border-3 border-[#f28c5b]/35 bg-linear-to-b from-[#fffaf5] to-[#e9f5f1] text-foreground shadow-2xl backdrop-blur-sm dark:from-[#12100b] dark:to-[#1b170d]">
             <CardContent className="p-6 sm:p-8">
               {/* Match Header with Editable Team Names */}
               <div className="mb-8">

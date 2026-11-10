@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, type CSSProperties } from "react";
-import { Crown, Trophy } from "lucide-react";
+import { ArrowRight, Crown, Trophy } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { FinalFireworks } from "@/components/final-fireworks";
 import { TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
@@ -308,27 +308,69 @@ function Home() {
     .filter((f) => f.home_score != null)
     .sort((a, b) => +new Date(b.kickoff) - +new Date(a.kickoff))
     .slice(0, 5);
+  const playedMatchCount = (allFixtures.data ?? []).filter(
+    (fixture) => fixture.home_score != null && fixture.away_score != null,
+  ).length;
 
   return (
     <SiteLayout>
-      <section className="matchday-grid border-b border-border/60 bg-linear-to-br from-primary/15 via-background to-background">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
-          <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-            Season 2026/27
-          </p>
-          <h1 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-6xl">
-            FRIENDS LEAGUE
-          </h1>
-          <p className="mt-4 max-w-xl text-muted-foreground">
-            Every fixture, result, goal and league position — updated as matches are played.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild size="lg">
-              <Link to="/fixtures">View fixtures</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link to="/standings">League table</Link>
-            </Button>
+      <section className="relative isolate overflow-hidden border-b border-border/60 bg-linear-to-br from-primary/15 via-background to-accent/10">
+        <div
+          aria-hidden="true"
+          className="matchday-grid pointer-events-none absolute inset-0 opacity-40"
+        />
+        <div className="pointer-events-none absolute -right-24 -top-32 size-96 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative mx-auto max-w-6xl px-4 py-12 sm:py-16 lg:py-20">
+          <div className="max-w-3xl">
+            <p className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-card/70 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-primary shadow-sm backdrop-blur">
+              <span className="size-2 rounded-full bg-success" />
+              Season 2026/27
+            </p>
+            <h1 className="mt-5 max-w-2xl font-display text-5xl font-extrabold uppercase leading-[0.92] tracking-tight sm:text-7xl">
+              Friends
+              <span className="block text-primary">League</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Your matchday home. Follow fixtures, results, table standings and the players making
+              this season memorable.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Button asChild size="lg" className="gap-2 shadow-md shadow-primary/15">
+                <Link to="/fixtures">
+                  View fixtures
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="bg-card/70">
+                <Link to="/standings">League table</Link>
+              </Button>
+            </div>
+            <div className="mt-9 grid max-w-2xl grid-cols-3 divide-x divide-border/70 rounded-2xl border border-border/70 bg-card/65 py-3 shadow-sm backdrop-blur">
+              <div className="px-3 text-center sm:px-5">
+                <p className="font-display text-2xl font-bold tabular-nums sm:text-3xl">
+                  {teams.isLoading ? "—" : (teams.data ?? []).length}
+                </p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
+                  Teams
+                </p>
+              </div>
+              <div className="px-3 text-center sm:px-5">
+                <p className="font-display text-2xl font-bold tabular-nums sm:text-3xl">
+                  {fixtures.isLoading ? "—" : upcoming.length}
+                </p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
+                  Upcoming
+                </p>
+              </div>
+              <div className="px-3 text-center sm:px-5">
+                <p className="font-display text-2xl font-bold tabular-nums sm:text-3xl">
+                  {allFixtures.isLoading ? "—" : playedMatchCount}
+                </p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
+                  Played
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -337,8 +379,8 @@ function Home() {
         <section className="border-b border-border/60 bg-accent/10 py-8 sm:py-10">
           <div className="mx-auto max-w-6xl px-4">
             <Card className="overflow-hidden border-2 border-accent/50 bg-card shadow-lg">
-              <CardContent className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
-                <div>
+              <CardContent className="grid gap-5 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center">
+                <div className="min-w-0">
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent-foreground">
                     Next final
                   </p>
@@ -349,26 +391,28 @@ function Home() {
                     The league standings have selected the two finalists.
                   </p>
                 </div>
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 text-center sm:min-w-90">
+                <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-center lg:max-w-lg lg:justify-self-center">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Team 1
                     </p>
-                    <p className="mt-1 truncate font-display text-xl font-bold">
+                    <p className="mt-1 line-clamp-2 font-display text-lg font-bold sm:text-xl">
                       {byId.get(scheduledFinal.home_team_id)?.name ?? "Qualified team"}
                     </p>
                   </div>
-                  <span className="font-display text-lg font-bold text-primary">VS</span>
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 font-display text-sm font-bold text-primary">
+                    VS
+                  </span>
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Team 2
                     </p>
-                    <p className="mt-1 truncate font-display text-xl font-bold">
+                    <p className="mt-1 line-clamp-2 font-display text-lg font-bold sm:text-xl">
                       {byId.get(scheduledFinal.away_team_id)?.name ?? "Qualified team"}
                     </p>
                   </div>
                 </div>
-                <Button asChild className="shrink-0">
+                <Button asChild className="w-full lg:w-auto">
                   <Link to="/scorecard">Add final score</Link>
                 </Button>
               </CardContent>
@@ -379,7 +423,7 @@ function Home() {
 
       {/* Final Match Section */}
       {(hasTournamentFinalTeams || scheduledFinal || (!latestTournament && hasFinalists)) && (
-        <section className="relative overflow-hidden border-b border-border/60 bg-linear-to-br from-pitch via-pitch/95 to-[#173d35] py-10 sm:py-14">
+        <section className="relative overflow-hidden border-b border-border/60 bg-linear-to-br from-pitch via-pitch/95 to-[#173d35] py-10 sm:py-14 dark:to-[#17130a]">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,transparent_49.8%,currentColor_50%,transparent_50.2%),linear-gradient(currentColor_1px,transparent_1px)] bg-size-[50%_100%,100%_56px] opacity-20 text-pitch-foreground" />
           <div className="mx-auto max-w-6xl px-4">
             <div className="relative mb-6 flex flex-wrap items-end justify-between gap-3 sm:mb-8">
@@ -420,12 +464,12 @@ function Home() {
 
                 <div className="grid gap-0 lg:grid-cols-[1.35fr_0.65fr]">
                   <div className="latest-final-card__score-stage p-5 sm:p-10">
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-8">
-                      <div className="latest-final-card__team min-w-0 text-center">
+                    <div className="latest-final-card__matchup">
+                      <div className="latest-final-card__team min-w-0 px-1 text-center">
                         <div className="latest-final-card__badge mx-auto grid size-16 place-items-center rounded-2xl bg-primary text-2xl font-black text-primary-foreground shadow-lg shadow-primary/20 sm:size-20 sm:text-3xl">
                           {teamInitials(finalHomeName)}
                         </div>
-                        <p className="mt-4 truncate font-display text-xl font-bold sm:text-2xl">
+                        <p className="mt-4 line-clamp-2 font-display text-lg font-bold sm:text-2xl">
                           {finalHomeName || "Team 1"}
                         </p>
                         <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -437,7 +481,7 @@ function Home() {
                         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
                           {finalIsToBePlayed ? "TO BE PLAYED" : "Full time"}
                         </p>
-                        <div className="latest-final-card__score-value mt-2 flex items-center gap-2 font-display text-5xl font-black tabular-nums text-primary drop-shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_35%,transparent)] dark:text-[#fff7e6] dark:drop-shadow-[0_0_18px_rgba(255,177,66,0.55)] sm:text-7xl sm:gap-3">
+                        <div className="latest-final-card__score-value mt-2 flex items-center gap-1 font-display text-4xl font-black tabular-nums text-primary drop-shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_35%,transparent)] dark:text-[#fff7e6] dark:drop-shadow-[0_0_18px_rgba(255,177,66,0.55)] sm:gap-3 sm:text-7xl">
                           <span>{finalIsToBePlayed ? "-" : (finalHomeScore ?? 0)}</span>
                           <span className="text-2xl text-muted-foreground sm:text-3xl">:</span>
                           <span>{finalIsToBePlayed ? "-" : (finalAwayScore ?? 0)}</span>
@@ -447,11 +491,11 @@ function Home() {
                         </p>
                       </div>
 
-                      <div className="latest-final-card__team min-w-0 text-center">
-                        <div className="latest-final-card__badge mx-auto grid size-16 place-items-center rounded-2xl bg-[#166b58] text-2xl font-black text-white shadow-lg shadow-[#166b58]/20 sm:size-20 sm:text-3xl">
+                      <div className="latest-final-card__team min-w-0 px-1 text-center">
+                        <div className="latest-final-card__badge mx-auto grid size-16 place-items-center rounded-2xl bg-[#166b58] text-2xl font-black text-white shadow-lg shadow-[#166b58]/20 sm:size-20 sm:text-3xl dark:bg-amber-300 dark:text-black dark:shadow-amber-300/20">
                           {teamInitials(finalAwayName)}
                         </div>
-                        <p className="mt-4 truncate font-display text-xl font-bold sm:text-2xl">
+                        <p className="mt-4 line-clamp-2 font-display text-lg font-bold sm:text-2xl">
                           {finalAwayName || "Team 2"}
                         </p>
                         <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -553,7 +597,18 @@ function Home() {
 
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 lg:grid-cols-2">
         <section>
-          <h2 className="mb-4 font-display text-2xl font-bold">Upcoming fixtures</h2>
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Matchday</p>
+              <h2 className="font-display text-2xl font-bold">Upcoming fixtures</h2>
+            </div>
+            <Link
+              to="/fixtures"
+              className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline"
+            >
+              All fixtures <ArrowRight className="size-4" />
+            </Link>
+          </div>
           {fixtures.isLoading ? (
             <ListSkeleton rows={4} />
           ) : upcoming.length === 0 ? (
@@ -564,16 +619,24 @@ function Home() {
                 const home = byId.get(f.home_team_id);
                 const away = byId.get(f.away_team_id);
                 return (
-                  <Link key={f.id} to="/match/$fixtureId" params={{ fixtureId: f.id }}>
-                    <Card className="transition-shadow hover:shadow-md">
+                  <Link
+                    key={f.id}
+                    to="/match/$fixtureId"
+                    params={{ fixtureId: f.id }}
+                    className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <Card className="overflow-hidden border-border/70 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-lg">
                       <CardContent className="flex items-center gap-3 p-4">
                         <div className="flex flex-1 items-center gap-2">
-                          {home && <TeamBadge team={home} size={28} />}
+                          {home && <TeamBadge team={home} size={34} />}
                           <span className="truncate font-medium">{home?.name}</span>
                         </div>
+                        <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                          VS
+                        </span>
                         <div className="flex flex-1 items-center justify-end gap-2">
                           <span className="truncate font-medium">{away?.name}</span>
-                          {away && <TeamBadge team={away} size={28} />}
+                          {away && <TeamBadge team={away} size={34} />}
                         </div>
                       </CardContent>
                     </Card>
@@ -585,7 +648,20 @@ function Home() {
         </section>
 
         <section>
-          <h2 className="mb-4 font-display text-2xl font-bold">Latest results</h2>
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                Final whistle
+              </p>
+              <h2 className="font-display text-2xl font-bold">Latest results</h2>
+            </div>
+            <Link
+              to="/results"
+              className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline"
+            >
+              All results <ArrowRight className="size-4" />
+            </Link>
+          </div>
           {allFixtures.isLoading ? (
             <ListSkeleton rows={4} />
           ) : recent.length === 0 ? (
@@ -596,11 +672,16 @@ function Home() {
                 const home = byId.get(f.home_team_id);
                 const away = byId.get(f.away_team_id);
                 return (
-                  <Link key={f.id} to="/match/$fixtureId" params={{ fixtureId: f.id }}>
-                    <Card className="transition-shadow hover:shadow-md">
+                  <Link
+                    key={f.id}
+                    to="/match/$fixtureId"
+                    params={{ fixtureId: f.id }}
+                    className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <Card className="overflow-hidden border-border/70 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-lg">
                       <CardContent className="flex items-center gap-3 p-4">
                         <div className="flex flex-1 items-center gap-2">
-                          {home && <TeamBadge team={home} size={28} />}
+                          {home && <TeamBadge team={home} size={34} />}
                           <span className="truncate font-medium">{home?.name}</span>
                         </div>
                         <span className="shrink-0 rounded-md bg-secondary px-3 py-1 font-semibold tabular-nums">
@@ -608,7 +689,7 @@ function Home() {
                         </span>
                         <div className="flex flex-1 items-center justify-end gap-2">
                           <span className="truncate font-medium">{away?.name}</span>
-                          {away && <TeamBadge team={away} size={28} />}
+                          {away && <TeamBadge team={away} size={34} />}
                         </div>
                       </CardContent>
                     </Card>
@@ -620,7 +701,20 @@ function Home() {
         </section>
 
         <section>
-          <h2 className="mb-4 font-display text-2xl font-bold">Table leaders</h2>
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                The table
+              </p>
+              <h2 className="font-display text-2xl font-bold">Table leaders</h2>
+            </div>
+            <Link
+              to="/standings"
+              className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline"
+            >
+              Full table <ArrowRight className="size-4" />
+            </Link>
+          </div>
           {standings.isLoading ? (
             <ListSkeleton rows={5} />
           ) : (
@@ -654,7 +748,20 @@ function Home() {
         </section>
 
         <section>
-          <h2 className="mb-4 font-display text-2xl font-bold">Top scorers</h2>
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                Golden boot race
+              </p>
+              <h2 className="font-display text-2xl font-bold">Top scorers</h2>
+            </div>
+            <Link
+              to="/scorers"
+              className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline"
+            >
+              All scorers <ArrowRight className="size-4" />
+            </Link>
+          </div>
           {scorers.isLoading ? (
             <ListSkeleton rows={5} />
           ) : (

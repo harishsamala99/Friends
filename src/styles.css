@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -101,42 +101,44 @@
 }
 
 .dark {
-  --background: oklch(0.16 0.035 255);
-  --foreground: oklch(0.97 0.012 95);
-  --card: oklch(0.22 0.04 255);
-  --card-foreground: oklch(0.97 0.012 95);
-  --popover: oklch(0.22 0.04 255);
-  --popover-foreground: oklch(0.97 0.012 95);
-  --primary: oklch(0.74 0.18 42);
-  --primary-foreground: oklch(0.16 0.035 255);
-  --secondary: oklch(0.29 0.055 230);
-  --secondary-foreground: oklch(0.96 0.012 95);
-  --muted: oklch(0.27 0.04 250);
-  --muted-foreground: oklch(0.8 0.025 235);
-  --accent: oklch(0.82 0.17 92);
-  --accent-foreground: oklch(0.16 0.035 255);
+  --background: oklch(0.105 0.006 80);
+  --foreground: oklch(0.94 0.018 88);
+  --card: oklch(0.155 0.008 80);
+  --card-foreground: oklch(0.94 0.018 88);
+  --popover: oklch(0.17 0.009 80);
+  --popover-foreground: oklch(0.94 0.018 88);
+  --primary: oklch(0.79 0.145 82);
+  --primary-foreground: oklch(0.16 0.018 78);
+  --secondary: oklch(0.22 0.012 80);
+  --secondary-foreground: oklch(0.93 0.018 88);
+  --muted: oklch(0.19 0.01 80);
+  --muted-foreground: oklch(0.7 0.018 85);
+  --accent: oklch(0.76 0.14 84);
+  --accent-foreground: oklch(0.16 0.018 78);
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: oklch(0.98 0.005 95);
-  --success: oklch(0.76 0.15 190);
-  --warning: oklch(0.82 0.17 92);
-  --pitch: oklch(0.18 0.05 255);
-  --pitch-foreground: oklch(0.98 0.012 95);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.74 0.18 42);
-  --chart-1: oklch(0.74 0.18 42);
-  --chart-2: oklch(0.82 0.17 92);
-  --chart-3: oklch(0.74 0.15 205);
-  --chart-4: oklch(0.76 0.16 325);
-  --chart-5: oklch(0.65 0.19 15);
-  --sidebar: oklch(0.19 0.045 255);
-  --sidebar-foreground: oklch(0.97 0.012 95);
-  --sidebar-primary: oklch(0.82 0.17 92);
-  --sidebar-primary-foreground: oklch(0.16 0.035 255);
-  --sidebar-accent: oklch(0.29 0.055 230);
-  --sidebar-accent-foreground: oklch(0.97 0.012 95);
-  --sidebar-border: oklch(1 0 0 / 14%);
-  --sidebar-ring: oklch(0.74 0.18 42);
+  --success: oklch(0.72 0.14 145);
+  --warning: oklch(0.79 0.145 82);
+  --pitch: oklch(0.13 0.008 80);
+  --pitch-foreground: oklch(0.95 0.016 88);
+  --border: oklch(0.34 0.025 82 / 72%);
+  --input: oklch(0.38 0.024 82 / 75%);
+  --ring: oklch(0.79 0.145 82);
+  --chart-1: oklch(0.79 0.145 82);
+  --chart-2: oklch(0.68 0.12 72);
+  --chart-3: oklch(0.86 0.08 92);
+  --chart-4: oklch(0.6 0.09 52);
+  --chart-5: oklch(0.74 0.08 105);
+  --sidebar: oklch(0.13 0.008 80);
+  --sidebar-foreground: oklch(0.94 0.018 88);
+  --sidebar-primary: oklch(0.79 0.145 82);
+  --sidebar-primary-foreground: oklch(0.16 0.018 78);
+  --sidebar-accent: oklch(0.23 0.018 80);
+  --sidebar-accent-foreground: oklch(0.94 0.018 88);
+  --sidebar-border: oklch(0.34 0.025 82 / 72%);
+  --sidebar-ring: oklch(0.79 0.145 82);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 24%);
+  --shadow-elevated: 0 12px 40px rgb(0 0 0 / 45%);
 }
 
 @layer base {
@@ -166,6 +168,15 @@
     var(--pitch) 0%,
     oklch(0.32 0.09 158) 55%,
     oklch(0.38 0.12 150) 100%
+  );
+}
+
+.dark .pitch-gradient {
+  background-image: linear-gradient(
+    135deg,
+    var(--pitch) 0%,
+    color-mix(in oklab, var(--pitch) 78%, var(--primary)) 55%,
+    color-mix(in oklab, var(--pitch) 62%, var(--primary)) 100%
   );
 }
 
@@ -583,6 +594,13 @@
   );
 }
 
+.latest-final-card__matchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(0.75rem, 3vw, 2rem);
+}
+
 .latest-final-card__score-stage::before,
 .latest-final-card__score-stage::after {
   position: absolute;
@@ -619,8 +637,8 @@
 }
 
 .latest-final-card__score {
-  min-width: 8.5rem;
-  padding: 0.65rem 0.8rem;
+  min-width: 0;
+  padding: 0.55rem clamp(0.25rem, 1vw, 0.8rem);
   border: 1px solid rgba(255, 150, 70, 0.24);
   border-radius: 1rem;
   background: color-mix(in oklab, var(--background) 35%, transparent);
@@ -744,7 +762,8 @@
 
 @media (max-width: 640px) {
   .latest-final-card__score {
-    min-width: 6.5rem;
+    padding-right: 0.25rem;
+    padding-left: 0.25rem;
   }
 
   .latest-final-card__live-tag {

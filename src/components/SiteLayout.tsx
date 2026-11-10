@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Menu, Moon, Sun, Zap } from "lucide-react";
+import { Menu, Moon, Sun, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const NAV = [
@@ -31,8 +31,9 @@ function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      className="bg-[#fff1d6] text-[#182235] hover:bg-[#ffe5bd] hover:text-[#182235]"
-      aria-label="Toggle theme"
+      className="text-foreground hover:bg-accent hover:text-accent-foreground"
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      aria-pressed={dark}
       onClick={() => {
         const next = !dark;
         setDark(next);
@@ -61,12 +62,15 @@ export function SiteLayout({ children }: { children: ReactNode }) {
               FRIENDS LEAGUE
             </span>
           </Link>
-          <nav className="ml-auto hidden max-w-[52vw] items-center gap-1 overflow-x-auto whitespace-nowrap rounded-2xl border border-white/50 bg-white/55 p-1 shadow-sm backdrop-blur-xl md:flex dark:border-white/10 dark:bg-white/10">
+          <nav
+            aria-label="Primary navigation"
+            className="ml-auto hidden max-w-[52vw] items-center gap-1 overflow-x-auto whitespace-nowrap rounded-2xl border border-white/50 bg-white/55 p-1 shadow-sm backdrop-blur-xl md:flex dark:border-amber-300/15 dark:bg-black/75"
+          >
             {NAV.map((n) => (
               <Link
                 key={n.to}
                 to={n.to}
-                className="shrink-0 rounded-xl px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-white/70 hover:text-foreground dark:hover:bg-white/15"
+                className="shrink-0 rounded-xl px-3 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-white/70 hover:text-foreground dark:hover:bg-amber-200/10 dark:hover:text-amber-100"
                 activeProps={{
                   className:
                     "shrink-0 rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm",
@@ -93,22 +97,33 @@ export function SiteLayout({ children }: { children: ReactNode }) {
             <Button
               variant="ghost"
               size="icon"
-              className="bg-white/60 text-foreground shadow-sm hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/20 md:hidden"
-              aria-label="Menu"
+              className="bg-white/60 text-foreground shadow-sm hover:bg-white/80 dark:border dark:border-amber-300/15 dark:bg-black/70 dark:hover:bg-amber-200/10 md:hidden"
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+              aria-controls="mobile-primary-navigation"
               onClick={() => setOpen((v) => !v)}
             >
-              <Menu className="size-4" />
+              {open ? <X className="size-4" /> : <Menu className="size-4" />}
             </Button>
           </div>
         </div>
         {open && (
-          <nav className="grid gap-1 border-t border-white/40 bg-white/40 px-4 py-2 backdrop-blur-xl md:hidden dark:border-white/10 dark:bg-white/5">
+          <nav
+            id="mobile-primary-navigation"
+            aria-label="Primary navigation"
+            className="grid gap-1 border-t border-white/40 bg-white/40 px-4 py-2 backdrop-blur-xl md:hidden dark:border-amber-300/15 dark:bg-black/95"
+          >
             {NAV.map((n) => (
               <Link
                 key={n.to}
                 to={n.to}
                 onClick={() => setOpen(false)}
-                className="rounded-xl px-3 py-2 text-sm font-medium text-foreground/75 hover:bg-white/70 hover:text-foreground dark:hover:bg-white/15"
+                className="rounded-xl px-3 py-2 text-sm font-medium text-foreground/75 transition-colors hover:bg-white/70 hover:text-foreground dark:hover:bg-amber-200/10 dark:hover:text-amber-100"
+                activeProps={{
+                  className:
+                    "rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground",
+                }}
+                activeOptions={{ exact: n.to === "/" }}
               >
                 {n.label}
               </Link>
