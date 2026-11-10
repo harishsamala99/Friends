@@ -299,14 +299,24 @@ function MatchEditor({
     return goalsByPlayerAndTeam[key];
   });
 
-  // Group GK saves by team
+  // Show keepers who appeared even when they recorded no saves.
   const homeGKSaves = homeGKs.filter((p) => {
     const key = `${p.id}-${homeTeamId}`;
-    return savesByPlayerAndTeam[key];
+    return (
+      savesByPlayerAndTeam[key] ||
+      appearances.some(
+        (appearance) => appearance.player_id === p.id && appearance.team_id === homeTeamId,
+      )
+    );
   });
   const awayGKSaves = awayGKs.filter((p) => {
     const key = `${p.id}-${awayTeamId}`;
-    return savesByPlayerAndTeam[key];
+    return (
+      savesByPlayerAndTeam[key] ||
+      appearances.some(
+        (appearance) => appearance.player_id === p.id && appearance.team_id === awayTeamId,
+      )
+    );
   });
   const homeRatedPlayers = homeTeamPlayers.flatMap((player) => {
     const rating = playerRatingsById.get(player.id);
@@ -943,7 +953,7 @@ function MatchEditor({
                   <div className="space-y-1">
                     {homeGKSaves.map((gk) => {
                       const key = `${gk.id}-${homeTeamId}`;
-                      const saveCount = savesByPlayerAndTeam[key];
+                      const saveCount = savesByPlayerAndTeam[key] ?? 0;
                       return (
                         <div
                           key={gk.id}
@@ -969,7 +979,7 @@ function MatchEditor({
                   <div className="space-y-1">
                     {awayGKSaves.map((gk) => {
                       const key = `${gk.id}-${awayTeamId}`;
-                      const saveCount = savesByPlayerAndTeam[key];
+                      const saveCount = savesByPlayerAndTeam[key] ?? 0;
                       return (
                         <div
                           key={gk.id}
