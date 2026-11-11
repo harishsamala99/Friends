@@ -309,10 +309,45 @@ export const POSITIONS = [
   "Defender",
   "Left Back",
   "Right Back",
-  "Midfielder",
+  "Center Midfielder",
+  "Defensive Midfielder",
+  "Attacking Midfielder",
+  "Left Midfielder",
+  "Right Midfielder",
   "Winger",
   "Forward",
 ] as const;
+
+const PLAYER_POSITION_ORDER = [
+  "forward",
+  "winger",
+  "midfielder",
+  "defender",
+  "leftback",
+  "rightback",
+  "goalkeeper",
+];
+
+export function sortPlayersByPosition(players: Player[]): Player[] {
+  const getPositionRank = (position: string) => {
+    const normalizedPosition = position.toLowerCase().replace(/[^a-z]/g, "");
+    const exactRank = PLAYER_POSITION_ORDER.indexOf(normalizedPosition);
+    if (exactRank !== -1) return exactRank;
+    if (normalizedPosition.includes("forward")) return 0;
+    if (normalizedPosition.includes("winger")) return 1;
+    if (normalizedPosition.includes("midfielder")) return 2;
+    if (normalizedPosition.includes("defender")) return 3;
+    if (normalizedPosition.includes("leftback")) return 4;
+    if (normalizedPosition.includes("rightback")) return 5;
+    if (normalizedPosition.includes("goalkeeper")) return 6;
+    return PLAYER_POSITION_ORDER.length;
+  };
+
+  return [...players].sort((a, b) => {
+    const positionDifference = getPositionRank(a.position) - getPositionRank(b.position);
+    return positionDifference || a.name.localeCompare(b.name);
+  });
+}
 
 export const COMPETITION_FORMATS = [
   "League",

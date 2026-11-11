@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { PageHeader, TeamBadge, ListSkeleton, EmptyState } from "@/components/football-ui";
 import { Card, CardContent } from "@/components/ui/card";
-import { fetchTeams, fetchPlayers } from "@/lib/football";
+import { fetchTeams, fetchPlayers, sortPlayersByPosition } from "@/lib/football";
 
 export const Route = createFileRoute("/teams")({
   validateSearch: (search: Record<string, unknown>): { teamId?: string } => ({
@@ -95,8 +95,10 @@ function TeamsPage() {
         {selectedTeamId &&
           (() => {
             const selectedTeam = (teams.data ?? []).find((team) => team.id === selectedTeamId);
-            const squad = (players.data ?? []).filter(
-              (player) => player.team_id === selectedTeamId && player.status === "Active",
+            const squad = sortPlayersByPosition(
+              (players.data ?? []).filter(
+                (player) => player.team_id === selectedTeamId && player.status === "Active",
+              ),
             );
             if (!selectedTeam) return null;
             return (

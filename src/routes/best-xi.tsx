@@ -49,7 +49,14 @@ type Selection = Record<SlotKey, string>;
 const EMPTY_TOURNAMENTS: Tournament[] = [];
 const positionsForGroup = {
   FORWARDS: ["Forward"],
-  MIDFIELDERS: ["Midfielder"],
+  MIDFIELDERS: [
+    "Midfielder",
+    "Center Midfielder",
+    "Defensive Midfielder",
+    "Attacking Midfielder",
+    "Left Midfielder",
+    "Right Midfielder",
+  ],
   DEFENDERS: ["Defender", "Left Back", "Right Back"],
   GOALKEEPER: ["Goalkeeper"],
 } as const;

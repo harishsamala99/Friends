@@ -25,6 +25,7 @@ import {
   fetchTeams,
   insertTeams,
   savePlayer,
+  sortPlayersByPosition,
   upsertTeam,
   updateTeam,
   type Team,
@@ -110,8 +111,10 @@ function AdminPage() {
                     defaultValue={[(teams.data ?? [])[0]?.id ?? ""].filter(Boolean)}
                   >
                     {(teams.data ?? []).map((team) => {
-                      const teamPlayers = (players.data ?? []).filter(
-                        (p) => p.team_id === team.id && p.status === "Active",
+                      const teamPlayers = sortPlayersByPosition(
+                        (players.data ?? []).filter(
+                          (p) => p.team_id === team.id && p.status === "Active",
+                        ),
                       );
                       if (teamPlayers.length === 0) return null;
 
@@ -430,7 +433,7 @@ function PlayerForm({
 }) {
   const [name, setName] = useState("");
   const [teamId, setTeamId] = useState("");
-  const [position, setPosition] = useState<string>("Midfielder");
+  const [position, setPosition] = useState<string>("Center Midfielder");
 
   const save = useMutation({
     mutationFn: async () =>
