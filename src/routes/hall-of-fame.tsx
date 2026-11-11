@@ -15,6 +15,7 @@ import {
   fetchFixtures,
   fetchPlayerAchievements,
   fetchPlayers,
+  getBestXISlots,
   fetchTournamentTeamDefensiveRatings,
   fetchTeams,
   fetchTournaments,
@@ -683,30 +684,13 @@ function HallOfFamePage() {
               ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
                   {bestXISelections.map(({ tournament, selection }) => {
-                    const lineup = [
-                      {
-                        label: "Forwards",
-                        players: [selection.forward_1, selection.forward_2, selection.forward_3],
-                      },
-                      {
-                        label: "Midfielders",
-                        players: [
-                          selection.midfielder_1,
-                          selection.midfielder_2,
-                          selection.midfielder_3,
-                        ],
-                      },
-                      {
-                        label: "Defenders",
-                        players: [
-                          selection.defender_1,
-                          selection.defender_2,
-                          selection.defender_3,
-                          selection.defender_4,
-                        ],
-                      },
-                      { label: "Goalkeeper", players: [selection.goalkeeper] },
-                    ];
+                    const slots = getBestXISlots(selection.formation);
+                    const lineup = [...new Set(slots.map((slot) => slot.line))].map((line) => ({
+                      label: line,
+                      players: slots
+                        .filter((slot) => slot.line === line)
+                        .map((slot) => selection[slot.key]),
+                    }));
                     return (
                       <Card
                         key={`${tournament.id}-best-xi`}
@@ -716,7 +700,7 @@ function HallOfFamePage() {
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                                Official lineup · 4-3-3
+                                Official lineup · {selection.formation}
                               </p>
                               <h3 className="mt-1 font-display text-xl font-bold">
                                 {tournament.tournament_name || tournament.type}

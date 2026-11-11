@@ -201,6 +201,7 @@ export type Tournament = {
 export type BestXI = {
   id: string;
   tournament_id: string;
+  formation: string;
   forward_1: string;
   forward_2: string;
   forward_3: string;
@@ -214,6 +215,129 @@ export type BestXI = {
   goalkeeper: string;
   finalized_at: string;
 };
+
+export const BEST_XI_OUTFIELD_KEYS = [
+  "forward_1",
+  "forward_2",
+  "forward_3",
+  "midfielder_1",
+  "midfielder_2",
+  "midfielder_3",
+  "defender_1",
+  "defender_2",
+  "defender_3",
+  "defender_4",
+] as const;
+
+export type BestXIPositionGroup = "FORWARDS" | "MIDFIELDERS" | "DEFENDERS";
+
+type FormationLine = {
+  label: string;
+  group: BestXIPositionGroup;
+  count: number;
+};
+
+export const BEST_XI_FORMATIONS: { value: string; lines: FormationLine[] }[] = [
+  {
+    value: "4-3-3",
+    lines: [
+      { label: "FORWARDS", group: "FORWARDS", count: 3 },
+      { label: "MIDFIELDERS", group: "MIDFIELDERS", count: 3 },
+      { label: "DEFENDERS", group: "DEFENDERS", count: 4 },
+    ],
+  },
+  {
+    value: "4-2-1-3",
+    lines: [
+      { label: "FORWARDS", group: "FORWARDS", count: 3 },
+      { label: "ATTACKING MIDFIELDER", group: "MIDFIELDERS", count: 1 },
+      { label: "DEFENSIVE MIDFIELDERS", group: "MIDFIELDERS", count: 2 },
+      { label: "DEFENDERS", group: "DEFENDERS", count: 4 },
+    ],
+  },
+  {
+    value: "4-2-3-1",
+    lines: [
+      { label: "FORWARD", group: "FORWARDS", count: 1 },
+      { label: "ATTACKING MIDFIELDERS", group: "MIDFIELDERS", count: 3 },
+      { label: "DEFENSIVE MIDFIELDERS", group: "MIDFIELDERS", count: 2 },
+      { label: "DEFENDERS", group: "DEFENDERS", count: 4 },
+    ],
+  },
+  {
+    value: "4-4-2",
+    lines: [
+      { label: "FORWARDS", group: "FORWARDS", count: 2 },
+      { label: "MIDFIELDERS", group: "MIDFIELDERS", count: 4 },
+      { label: "DEFENDERS", group: "DEFENDERS", count: 4 },
+    ],
+  },
+  {
+    value: "3-5-2",
+    lines: [
+      { label: "FORWARDS", group: "FORWARDS", count: 2 },
+      { label: "MIDFIELDERS", group: "MIDFIELDERS", count: 5 },
+      { label: "DEFENDERS", group: "DEFENDERS", count: 3 },
+    ],
+  },
+  {
+    value: "3-4-3",
+    lines: [
+      { label: "FORWARDS", group: "FORWARDS", count: 3 },
+      { label: "MIDFIELDERS", group: "MIDFIELDERS", count: 4 },
+      { label: "DEFENDERS", group: "DEFENDERS", count: 3 },
+    ],
+  },
+  {
+    value: "4-1-4-1",
+    lines: [
+      { label: "FORWARD", group: "FORWARDS", count: 1 },
+      { label: "ATTACKING MIDFIELDERS", group: "MIDFIELDERS", count: 4 },
+      { label: "DEFENSIVE MIDFIELDER", group: "MIDFIELDERS", count: 1 },
+      { label: "DEFENDERS", group: "DEFENDERS", count: 4 },
+    ],
+  },
+  {
+    value: "5-3-2",
+    lines: [
+      { label: "FORWARDS", group: "FORWARDS", count: 2 },
+      { label: "MIDFIELDERS", group: "MIDFIELDERS", count: 3 },
+      { label: "DEFENDERS", group: "DEFENDERS", count: 5 },
+    ],
+  },
+];
+
+export type BestXISlot = {
+  key: (typeof BEST_XI_OUTFIELD_KEYS)[number] | "goalkeeper";
+  label: string;
+  group: BestXIPositionGroup | "GOALKEEPER";
+  line: string;
+};
+
+export function getBestXISlots(formation = "4-3-3"): BestXISlot[] {
+  const selectedFormation =
+    BEST_XI_FORMATIONS.find((item) => item.value === formation) ?? BEST_XI_FORMATIONS[0]!;
+  let slotIndex = 0;
+  const outfieldSlots = selectedFormation.lines.flatMap((line) =>
+    Array.from({ length: line.count }, (_, index) => {
+      const key = BEST_XI_OUTFIELD_KEYS[slotIndex++];
+      if (!key) throw new Error(`Formation ${formation} exceeds the 10 outfield player limit`);
+      return {
+        key,
+        label:
+          line.count === 1
+            ? line.label.replace(/S$/, "")
+            : `${line.label.replace(/S$/, "")} ${index + 1}`,
+        group: line.group,
+        line: line.label,
+      };
+    }),
+  );
+  return [
+    ...outfieldSlots,
+    { key: "goalkeeper", label: "Goalkeeper", group: "GOALKEEPER", line: "GOALKEEPER" },
+  ];
+}
 
 export type MrIconLeaderboardEntry = {
   player_id: string;
@@ -1062,11 +1186,12 @@ export async function fetchBestXIs(): Promise<BestXI[]> {
 
 export async function saveBestXI(
   tournamentId: string,
-  players: Omit<BestXI, "id" | "tournament_id" | "finalized_at">,
+  formation: string,
+  players: Omit<BestXI, "id" | "tournament_id" | "finalized_at" | "formation">,
 ): Promise<BestXI> {
   const { data, error } = await db
     .from("best_xi")
-    .upsert({ tournament_id: tournamentId, ...players }, { onConflict: "tournament_id" })
+    .upsert({ tournament_id: tournamentId, formation, ...players }, { onConflict: "tournament_id" })
     .select()
     .single();
   if (error) throw error;

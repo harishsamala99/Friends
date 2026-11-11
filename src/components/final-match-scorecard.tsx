@@ -232,6 +232,7 @@ function TournamentSetup({
   fixtures,
   onFixturesSaved,
   onSaveFinalistTeams,
+  onSelectTournament,
   tournaments,
   onCreateTournament,
   onDeleteTournament,
@@ -246,6 +247,7 @@ function TournamentSetup({
   fixtures: Fixture[];
   onFixturesSaved: () => void;
   onSaveFinalistTeams: (homeTeam: string, awayTeam: string) => Promise<void>;
+  onSelectTournament: (tournament: Tournament) => void;
   tournaments: Tournament[];
   onCreateTournament: () => void;
   onDeleteTournament: (tournamentId: string) => void;
@@ -253,6 +255,20 @@ function TournamentSetup({
   isCreated: boolean;
 }) {
   const selectedTournament = tournaments.find((tournament) => tournament.id === tournamentId);
+  const tournamentStatus =
+    selectedTournament?.status === "completed"
+      ? "Completed"
+      : selectedTournament?.fixtureStatus === "fixtures_completed"
+        ? "Fixtures completed"
+        : fixtures.some((fixture) => fixture.status === "Live" || fixture.status === "Half Time")
+          ? "In progress"
+          : fixtures.length > 0
+            ? "Fixtures scheduled"
+            : isCreated
+              ? "Not started"
+              : "Not created";
+  const isTournamentComplete =
+    tournamentStatus === "Completed" || tournamentStatus === "Fixtures completed";
   const [homeId, setHomeId] = useState("");
   const [awayId, setAwayId] = useState("");
   const [matchCount, setMatchCount] = useState("1");
@@ -423,6 +439,27 @@ function TournamentSetup({
       </CardHeader>
       <CardContent className="space-y-5 p-6">
         <div>
+          <Label htmlFor="current-tournament">Current tournament</Label>
+          <Select
+            value={isCreated ? tournamentId : ""}
+            onValueChange={(value) => {
+              const tournament = tournaments.find((item) => item.id === value);
+              if (tournament) onSelectTournament(tournament);
+            }}
+          >
+            <SelectTrigger id="current-tournament" className="mt-1 text-foreground">
+              <SelectValue placeholder="Select a tournament" />
+            </SelectTrigger>
+            <SelectContent>
+              {tournaments.map((tournament) => (
+                <SelectItem key={tournament.id} value={tournament.id}>
+                  {tournament.tournamentName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
           <Label htmlFor="tournament-name">Tournament name</Label>
           <Input
             id="tournament-name"
@@ -438,12 +475,12 @@ function TournamentSetup({
             variant="outline"
             role="status"
             className={
-              selectedTournament?.status === "completed"
+              isTournamentComplete
                 ? "w-fit border-emerald-600 bg-emerald-50 px-3 py-1 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
                 : "w-fit border-amber-600 bg-amber-50 px-3 py-1 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200"
             }
           >
-            {selectedTournament?.status === "completed" ? "Completed" : "In progress"}
+            {tournamentStatus}
           </Badge>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -1357,27 +1394,107 @@ export function FinalMatchScorecard() {
   };
 
   useEffect(() => {
-    if (!isCurrentTournamentCreated || !fixturesQuery.data) return;
+    if (!isCurrentTournamentCreated || !fixturesQuery.data || !currentTournament) return;
 
-    const savedFinal = fixturesQuery.data.find(
+    const markedFinal = fixturesQuery.data.find(
       (fixture) =>
         fixture.notes?.includes("completed league standings") ||
         fixture.notes?.includes("Final teams selected manually"),
     );
+    const findTeamId = (name: string) =>
+      teamsQuery.data?.find((team) => team.name.trim().toLowerCase() === name.trim().toLowerCase())
+        ?.id ?? "";
+    const homeTeamId = markedFinal?.home_team_id ?? findTeamId(currentTournament.homeTeam);
+    const awayTeamId = markedFinal?.away_team_id ?? findTeamId(currentTournament.awayTeam);
+    const savedFinal =
+      markedFinal ??
+      fixturesQuery.data.find(
+        (fixture) => fixture.home_team_id === homeTeamId && fixture.away_team_id === awayTeamId,
+      );
 
-    if (!savedFinal) {
+    if (
+      !savedFinal &&
+      (!currentTournament.homeTeam ||
+        !currentTournament.awayTeam ||
+        currentTournament.homeTeam === "TBD" ||
+        currentTournament.awayTeam === "TBD")
+    ) {
       setSelectedHomeTeam("");
       setSelectedAwayTeam("");
       resetMatch();
       return;
     }
-    setSelectedHomeTeam(savedFinal.home_team_id);
-    setSelectedAwayTeam(savedFinal.away_team_id);
-    loadTeamPlayers(savedFinal.home_team_id, "home");
-    loadTeamPlayers(savedFinal.away_team_id, "away");
+
+    if (tournamentEventStatsQuery.isLoading) return;
+
+    const homeId = savedFinal?.home_team_id ?? homeTeamId;
+    const awayId = savedFinal?.away_team_id ?? awayTeamId;
+    const matchEvents =
+      tournamentEventStatsQuery.data?.filter((event) => event.fixture_id === savedFinal?.id) ?? [];
+    const playersById = new Map((playersQuery.data ?? []).map((player) => [player.id, player]));
+    const teamPlayers = (teamId: string) =>
+      (playersQuery.data ?? [])
+        .filter((player) => player.team_id === teamId && player.status === "Active")
+        .map((player) => ({
+          id: player.id,
+          name: player.name,
+          isGK: player.position.toLowerCase().includes("goalkeeper"),
+        }));
+    const createGoals = (
+      teamId: string,
+      score: number | null | undefined,
+      side: string,
+    ): Goal[] => {
+      const events = matchEvents.filter(
+        (event) => event.event_type === "goal" && event.team_id === teamId,
+      );
+      const goalCount = Math.max(score ?? 0, events.length);
+      return Array.from({ length: goalCount }, (_, index) => {
+        const event = events[index];
+        const player = event?.player_id ? playersById.get(event.player_id) : undefined;
+        return {
+          id: event?.id ?? `${side}-recorded-goal-${index}`,
+          playerId: event?.player_id ?? "",
+          playerName: player?.name ?? "Recorded goal",
+          ...(event ? { minute: event.minute } : {}),
+        };
+      });
+    };
+    const createSaves = (teamId: string, side: string): Save[] =>
+      matchEvents
+        .filter((event) => event.event_type === "save" && event.team_id === teamId)
+        .map((event) => ({
+          id: event.id,
+          playerId: event.player_id ?? "",
+          playerName: event.player_id
+            ? (playersById.get(event.player_id)?.name ?? "Unknown")
+            : "Unknown",
+          minute: event.minute,
+        }));
+
+    setSelectedHomeTeam(homeId);
+    setSelectedAwayTeam(awayId);
+    setHome({
+      name: teamsQuery.data?.find((team) => team.id === homeId)?.name ?? currentTournament.homeTeam,
+      players: teamPlayers(homeId),
+      goals: createGoals(homeId, savedFinal?.home_score ?? currentTournament.homeScore, "home"),
+      assists: [],
+      saves: createSaves(homeId, "home"),
+    });
+    setAway({
+      name: teamsQuery.data?.find((team) => team.id === awayId)?.name ?? currentTournament.awayTeam,
+      players: teamPlayers(awayId),
+      goals: createGoals(awayId, savedFinal?.away_score ?? currentTournament.awayScore, "away"),
+      assists: [],
+      saves: createSaves(awayId, "away"),
+    });
+    setPlayerRatings({});
   }, [
     fixturesQuery.data,
     isCurrentTournamentCreated,
+    currentTournament,
+    tournamentEventStatsQuery.data,
+    tournamentEventStatsQuery.isLoading,
     playersQuery.data,
     teamsQuery.data,
     tournamentId,
@@ -1803,13 +1920,13 @@ export function FinalMatchScorecard() {
         await replaceFixtureEvents(finalFixture.id, [
           ...home.goals.map((goal) => ({
             team_id: selectedHomeTeam,
-            player_id: goal.playerId,
+            player_id: goal.playerId || null,
             minute: goal.minute ?? 0,
             event_type: "goal",
           })),
           ...away.goals.map((goal) => ({
             team_id: selectedAwayTeam,
-            player_id: goal.playerId,
+            player_id: goal.playerId || null,
             minute: goal.minute ?? 0,
             event_type: "goal",
           })),
@@ -2004,13 +2121,14 @@ export function FinalMatchScorecard() {
             tournamentId={tournamentId}
             fixtures={fixturesQuery.data ?? []}
             onFixturesSaved={() => {
-              void queryClient.invalidateQueries({ queryKey: ["fixtures", tournamentId] });
+              void queryClient.invalidateQueries({ queryKey: ["fixtures"] });
               void queryClient.invalidateQueries({ queryKey: ["tournaments"] });
             }}
             onSaveFinalistTeams={(homeTeam, awayTeam) =>
               persistFinalistTeams(homeTeam, awayTeam, true)
             }
             tournaments={tournaments}
+            onSelectTournament={selectTournamentForFixtures}
             onCreateTournament={createTournament}
             onDeleteTournament={(id) => void handleDeleteTournament(id)}
             creating={createTournamentMutation.isPending}

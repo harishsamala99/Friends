@@ -12,6 +12,7 @@ export type Database = {
         Row: {
           id: string;
           tournament_id: string;
+          formation: string;
           forward_1: string;
           forward_2: string;
           forward_3: string;
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           id?: string;
           tournament_id: string;
+          formation?: string;
           forward_1: string;
           forward_2: string;
           forward_3: string;
@@ -44,6 +46,7 @@ export type Database = {
         Update: {
           id?: string;
           tournament_id?: string;
+          formation?: string;
           forward_1?: string;
           forward_2?: string;
           forward_3?: string;

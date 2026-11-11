@@ -7,6 +7,7 @@ import {
   fetchFixtures,
   fetchPlayers,
   fetchTournaments,
+  getBestXISlots,
   type BestXI,
   type Fixture,
   type FixtureAppearance,
@@ -18,22 +19,13 @@ import {
 import type { Json } from "@/integrations/supabase/types";
 
 export const HOUSE_ICON_POSITIONS = [
-  { key: "forward", label: "ICONIC FORWARD", bestXiSlots: ["forward_1", "forward_2", "forward_3"] },
-  {
-    key: "midfielder",
-    label: "ICONIC MIDFIELDER",
-    bestXiSlots: ["midfielder_1", "midfielder_2", "midfielder_3"],
-  },
-  {
-    key: "defender",
-    label: "ICONIC DEFENDER",
-    bestXiSlots: ["defender_1", "defender_2", "defender_3", "defender_4"],
-  },
-  { key: "goalkeeper", label: "ICONIC GOALKEEPER", bestXiSlots: ["goalkeeper"] },
+  { key: "forward", label: "ICONIC FORWARD" },
+  { key: "midfielder", label: "ICONIC MIDFIELDER" },
+  { key: "defender", label: "ICONIC DEFENDER" },
+  { key: "goalkeeper", label: "ICONIC GOALKEEPER" },
 ] as const satisfies ReadonlyArray<{
   key: HouseIconPosition;
   label: string;
-  bestXiSlots: readonly (keyof BestXI)[];
 }>;
 
 export type HouseIconPosition = "forward" | "midfielder" | "defender" | "goalkeeper";
@@ -514,9 +506,11 @@ function generateGroup(
   for (const tournament of tournaments) {
     const bestXI = bestXIByTournament.get(tournament.id);
     if (!bestXI) continue;
-    const missingSlots = HOUSE_ICON_POSITIONS.flatMap(({ bestXiSlots }) =>
-      bestXiSlots.filter((slot) => !bestXI[slot]),
-    );
+    const missingSlots = getBestXISlots(bestXI.formation)
+      .filter((slot) => slot.group !== "GOALKEEPER")
+      .filter((slot) => !bestXI[slot.key])
+      .map((slot) => slot.key);
+    if (!bestXI.goalkeeper) missingSlots.push("goalkeeper");
     if (missingSlots.length > 0) {
       reviewReasons.push(`Best XI is incomplete for ${tournamentName(tournament)}.`);
     }
@@ -524,13 +518,18 @@ function generateGroup(
 
   const selections = EMPTY_SELECTIONS();
   if (reviewReasons.length === 0) {
-    for (const { key, bestXiSlots } of HOUSE_ICON_POSITIONS) {
+    for (const { key } of HOUSE_ICON_POSITIONS) {
       const candidates = new Map<string, Candidate>();
       let missingPlayerRecord = false;
       for (const tournament of tournaments) {
         const bestXI = bestXIByTournament.get(tournament.id);
         if (!bestXI) continue;
-        const selectedIds = new Set(bestXiSlots.map((slot) => bestXI[slot]).filter(Boolean));
+        const selectedIds = new Set(
+          getBestXISlots(bestXI.formation)
+            .filter((slot) => slot.group.toLowerCase().replace(/s$/, "") === key)
+            .map((slot) => bestXI[slot.key])
+            .filter(Boolean),
+        );
         for (const playerId of selectedIds) {
           const player = playerById.get(playerId);
           if (!player) {

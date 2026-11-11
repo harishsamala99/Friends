@@ -303,7 +303,10 @@ function Home() {
       goalkeeper.player_name.trim().toLowerCase() ===
       latestTournament?.stats.topSaver.name.trim().toLowerCase(),
   );
-  const upcoming = all.filter((f) => f.status === "Scheduled").slice(0, 5);
+  const scheduledFixtures = (allFixtures.data ?? []).filter(
+    (fixture) => fixture.status === "Scheduled",
+  );
+  const upcoming = scheduledFixtures.slice(0, 5);
   const recent = (allFixtures.data ?? [])
     .filter((f) => f.home_score != null)
     .sort((a, b) => +new Date(b.kickoff) - +new Date(a.kickoff))
@@ -356,7 +359,7 @@ function Home() {
               </div>
               <div className="px-3 text-center sm:px-5">
                 <p className="font-display text-2xl font-bold tabular-nums sm:text-3xl">
-                  {fixtures.isLoading ? "—" : upcoming.length}
+                  {allFixtures.isLoading ? "—" : scheduledFixtures.length}
                 </p>
                 <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
                   Upcoming

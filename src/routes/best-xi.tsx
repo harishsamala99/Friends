@@ -13,6 +13,9 @@ import {
   fetchPlayers,
   fetchTeams,
   fetchTournaments,
+  BEST_XI_FORMATIONS,
+  BEST_XI_OUTFIELD_KEYS,
+  getBestXISlots,
   saveBestXI,
   type BestXI,
   type Player,
@@ -30,25 +33,11 @@ export const Route = createFileRoute("/best-xi")({
   component: BestXIPage,
 });
 
-const slots = [
-  { key: "forward_1", label: "Forward 1", group: "FORWARDS" },
-  { key: "forward_2", label: "Forward 2", group: "FORWARDS" },
-  { key: "forward_3", label: "Forward 3", group: "FORWARDS" },
-  { key: "midfielder_1", label: "Midfielder 1", group: "MIDFIELDERS" },
-  { key: "midfielder_2", label: "Midfielder 2", group: "MIDFIELDERS" },
-  { key: "midfielder_3", label: "Midfielder 3", group: "MIDFIELDERS" },
-  { key: "defender_1", label: "Defender 1", group: "DEFENDERS" },
-  { key: "defender_2", label: "Defender 2", group: "DEFENDERS" },
-  { key: "defender_3", label: "Defender 3", group: "DEFENDERS" },
-  { key: "defender_4", label: "Defender 4", group: "DEFENDERS" },
-  { key: "goalkeeper", label: "Goalkeeper", group: "GOALKEEPER" },
-] as const;
-
-type SlotKey = (typeof slots)[number]["key"];
+type SlotKey = (typeof BEST_XI_OUTFIELD_KEYS)[number] | "goalkeeper";
 type Selection = Record<SlotKey, string>;
 const EMPTY_TOURNAMENTS: Tournament[] = [];
 const positionsForGroup = {
-  FORWARDS: ["Forward"],
+  FORWARDS: ["Forward", "Winger"],
   MIDFIELDERS: [
     "Midfielder",
     "Center Midfielder",
@@ -66,7 +55,7 @@ function getStoredTournamentId() {
 }
 
 const emptySelection = (): Selection =>
-  Object.fromEntries(slots.map((slot) => [slot.key, ""])) as Selection;
+  Object.fromEntries([...BEST_XI_OUTFIELD_KEYS, "goalkeeper"].map((key) => [key, ""])) as Selection;
 
 function BestXIPage() {
   const queryClient = useQueryClient();
@@ -80,7 +69,9 @@ function BestXIPage() {
   const teamList = Array.isArray(teams.data) ? teams.data : [];
   const [tournamentId, setTournamentId] = useState("");
   const [selection, setSelection] = useState<Selection>(emptySelection);
+  const [formation, setFormation] = useState("4-3-3");
   const [savedBestXI, setSavedBestXI] = useState<BestXI | null>(null);
+  const slots = getBestXISlots(formation);
   const selectedTournament = tournamentList.find((tournament) => tournament.id === tournamentId);
   const teamById = new Map(teamList.map((team: Team) => [team.id, team.name]));
   const bestXI = useQuery({
@@ -102,17 +93,19 @@ function BestXIPage() {
 
   useEffect(() => {
     setSelection(emptySelection());
+    setFormation("4-3-3");
     setSavedBestXI(null);
   }, [tournamentId]);
 
   useEffect(() => {
     if (!bestXI.data) return;
+    setFormation(bestXI.data.formation || "4-3-3");
     setSelection(selectionFromBestXI(bestXI.data));
     setSavedBestXI(bestXI.data);
   }, [bestXI.data]);
 
   const save = useMutation({
-    mutationFn: () => saveBestXI(tournamentId, selection),
+    mutationFn: () => saveBestXI(tournamentId, formation, selection),
     onSuccess: async (saved) => {
       setSavedBestXI(saved);
       toast.success("Best XI saved and finalized");
@@ -140,6 +133,14 @@ function BestXIPage() {
     localStorage.setItem("current-tournament-id", nextId);
   }
 
+  function handleFormationChange(nextFormation: string) {
+    if (slots.some((slot) => selection[slot.key])) {
+      toast.info("Formation changed. Select players again for the new positions.");
+      setSelection(emptySelection());
+    }
+    setFormation(nextFormation);
+  }
+
   function handleSave(): void {
     if (!tournamentId) {
       toast.error("Select a tournament first");
@@ -149,7 +150,7 @@ function BestXIPage() {
       toast.error("Fill all 11 player positions before saving");
       return;
     }
-    if (new Set(Object.values(selection)).size !== slots.length) {
+    if (new Set(slots.map((slot) => selection[slot.key])).size !== slots.length) {
       toast.error("Each Best XI position must use a different player");
       return;
     }
@@ -211,21 +212,39 @@ function BestXIPage() {
               </span>
             </CardHeader>
             <CardContent className="space-y-7">
+              {!finalized && (
+                <label className="block space-y-2 text-sm font-medium">
+                  Formation
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm sm:max-w-xs"
+                    value={formation}
+                    onChange={(event) => handleFormationChange(event.target.value)}
+                  >
+                    {BEST_XI_FORMATIONS.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {finalized ? (
                 <SavedPlayersList
                   savedBestXI={savedBestXI}
                   playerById={playerById}
                   teamById={teamById}
+                  slots={slots}
+                  formation={formation}
                 />
               ) : (
-                ["FORWARDS", "MIDFIELDERS", "DEFENDERS", "GOALKEEPER"].map((group) => (
-                  <section key={group} className="space-y-3">
+                [...new Set(slots.map((slot) => slot.line))].map((line) => (
+                  <section key={line} className="space-y-3">
                     <h2 className="flex items-center gap-2 text-xs font-black tracking-[0.18em] text-primary">
-                      <Shield className="size-4" /> {group}
+                      <Shield className="size-4" /> {line}
                     </h2>
                     <div className="grid gap-3 sm:grid-cols-2">
                       {slots
-                        .filter((slot) => slot.group === group)
+                        .filter((slot) => slot.line === line)
                         .map((slot) => (
                           <label key={slot.key} className="space-y-1 text-sm font-medium">
                             {slot.label}
@@ -237,7 +256,7 @@ function BestXIPage() {
                                   return (
                                     player.status === "Active" &&
                                     position !== undefined &&
-                                    positionsForGroup[group as keyof typeof positionsForGroup].some(
+                                    positionsForGroup[slot.group].some(
                                       (allowedPosition) =>
                                         allowedPosition.toLowerCase() === position,
                                     )
@@ -263,7 +282,13 @@ function BestXIPage() {
                   </section>
                 ))
               )}
-              <PlayingXI selection={selection} playerById={playerById} teamById={teamById} />
+              <PlayingXI
+                formation={formation}
+                slots={slots}
+                selection={selection}
+                playerById={playerById}
+                teamById={teamById}
+              />
               {!finalized && (
                 <button
                   type="button"
@@ -286,14 +311,21 @@ function SavedPlayersList({
   savedBestXI,
   playerById,
   teamById,
+  slots,
+  formation,
 }: {
   savedBestXI: BestXI | null;
   playerById: Map<string, Player>;
   teamById: Map<string, string>;
+  slots: ReturnType<typeof getBestXISlots>;
+  formation: string;
 }) {
   return (
     <section className="space-y-3" aria-label="Saved Best XI players">
-      <h2 className="text-xs font-black tracking-[0.18em] text-primary">SELECTED PLAYERS</h2>
+      <div>
+        <h2 className="text-xs font-black tracking-[0.18em] text-primary">SELECTED PLAYERS</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{formation} formation</p>
+      </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {slots.map((slot) => {
           const player = playerById.get(savedBestXI?.[slot.key] ?? "");
@@ -318,44 +350,48 @@ function SavedPlayersList({
 }
 
 function selectionFromBestXI(saved: BestXI): Selection {
-  return Object.fromEntries(slots.map((slot) => [slot.key, saved[slot.key]])) as Selection;
+  return Object.fromEntries(
+    [...BEST_XI_OUTFIELD_KEYS, "goalkeeper"].map((key) => [key, saved[key]]),
+  ) as Selection;
 }
 
 function PlayingXI({
+  formation,
+  slots,
   selection,
   playerById,
   teamById,
 }: {
+  formation: string;
+  slots: ReturnType<typeof getBestXISlots>;
   selection: Selection;
   playerById: Map<string, Player>;
   teamById: Map<string, string>;
 }) {
-  const rows = [
-    ["FORWARDS", ["forward_1", "forward_2", "forward_3"]],
-    ["MIDFIELDERS", ["midfielder_1", "midfielder_2", "midfielder_3"]],
-    ["DEFENDERS", ["defender_1", "defender_2", "defender_3", "defender_4"]],
-    ["GOALKEEPER", ["goalkeeper"]],
-  ] as const;
+  const rows = [...new Set(slots.map((slot) => slot.line))].map((line) => ({
+    line,
+    slots: slots.filter((slot) => slot.line === line),
+  }));
 
   return (
     <section className="space-y-3" aria-label="Playing XI preview">
       <div>
         <h2 className="text-xs font-black tracking-[0.18em] text-primary">PLAYING XI</h2>
-        <p className="mt-1 text-sm text-muted-foreground">4-3-3 formation</p>
+        <p className="mt-1 text-sm text-muted-foreground">{formation} formation</p>
       </div>
       <div className="overflow-x-auto rounded-xl">
         <div className="pitch-gradient relative grid min-w-3xl gap-7 overflow-hidden rounded-xl border border-white/20 p-8 shadow-elevated">
           <div className="pointer-events-none absolute inset-4 rounded-lg border border-white/35" />
           <div className="pointer-events-none absolute left-1/2 top-1/2 size-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/35" />
-          {rows.map(([label, row]) => (
-            <div key={label} className="relative z-10 space-y-2 text-center">
-              <p className="text-[10px] font-black tracking-[0.18em] text-white/75">{label}</p>
+          {rows.map(({ line, slots: lineSlots }) => (
+            <div key={line} className="relative z-10 space-y-2 text-center">
+              <p className="text-[10px] font-black tracking-[0.18em] text-white/75">{line}</p>
               <div className="flex flex-nowrap justify-center gap-4">
-                {row.map((slotKey) => {
-                  const player = playerById.get(selection[slotKey]);
+                {lineSlots.map((slot) => {
+                  const player = playerById.get(selection[slot.key]);
                   return (
                     <div
-                      key={slotKey}
+                      key={slot.key}
                       className="flex min-h-16 w-36 shrink-0 flex-col items-center justify-center rounded-md border border-white/25 bg-black/25 px-2 py-2 text-white backdrop-blur-sm"
                     >
                       <span className="text-xs font-bold leading-tight">
