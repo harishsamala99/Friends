@@ -809,7 +809,7 @@ function WinningTeamLineup({
   playersError: Error | null;
 }) {
   const positionOrder = [
-    (position: string) => position.includes("forward"),
+    (position: string) => position.includes("forward") || position.includes("striker"),
     (position: string) => position.includes("winger"),
     (position: string) => position.includes("midfielder"),
     (position: string) => position.includes("left back"),

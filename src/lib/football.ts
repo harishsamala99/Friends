@@ -439,11 +439,13 @@ export const POSITIONS = [
   "Left Midfielder",
   "Right Midfielder",
   "Winger",
+  "Second Striker",
   "Forward",
 ] as const;
 
 const PLAYER_POSITION_ORDER = [
   "forward",
+  "secondstriker",
   "winger",
   "midfielder",
   "defender",
@@ -457,6 +459,7 @@ export function sortPlayersByPosition(players: Player[]): Player[] {
     const normalizedPosition = position.toLowerCase().replace(/[^a-z]/g, "");
     const exactRank = PLAYER_POSITION_ORDER.indexOf(normalizedPosition);
     if (exactRank !== -1) return exactRank;
+    if (normalizedPosition.includes("striker")) return 0;
     if (normalizedPosition.includes("forward")) return 0;
     if (normalizedPosition.includes("winger")) return 1;
     if (normalizedPosition.includes("midfielder")) return 2;
