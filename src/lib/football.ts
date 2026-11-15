@@ -433,19 +433,22 @@ export const POSITIONS = [
   "Defender",
   "Left Back",
   "Right Back",
-  "Center Midfielder",
+  "Midfielder",
   "Defensive Midfielder",
-  "Attacking Midfielder",
-  "Left Midfielder",
-  "Right Midfielder",
   "Winger",
-  "Second Striker",
   "Forward",
 ] as const;
 
+const LEGACY_POSITION_NORMALIZATION: Record<string, string> = {
+  "center midfielder": "Midfielder",
+  "left midfielder": "Midfielder",
+  "right midfielder": "Midfielder",
+  "attacking midfielder": "Midfielder",
+  "second striker": "Forward",
+};
+
 const PLAYER_POSITION_ORDER = [
   "forward",
-  "secondstriker",
   "winger",
   "midfielder",
   "defender",
@@ -523,7 +526,10 @@ export async function fetchPlayers(teamId?: string): Promise<Player[]> {
   if (teamId) q = q.eq("team_id", teamId);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as Player[];
+  return ((data ?? []) as Player[]).map((player) => {
+    const normalizedPosition = LEGACY_POSITION_NORMALIZATION[player.position.trim().toLowerCase()];
+    return normalizedPosition ? { ...player, position: normalizedPosition } : player;
+  });
 }
 
 export async function fetchFixtures(
@@ -1192,13 +1198,45 @@ export async function saveBestXI(
   formation: string,
   players: Omit<BestXI, "id" | "tournament_id" | "finalized_at" | "formation">,
 ): Promise<BestXI> {
-  const { data, error } = await db
+  let result = await db
     .from("best_xi")
     .upsert({ tournament_id: tournamentId, formation, ...players }, { onConflict: "tournament_id" })
     .select()
     .single();
+  let formationPersisted = true;
+  if (result.error && isMissingBestXIFormationColumn(result.error)) {
+    if (formation !== "4-3-3") {
+      throw new Error(
+        "The Best XI table is missing its formation column. Apply supabase/migrations/20261111000000_add_best_xi_formation.sql in Supabase, then save again.",
+      );
+    }
+
+    formationPersisted = false;
+    result = await db
+      .from("best_xi")
+      .upsert({ tournament_id: tournamentId, ...players }, { onConflict: "tournament_id" })
+      .select()
+      .single();
+  }
+  const { data, error } = result;
   if (error) throw error;
-  return data as BestXI;
+  const saved = data as BestXI;
+  const persisted = await fetchBestXI(tournamentId);
+  if (
+    !persisted ||
+    persisted.id !== saved.id ||
+    (formationPersisted && persisted.formation !== formation) ||
+    [...BEST_XI_OUTFIELD_KEYS, "goalkeeper"].some((key) => persisted[key] !== players[key])
+  ) {
+    throw new Error(
+      "Supabase accepted the Best XI save but the saved players could not be verified. Check the active database and Best XI migrations.",
+    );
+  }
+  return { ...persisted, formation: formationPersisted ? persisted.formation : "4-3-3" };
+}
+
+function isMissingBestXIFormationColumn(error: { code?: string; message: string }): boolean {
+  return (error.code === "PGRST204" || error.code === "42703") && /formation/i.test(error.message);
 }
 
 export async function deletePlayerGoals(playerId: string, tournamentId?: string) {

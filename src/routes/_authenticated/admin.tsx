@@ -433,7 +433,7 @@ function PlayerForm({
 }) {
   const [name, setName] = useState("");
   const [teamId, setTeamId] = useState("");
-  const [position, setPosition] = useState<string>("Center Midfielder");
+  const [position, setPosition] = useState<string>("Midfielder");
 
   const save = useMutation({
     mutationFn: async () =>

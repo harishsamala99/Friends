@@ -37,15 +37,8 @@ type SlotKey = (typeof BEST_XI_OUTFIELD_KEYS)[number] | "goalkeeper";
 type Selection = Record<SlotKey, string>;
 const EMPTY_TOURNAMENTS: Tournament[] = [];
 const positionsForGroup = {
-  FORWARDS: ["Forward", "Second Striker", "Winger"],
-  MIDFIELDERS: [
-    "Midfielder",
-    "Center Midfielder",
-    "Defensive Midfielder",
-    "Attacking Midfielder",
-    "Left Midfielder",
-    "Right Midfielder",
-  ],
+  FORWARDS: ["Forward", "Winger"],
+  MIDFIELDERS: ["Midfielder", "Defensive Midfielder"],
   DEFENDERS: ["Defender", "Left Back", "Right Back"],
   GOALKEEPER: ["Goalkeeper"],
 } as const;

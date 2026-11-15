@@ -31,7 +31,8 @@ const ACHIEVEMENTS = {
   },
   on_fire: {
     name: "On Fire",
-    description: "Scored in five consecutive finalized matches played.",
+    description:
+      "Scored in five consecutive finalized fixtures for their team within one tournament.",
     icon: Flame,
   },
 } as const;
