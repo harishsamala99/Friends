@@ -31,6 +31,17 @@ export function describeError(error: unknown): string {
   return parts.join("\n").slice(0, DESCRIPTION_LENGTH_LIMIT);
 }
 
+export function isClientRequestAborted(error: unknown): boolean {
+  let current = error;
+  for (let depth = 0; depth < CAUSE_DEPTH_LIMIT && current != null; depth++) {
+    if (typeof current !== "object") return false;
+    const candidate = current as { code?: unknown; message?: unknown; cause?: unknown };
+    if (candidate.code === "ECONNRESET" && candidate.message === "aborted") return true;
+    current = candidate.cause;
+  }
+  return false;
+}
+
 function describeStatus(error: Error): string {
   const { status, statusCode } = error as { status?: unknown; statusCode?: unknown };
   const value = status ?? statusCode;

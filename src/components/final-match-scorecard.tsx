@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Link } from "@tanstack/react-router";
-import { Plus, X, Trash2, RotateCcw, Trophy, Save, Zap, Crown, Users } from "lucide-react";
+import { Plus, X, Trash2, RotateCcw, Trophy, Save, Zap, Crown, Users, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -681,6 +681,7 @@ export function FinalMatchScorecard() {
     teamsQuery.data?.find((team) => team.competition_id)?.competition_id;
   const [tournamentId, setTournamentId] = useState("");
   const [activeTab, setActiveTab] = useState("tournament");
+  const [isEditingFinal, setIsEditingFinal] = useState(false);
   const fixturesQuery = useQuery({
     queryKey: ["fixtures", tournamentId],
     queryFn: () => fetchFixtures(undefined, tournamentId),
@@ -1377,8 +1378,9 @@ export function FinalMatchScorecard() {
     queryClient,
   ]);
 
-  const selectTournamentForFixtures = (tournament: Tournament) => {
+  const selectTournamentForFixtures = (tournament: Tournament, editFinal = false) => {
     setTournamentId(tournament.id);
+    setIsEditingFinal(editFinal);
     localStorage.setItem("current-tournament-id", tournament.id);
     setSelectedHomeTeam("");
     setSelectedAwayTeam("");
@@ -1390,7 +1392,62 @@ export function FinalMatchScorecard() {
       type: tournament.type,
       status: tournament.status,
     }));
-    toast.success(`Now creating fixtures for ${tournament.tournamentName}`);
+    toast.success(
+      editFinal
+        ? `Opening the final for ${tournament.tournamentName}`
+        : `Now creating fixtures for ${tournament.tournamentName}`,
+    );
+  };
+
+  const editTournamentFinal = (tournament: Tournament) => {
+    selectTournamentForFixtures(tournament, true);
+    const findTeam = (name: string) =>
+      teamsQuery.data?.find((team) => team.name.trim().toLowerCase() === name.trim().toLowerCase());
+    const homeTeam = findTeam(tournament.homeTeam);
+    const awayTeam = findTeam(tournament.awayTeam);
+    const playersForTeam = (teamId?: string) =>
+      (playersQuery.data ?? [])
+        .filter((player) => player.team_id === teamId && player.status === "Active")
+        .map((player) => ({
+          id: player.id,
+          name: player.name,
+          isGK: player.position.toLowerCase().includes("goalkeeper"),
+        }));
+    const recordedGoals = (score: number, side: "home" | "away"): Goal[] =>
+      Array.from({ length: Math.max(0, Math.floor(score)) }, (_, index) => ({
+        id: `${side}-recorded-goal-${index}`,
+        playerId: "",
+        playerName: "Recorded goal",
+      }));
+
+    setSelectedHomeTeam(homeTeam?.id ?? "");
+    setSelectedAwayTeam(awayTeam?.id ?? "");
+    setHome({
+      name: tournament.homeTeam,
+      players: playersForTeam(homeTeam?.id),
+      goals: recordedGoals(tournament.homeScore, "home"),
+      assists: [],
+      saves: [],
+    });
+    setAway({
+      name: tournament.awayTeam,
+      players: playersForTeam(awayTeam?.id),
+      goals: recordedGoals(tournament.awayScore, "away"),
+      assists: [],
+      saves: [],
+    });
+    setTournamentForm((current) => ({
+      ...current,
+      name: tournament.tournamentName,
+      type: tournament.type,
+      manager: tournament.manager,
+      participants: tournament.participants,
+      topScorerName: tournament.stats.topScorer.name,
+      topScorerGoals: String(tournament.stats.topScorer.goals),
+      topSaverName: tournament.stats.topSaver.name,
+      topSaverSaves: String(tournament.stats.topSaver.saves),
+    }));
+    setActiveTab("match");
   };
 
   useEffect(() => {
@@ -2031,6 +2088,7 @@ export function FinalMatchScorecard() {
         ...prevTournaments.filter((t) => t.id !== savedTournamentId),
       ]);
       setSaveTournamentOpen(false);
+      setIsEditingFinal(false);
       const nextTournamentId = createLocalTournamentId();
       setTournamentId(nextTournamentId);
       localStorage.setItem("current-tournament-id", savedTournamentId);
@@ -2369,20 +2427,28 @@ export function FinalMatchScorecard() {
                     <DialogTrigger asChild>
                       <Button className="gap-2 bg-linear-to-r from-[#e66f51] to-[#2f8f83] text-white hover:from-[#d95f43] hover:to-[#26776d] shadow-lg">
                         <Crown className="h-4 w-4" />
-                        {isCurrentTournamentCreated
-                          ? "Save Final"
-                          : "Create Tournament & Save Final"}
+                        {isEditingFinal
+                          ? "Save Changes"
+                          : isCurrentTournamentCreated
+                            ? "Save Final"
+                            : "Create Tournament & Save Final"}
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>
-                          {isCurrentTournamentCreated ? "Save Final" : "Create Tournament"}
+                          {isEditingFinal
+                            ? "Save Final Changes"
+                            : isCurrentTournamentCreated
+                              ? "Save Final"
+                              : "Create Tournament"}
                         </DialogTitle>
                         <DialogDescription>
-                          {isCurrentTournamentCreated
-                            ? `Save this final to ${tournamentForm.name || "the selected tournament"}.`
-                            : "Name your tournament, record the final, and save its tournament-wide leaders."}
+                          {isEditingFinal
+                            ? `Save your updates to the final for ${tournamentForm.name || "the selected tournament"}.`
+                            : isCurrentTournamentCreated
+                              ? `Save this final to ${tournamentForm.name || "the selected tournament"}.`
+                              : "Name your tournament, record the final, and save its tournament-wide leaders."}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
@@ -2513,7 +2579,11 @@ export function FinalMatchScorecard() {
                           Cancel
                         </Button>
                         <Button onClick={saveTournament} disabled={savingTournament}>
-                          {savingTournament ? "Saving..." : "Save Tournament"}
+                          {savingTournament
+                            ? "Saving..."
+                            : isEditingFinal
+                              ? "Save Changes"
+                              : "Save Tournament"}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -3194,6 +3264,16 @@ export function FinalMatchScorecard() {
                       </div>
                     </Link>
                     <div className="mt-4 flex justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mr-2 gap-2"
+                        onClick={() => editTournamentFinal(tournament)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit Final
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="destructive" size="sm" className="gap-2">

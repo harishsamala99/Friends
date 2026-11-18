@@ -246,10 +246,16 @@ function BestXIPage() {
                               players={playerList
                                 .filter((player) => {
                                   const position = player.position?.trim().toLowerCase();
+                                  const allowedPositions = [
+                                    ...positionsForGroup[slot.group],
+                                    ...(slot.line.startsWith("ATTACKING MIDFIELDER")
+                                      ? positionsForGroup.FORWARDS
+                                      : []),
+                                  ];
                                   return (
                                     player.status === "Active" &&
                                     position !== undefined &&
-                                    positionsForGroup[slot.group].some(
+                                    allowedPositions.some(
                                       (allowedPosition) =>
                                         allowedPosition.toLowerCase() === position,
                                     )
