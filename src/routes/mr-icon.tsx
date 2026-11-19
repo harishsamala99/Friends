@@ -4,15 +4,16 @@ import { Award, Crown, Medal, Search, Shield, Trophy } from "lucide-react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { EmptyState, ListSkeleton, PageHeader } from "@/components/football-ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  fetchAllFixturePlayerRatings,
+  fetchFixtures,
   fetchMrIconMatchRatings,
-  fetchMrIconReviewFlags,
+  fetchPlayers,
+  fetchTeams,
   fetchTournaments,
   type MrIconMatchRating,
 } from "@/lib/football";
-import { HOUSE_ICON_POSITIONS, syncHouseOfIcons } from "@/lib/house-of-icons";
 import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/mr-icon")({
@@ -51,7 +52,6 @@ type RankedPlayer = Pick<
 >;
 
 function MrIconPage() {
-  const [selectedIconsGroupId, setSelectedIconsGroupId] = useState("");
   const [tournamentId, setTournamentId] = useState("");
   const [teamId, setTeamId] = useState("");
   const [position, setPosition] = useState("");
@@ -65,40 +65,186 @@ function MrIconPage() {
     refetchOnWindowFocus: true,
   });
   const tournaments = useQuery({ queryKey: ["tournaments"], queryFn: fetchTournaments });
-  const reviewFlags = useQuery({
-    queryKey: ["mr-icon-review-flags"],
-    queryFn: fetchMrIconReviewFlags,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
-  });
-  const houseIcons = useQuery({
-    queryKey: ["house-of-icons"],
-    queryFn: syncHouseOfIcons,
+  const playerRatings = useQuery({
+    queryKey: ["fixture-player-ratings"],
+    queryFn: fetchAllFixturePlayerRatings,
     refetchOnMount: "always",
   });
-  const iconGroups = useMemo(() => houseIcons.data ?? [], [houseIcons.data]);
-  const selectedIconsGroup =
-    iconGroups.find((group) => group.group_id === selectedIconsGroupId) ??
-    iconGroups[iconGroups.length - 1];
-
-  useEffect(() => {
-    if (!iconGroups.some((group) => group.group_id === selectedIconsGroupId)) {
-      setSelectedIconsGroupId(iconGroups[iconGroups.length - 1]?.group_id ?? "");
-    }
-  }, [iconGroups, selectedIconsGroupId]);
+  const playersQuery = useQuery({ queryKey: ["players"], queryFn: () => fetchPlayers() });
+  const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: () => fetchTeams() });
+  const fixtures = useQuery({ queryKey: ["fixtures"], queryFn: () => fetchFixtures() });
 
   const allRows = useMemo(() => ratings.data ?? [], [ratings.data]);
-  const teams = useMemo(
+  const teams = useMemo<[string, string][]>(
     () =>
-      [...new Map(allRows.map((row) => [row.team_id, row.team_name])).entries()].sort((a, b) =>
-        a[1].localeCompare(b[1]),
-      ),
+      [
+        ...new Map(
+          allRows.map((row) => [row.team_id, row.team_name] as [string, string]),
+        ).entries(),
+      ].sort((a, b) => a[1].localeCompare(b[1])),
     [allRows],
   );
   const positions = useMemo(
     () => [...new Set(allRows.map((row) => row.position))].sort((a, b) => a.localeCompare(b)),
     [allRows],
   );
+  const playerStatistics = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        player_id: string;
+        player_name: string;
+        position: string;
+        team_id: string;
+        team_name: string;
+        goals: number;
+        saves: number;
+        clean_sheets: number;
+        matches: Set<string>;
+        kickoff: string;
+      }
+    >();
+    for (const row of allRows) {
+      const key = row.player_id;
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.goals += row.goals;
+        existing.saves += row.saves;
+        existing.clean_sheets += row.clean_sheets;
+        existing.matches.add(row.fixture_id);
+        if (row.kickoff > existing.kickoff) {
+          existing.kickoff = row.kickoff;
+          existing.team_id = row.team_id;
+          existing.team_name = row.team_name;
+          existing.position = row.position;
+          existing.player_name = row.player_name;
+        }
+      } else {
+        grouped.set(key, {
+          player_id: row.player_id,
+          player_name: row.player_name,
+          position: row.position,
+          team_id: row.team_id,
+          team_name: row.team_name,
+          goals: row.goals,
+          saves: row.saves,
+          clean_sheets: row.clean_sheets,
+          matches: new Set([row.fixture_id]),
+          kickoff: row.kickoff,
+        });
+      }
+    }
+    return [...grouped.values()].map(({ matches, ...player }) => ({
+      ...player,
+      matches: matches.size,
+    }));
+  }, [allRows]);
+  const topScorers = useMemo(
+    () =>
+      playerStatistics
+        .filter((player) => player.goals > 0)
+        .sort(
+          (a, b) =>
+            b.goals - a.goals ||
+            b.goals / Math.max(b.matches, 1) - a.goals / Math.max(a.matches, 1) ||
+            a.player_name.localeCompare(b.player_name),
+        )
+        .slice(0, 10),
+    [playerStatistics],
+  );
+  const topGoalkeepers = useMemo(
+    () =>
+      playerStatistics
+        .filter(
+          (player) =>
+            (player.position.trim().toLowerCase() === "gk" ||
+              player.position.trim().toLowerCase().includes("goalkeeper")) &&
+            player.saves > 0,
+        )
+        .sort(
+          (a, b) =>
+            b.saves - a.saves ||
+            b.clean_sheets - a.clean_sheets ||
+            a.player_name.localeCompare(b.player_name),
+        )
+        .slice(0, 10),
+    [playerStatistics],
+  );
+  const completedTournamentFixtureIds = useMemo(
+    () =>
+      new Set(
+        (fixtures.data ?? [])
+          .filter(
+            (fixture) =>
+              fixture.tournament_id !== null &&
+              fixture.status === "Full Time" &&
+              fixture.home_score != null &&
+              fixture.away_score != null,
+          )
+          .map((fixture) => fixture.id),
+      ),
+    [fixtures.data],
+  );
+  const ratingTotalsByPlayer = useMemo(() => {
+    const totals = new Map<string, { total: number; count: number }>();
+    for (const rating of playerRatings.data ?? []) {
+      if (!completedTournamentFixtureIds.has(rating.fixture_id)) continue;
+      const current = totals.get(rating.player_id) ?? { total: 0, count: 0 };
+      current.total += rating.rating;
+      current.count += 1;
+      totals.set(rating.player_id, current);
+    }
+    return totals;
+  }, [completedTournamentFixtureIds, playerRatings.data]);
+  const topDefenders = useMemo(() => {
+    const playersById = new Map(
+      (playersQuery.data ?? []).map((player) => [player.id, player] as const),
+    );
+    const teamsById = new Map((teamsQuery.data ?? []).map((team) => [team.id, team.name] as const));
+    return [...ratingTotalsByPlayer.entries()]
+      .flatMap(([playerId, ratingPoints]) => {
+        const player = playersById.get(playerId);
+        const normalizedPosition = player?.position.trim().toLowerCase() ?? "";
+        if (
+          !player ||
+          !(normalizedPosition.includes("defender") || normalizedPosition.includes("back"))
+        ) {
+          return [];
+        }
+        return [
+          {
+            id: player.id,
+            name: player.name,
+            team: player.team_id ? (teamsById.get(player.team_id) ?? "—") : "—",
+            totalRatingPoints: ratingPoints.total,
+            averageRating: ratingPoints.total / ratingPoints.count,
+          },
+        ];
+      })
+      .sort(
+        (a, b) =>
+          b.totalRatingPoints - a.totalRatingPoints ||
+          b.averageRating - a.averageRating ||
+          a.name.localeCompare(b.name),
+      )
+      .slice(0, 10);
+  }, [ratingTotalsByPlayer, playersQuery.data, teamsQuery.data]);
+  const goalkeeperRatings = useMemo(() => {
+    const totals = new Map<string, { total: number; matches: number }>();
+    for (const row of allRows) {
+      const position = row.position.trim().toLowerCase();
+      if (position !== "gk" && !position.includes("goalkeeper")) continue;
+
+      const matchRating = Math.min(10, 6 + row.saves * 0.25 + (row.clean_sheets > 0 ? 2 : 0));
+      const current = totals.get(row.player_id) ?? { total: 0, matches: 0 };
+      current.total += matchRating;
+      current.matches += 1;
+      totals.set(row.player_id, current);
+    }
+    return new Map(
+      [...totals].map(([playerId, rating]) => [playerId, rating.total / rating.matches] as const),
+    );
+  }, [allRows]);
 
   const leaderboard = useMemo(() => {
     const grouped = new Map<string, RankedPlayer>();
@@ -166,8 +312,20 @@ function MrIconPage() {
     leaderScore === undefined
       ? []
       : leaderboard.filter((player) => player.overall_score === leaderScore);
-  const queryError = ratings.error ?? tournaments.error ?? reviewFlags.error;
-  const isLoading = ratings.isLoading || tournaments.isLoading || reviewFlags.isLoading;
+  const queryError =
+    ratings.error ??
+    tournaments.error ??
+    playerRatings.error ??
+    playersQuery.error ??
+    teamsQuery.error ??
+    fixtures.error;
+  const isLoading =
+    ratings.isLoading ||
+    tournaments.isLoading ||
+    playerRatings.isLoading ||
+    playersQuery.isLoading ||
+    teamsQuery.isLoading ||
+    fixtures.isLoading;
   const rankFor = (index: number) => {
     let rank = index + 1;
     while (rank > 1 && leaderboard[index]?.overall_score === leaderboard[rank - 2]?.overall_score) {
@@ -175,12 +333,17 @@ function MrIconPage() {
     }
     return rank;
   };
+  const scorerRankFor = (index: number) => {
+    let rank = index + 1;
+    while (rank > 1 && topScorers[index]?.goals === topScorers[rank - 2]?.goals) rank -= 1;
+    return rank;
+  };
 
   return (
     <SiteLayout>
       <PageHeader
-        title="MR. ICON"
-        subtitle="The live best-player race, recalculated from every recorded match."
+        title="MR. ICON — PLAYER STATISTICS"
+        subtitle="Top goal scorers, goalkeepers, and defender ratings, alongside the player leaderboard."
       />
       <div className="mx-auto max-w-7xl space-y-8 px-4 py-10">
         {isLoading ? (
@@ -251,146 +414,163 @@ function MrIconPage() {
               </CardContent>
             </Card>
 
-            <section>
-              <div className="mb-3 flex items-center gap-2">
+            <section className="space-y-3" aria-labelledby="mr-icon-top-scorers">
+              <div className="flex items-center gap-2">
                 <Award className="size-5 text-primary" />
-                <h2 className="font-display text-xl font-bold">HOUSE OF THE ICONS</h2>
+                <h2 id="mr-icon-top-scorers" className="font-display text-xl font-bold">
+                  Top Goal Scorers
+                </h2>
               </div>
-              {houseIcons.isLoading ? (
-                <ListSkeleton rows={5} />
-              ) : houseIcons.isError ? (
-                <EmptyState
-                  message={
-                    houseIcons.error instanceof Error
-                      ? houseIcons.error.message
-                      : "Unable to load HOUSE OF THE ICONS. Refresh the page and try again."
-                  }
-                />
-              ) : iconGroups.length === 0 ? (
-                <EmptyState message="Icon selections will appear here when Tournaments 4–6 are completed and each has a finalized Best XI." />
-              ) : selectedIconsGroup ? (
-                <div className="space-y-4">
-                  <div className="tournament-switcher flex flex-wrap items-center gap-3">
-                    <label
-                      htmlFor="house-of-icons-group"
-                      className="text-sm font-semibold uppercase tracking-wider"
-                    >
-                      Tournament group
-                    </label>
-                    <select
-                      id="house-of-icons-group"
-                      className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                      value={selectedIconsGroup.group_id}
-                      onChange={(event) => setSelectedIconsGroupId(event.target.value)}
-                    >
-                      {iconGroups.map((group) => (
-                        <option key={group.group_id} value={group.group_id}>
-                          Tournaments {group.group_start}–{group.group_end}
-                        </option>
+              <p className="text-sm text-muted-foreground">Ranked across finalized matches.</p>
+              {topScorers.length === 0 ? (
+                <EmptyState message="No goal-scorer statistics are available yet." />
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className="p-3 text-left">Rank</th>
+                        <th className="p-3 text-left">Player</th>
+                        <th className="p-3 text-left">Team</th>
+                        <th className="p-3 text-center">Goals</th>
+                        <th className="p-3 text-center">Goals per match</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topScorers.map((player, index) => (
+                        <tr key={player.player_id} className="border-t border-border/50">
+                          <td className="p-3 font-semibold">{scorerRankFor(index)}</td>
+                          <td className="p-3">
+                            <Link
+                              to="/players/$playerId"
+                              params={{ playerId: player.player_id }}
+                              className="font-semibold hover:text-primary hover:underline"
+                            >
+                              {player.player_name}
+                            </Link>
+                          </td>
+                          <td className="p-3 text-muted-foreground">{player.team_name}</td>
+                          <td className="p-3 text-center tabular-nums">{player.goals}</td>
+                          <td className="p-3 text-center tabular-nums">
+                            {(player.goals / player.matches).toFixed(2)}
+                          </td>
+                        </tr>
                       ))}
-                    </select>
-                    <Badge
-                      variant={selectedIconsGroup.status === "complete" ? "default" : "outline"}
-                    >
-                      {selectedIconsGroup.status === "complete"
-                        ? "Selections complete"
-                        : "Review required"}
-                    </Badge>
-                  </div>
-                  {selectedIconsGroup.review_reasons.length > 0 && (
-                    <Card className="border-amber-500/40 bg-amber-500/5">
-                      <CardContent className="p-4">
-                        <p className="font-semibold">Insufficient data for review</p>
-                        <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                          {selectedIconsGroup.review_reasons.map((reason) => (
-                            <li key={reason}>{reason}</li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-                  )}
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {HOUSE_ICON_POSITIONS.map(({ key, label }) => {
-                      const icon = selectedIconsGroup.selections[key];
-                      return (
-                        <Card key={key} className="overflow-hidden border-primary/20">
-                          <div className="bg-linear-to-r from-primary/10 via-transparent to-emerald-500/10 p-4">
-                            <p className="text-xs font-bold uppercase tracking-wider text-primary">
-                              {label}
-                            </p>
-                            <h3 className="mt-1 font-display text-xl font-bold">
-                              {icon?.playerName ?? "Selection pending"}
-                            </h3>
-                            {icon && (
-                              <p className="text-sm text-muted-foreground">
-                                {icon.teamName ?? "Team unavailable"} · {icon.position}
-                              </p>
-                            )}
-                          </div>
-                          <CardContent className="space-y-3 p-4">
-                            {icon ? (
-                              <>
-                                <p className="text-sm font-semibold">
-                                  Best XI appearances: {icon.bestXiAppearances} of 3
-                                </p>
-                                <div>
-                                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Tournament history
-                                  </p>
-                                  <ul className="mt-1 space-y-1 text-sm">
-                                    {icon.tournamentHistory.map((entry) => (
-                                      <li
-                                        key={entry.tournamentId}
-                                        className="flex justify-between gap-2"
-                                      >
-                                        <span>{entry.tournamentName}</span>
-                                        <span className="font-medium">
-                                          {entry.selected ? "Best XI" : "Not selected"}
-                                        </span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                                {[
-                                  ["Relevant awards", icon.supportingStats.awards],
-                                  ["Goals", icon.supportingStats.goals],
-                                  ["Assists", icon.supportingStats.assists],
-                                  ["Saves", icon.supportingStats.saves],
-                                  ["Match rating points", icon.supportingStats.ratingPoints],
-                                  [
-                                    "Average match rating",
-                                    icon.supportingStats.averageRating?.toFixed(1) ?? null,
-                                  ],
-                                  ["Matches played", icon.supportingStats.matchesPlayed],
-                                  ["Tournaments played", icon.supportingStats.tournamentsPlayed],
-                                ]
-                                  .filter(([, value]) => value !== null)
-                                  .map(([labelText, value]) => (
-                                    <p
-                                      key={labelText}
-                                      className="flex justify-between gap-2 text-sm text-muted-foreground"
-                                    >
-                                      <span>{labelText}</span>
-                                      <span className="font-semibold text-foreground">{value}</span>
-                                    </p>
-                                  ))}
-                                <p className="border-t pt-3 text-sm text-muted-foreground">
-                                  {icon.rationale}
-                                </p>
-                              </>
-                            ) : (
-                              <p className="text-sm text-muted-foreground">
-                                No selection recorded. Available data was insufficient to identify a
-                                clear leader.
-                              </p>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                    </tbody>
+                  </table>
                 </div>
-              ) : null}
+              )}
+            </section>
+
+            <section className="space-y-3" aria-labelledby="mr-icon-top-saves">
+              <div className="flex items-center gap-2">
+                <Medal className="size-5 text-primary" />
+                <h2 id="mr-icon-top-saves" className="font-display text-xl font-bold">
+                  Top Saves
+                </h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Ranked by recorded saves. Match rating = 6.0 base + 0.25 per save + 2.0 for a clean
+                sheet, capped at 10; the displayed value is the average across recorded matches.
+              </p>
+              {topGoalkeepers.length === 0 ? (
+                <EmptyState message="No goalkeeper save statistics are available yet." />
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card">
+                  <table className="w-full min-w-[720px] text-sm">
+                    <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className="p-3 text-left">Rank</th>
+                        <th className="p-3 text-left">Goalkeeper</th>
+                        <th className="p-3 text-left">Team</th>
+                        <th className="p-3 text-center">Total saves</th>
+                        <th className="p-3 text-center">Saves per match</th>
+                        <th className="p-3 text-center">Clean sheets</th>
+                        <th className="p-3 text-center">Average match rating / 10</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topGoalkeepers.map((player, index) => (
+                        <tr key={player.player_id} className="border-t border-border/50">
+                          <td className="p-3 font-semibold">{index + 1}</td>
+                          <td className="p-3">
+                            <Link
+                              to="/players/$playerId"
+                              params={{ playerId: player.player_id }}
+                              className="font-semibold hover:text-primary hover:underline"
+                            >
+                              {player.player_name}
+                            </Link>
+                          </td>
+                          <td className="p-3 text-muted-foreground">{player.team_name}</td>
+                          <td className="p-3 text-center tabular-nums">{player.saves}</td>
+                          <td className="p-3 text-center tabular-nums">
+                            {(player.saves / player.matches).toFixed(2)}
+                          </td>
+                          <td className="p-3 text-center tabular-nums">{player.clean_sheets}</td>
+                          <td className="p-3 text-center tabular-nums">
+                            {goalkeeperRatings.get(player.player_id) !== undefined
+                              ? `${goalkeeperRatings.get(player.player_id)?.toFixed(1)} / 10`
+                              : "Not rated"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-3" aria-labelledby="mr-icon-defender-ratings">
+              <div className="flex items-center gap-2">
+                <Shield className="size-5 text-primary" />
+                <h2 id="mr-icon-defender-ratings" className="font-display text-xl font-bold">
+                  Defender Ratings
+                </h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Total rating points from completed tournaments and average match rating, out of 10.
+              </p>
+              {topDefenders.length === 0 ? (
+                <EmptyState message="No defender match ratings are available yet." />
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card">
+                  <table className="w-full min-w-[560px] text-sm">
+                    <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className="p-3 text-left">Rank</th>
+                        <th className="p-3 text-left">Defender</th>
+                        <th className="p-3 text-left">Team</th>
+                        <th className="p-3 text-right">Overall rating points</th>
+                        <th className="p-3 text-right">Overall rating</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topDefenders.map((defender, index) => (
+                        <tr key={defender.id} className="border-t border-border/50">
+                          <td className="p-3 font-semibold">{index + 1}</td>
+                          <td className="p-3">
+                            <Link
+                              to="/players/$playerId"
+                              params={{ playerId: defender.id }}
+                              className="font-semibold hover:text-primary hover:underline"
+                            >
+                              {defender.name}
+                            </Link>
+                          </td>
+                          <td className="p-3 text-muted-foreground">{defender.team}</td>
+                          <td className="p-3 text-right font-semibold tabular-nums">
+                            {formatScore(defender.totalRatingPoints)}
+                          </td>
+                          <td className="p-3 text-right font-semibold tabular-nums">
+                            {defender.averageRating.toFixed(1)} / 10
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
 
             <section
@@ -578,43 +758,6 @@ function MrIconPage() {
                 A player with the same rating shares the rank; names do not break ties.
               </p>
             </section>
-
-            {reviewFlags.data && reviewFlags.data.length > 0 && (
-              <Card className="border-amber-500/30 bg-amber-500/5">
-                <CardContent className="p-5">
-                  <h2 className="flex items-center gap-2 font-semibold">
-                    <Shield className="size-5 text-amber-600" />
-                    Match records to review
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Ratings use recorded player statistics only. These records lack required or
-                    consistent data and are not repaired by assumption.
-                  </p>
-                  <ul className="mt-3 space-y-2 text-sm">
-                    {reviewFlags.data.slice(0, 6).map((flag, index) => (
-                      <li
-                        key={`${flag.fixture_id}-${flag.event_id ?? index}`}
-                        className="flex flex-wrap justify-between gap-2 border-t border-amber-500/15 pt-2"
-                      >
-                        <span>{flag.issue}</span>
-                        <Link
-                          to="/match/$fixtureId"
-                          params={{ fixtureId: flag.fixture_id }}
-                          className="font-medium text-primary hover:underline"
-                        >
-                          Review match · {new Date(flag.kickoff).toLocaleDateString()}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                  {reviewFlags.data.length > 6 && (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Showing the latest 6 of up to 100 review flags.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
           </>
         )}
       </div>
