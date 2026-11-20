@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Award, Flame, Goal, Shield, Trophy } from "lucide-react";
+import { Award, ChartNoAxesCombined, Flame, Goal, Shield, Trophy, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { SiteLayout } from "@/components/SiteLayout";
 import { EmptyState, PageHeader, TeamBadge, ListSkeleton } from "@/components/football-ui";
@@ -316,6 +316,18 @@ function HallOfFamePage() {
         b.metrics.goals - a.metrics.goals ||
         a.player.name.localeCompare(b.player.name),
     );
+  const allTimeScorer =
+    topScorerGoals > 0
+      ? [...goalScorers]
+          .filter(({ metrics }) => metrics.goals === topScorerGoals)
+          .sort((a, b) => a.player.name.localeCompare(b.player.name))[0]
+      : undefined;
+  const allTimeSaver =
+    topGoalkeeperSaves > 0
+      ? goalkeepers
+          .filter(({ metrics }) => metrics.saves === topGoalkeeperSaves)
+          .sort((a, b) => a.player.name.localeCompare(b.player.name))[0]
+      : undefined;
   const titleLeaders = [...teamTitles.entries()]
     .map(([teamId, wins]) => ({ team: teamsById.get(teamId), wins }))
     .filter((item): item is typeof item & { team: Team } => Boolean(item.team))
@@ -411,6 +423,66 @@ function HallOfFamePage() {
           <EmptyState message="Hall of Fame data could not be loaded. Refresh the page to try again." />
         ) : (
           <>
+            <section aria-label="League history at a glance" className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <ArchiveStat
+                  icon={<Goal />}
+                  label="Goals scored"
+                  value={completedFixtures.reduce(
+                    (total, fixture) => total + fixture.home_score + fixture.away_score,
+                    0,
+                  )}
+                />
+                <ArchiveStat
+                  icon={<Trophy />}
+                  label="Completed tournaments"
+                  value={tournaments.length}
+                />
+                <ArchiveStat
+                  icon={<ChartNoAxesCombined />}
+                  label="Finalized matches"
+                  value={completedFixtures.length}
+                />
+                <ArchiveStat
+                  icon={<Users />}
+                  label="Players with records"
+                  value={playerMetrics.size}
+                />
+                <ArchiveStat icon={<Shield />} label="Teams in the archive" value={teams.length} />
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <ArchiveRecord
+                  icon={<Goal />}
+                  label="All-time scoring leader"
+                  name={allTimeScorer?.player.name ?? "No goals recorded"}
+                  detail={
+                    allTimeScorer
+                      ? `${teamsById.get(allTimeScorer.player.team_id ?? "")?.name ?? "Team not recorded"} · ${allTimeScorer.metrics.goals} credited goal${allTimeScorer.metrics.goals === 1 ? "" : "s"}`
+                      : "Records will appear as results are recorded"
+                  }
+                />
+                <ArchiveRecord
+                  icon={<Shield />}
+                  label="All-time saves leader"
+                  name={allTimeSaver?.player.name ?? "No saves recorded"}
+                  detail={
+                    allTimeSaver
+                      ? `${teamsById.get(allTimeSaver.player.team_id ?? "")?.name ?? "Team not recorded"} · ${allTimeSaver.metrics.saves} save${allTimeSaver.metrics.saves === 1 ? "" : "s"}`
+                      : "Records will appear as results are recorded"
+                  }
+                />
+                <ArchiveRecord
+                  icon={<Trophy />}
+                  label="Most successful team"
+                  name={titleLeaders[0]?.team.name ?? "No champion recorded"}
+                  detail={
+                    titleLeaders[0]
+                      ? `${titleLeaders[0].wins.length} tournament title${titleLeaders[0].wins.length === 1 ? "" : "s"}`
+                      : "Titles will appear after tournaments are completed"
+                  }
+                />
+              </div>
+            </section>
             <PlayerRecognitionSection
               title="Goalkeepers"
               icon={<Shield />}
@@ -825,6 +897,49 @@ function SectionTitle({ icon, title }: { icon: ReactNode; title: string }) {
       <span className="text-primary">{icon}</span>
       <h2 className="font-display text-2xl font-bold">{title}</h2>
     </div>
+  );
+}
+
+function ArchiveStat({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-3 p-4">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+          {icon}
+        </span>
+        <div>
+          <p className="font-display text-2xl font-bold tabular-nums">{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ArchiveRecord({
+  icon,
+  label,
+  name,
+  detail,
+}: {
+  icon: ReactNode;
+  label: string;
+  name: string;
+  detail: string;
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="flex items-start gap-3 p-4">
+        <span className="mt-0.5 text-primary">{icon}</span>
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-1 truncate font-semibold">{name}</p>
+          <p className="text-sm text-muted-foreground">{detail}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
