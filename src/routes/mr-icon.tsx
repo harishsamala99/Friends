@@ -438,7 +438,12 @@ function MrIconPage() {
                     </thead>
                     <tbody>
                       {topScorers.map((player, index) => (
-                        <tr key={player.player_id} className="border-t border-border/50">
+                        <tr
+                          key={player.player_id}
+                          className={`border-t border-border/50 ${
+                            scorerRankFor(index) === 1 ? "mr-icon-first-place-row" : ""
+                          }`}
+                        >
                           <td className="p-3 font-semibold">{scorerRankFor(index)}</td>
                           <td className="p-3">
                             <Link
@@ -491,7 +496,12 @@ function MrIconPage() {
                     </thead>
                     <tbody>
                       {topGoalkeepers.map((player, index) => (
-                        <tr key={player.player_id} className="border-t border-border/50">
+                        <tr
+                          key={player.player_id}
+                          className={`border-t border-border/50 ${
+                            index === 0 ? "mr-icon-first-place-row" : ""
+                          }`}
+                        >
                           <td className="p-3 font-semibold">{index + 1}</td>
                           <td className="p-3">
                             <Link
@@ -547,7 +557,12 @@ function MrIconPage() {
                     </thead>
                     <tbody>
                       {topDefenders.map((defender, index) => (
-                        <tr key={defender.id} className="border-t border-border/50">
+                        <tr
+                          key={defender.id}
+                          className={`border-t border-border/50 ${
+                            index === 0 ? "mr-icon-first-place-row" : ""
+                          }`}
+                        >
                           <td className="p-3 font-semibold">{index + 1}</td>
                           <td className="p-3">
                             <Link
