@@ -146,7 +146,6 @@ function MrIconPage() {
         .sort(
           (a, b) =>
             b.goals - a.goals ||
-            b.goals / Math.max(b.matches, 1) - a.goals / Math.max(a.matches, 1) ||
             a.player_name.localeCompare(b.player_name),
         )
         .slice(0, 10),
@@ -433,7 +432,6 @@ function MrIconPage() {
                         <th className="p-3 text-left">Player</th>
                         <th className="p-3 text-left">Team</th>
                         <th className="p-3 text-center">Goals</th>
-                        <th className="p-3 text-center">Goals per match</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -456,9 +454,6 @@ function MrIconPage() {
                           </td>
                           <td className="p-3 text-muted-foreground">{player.team_name}</td>
                           <td className="p-3 text-center tabular-nums">{player.goals}</td>
-                          <td className="p-3 text-center tabular-nums">
-                            {(player.goals / player.matches).toFixed(2)}
-                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -489,7 +484,6 @@ function MrIconPage() {
                         <th className="p-3 text-left">Goalkeeper</th>
                         <th className="p-3 text-left">Team</th>
                         <th className="p-3 text-center">Total saves</th>
-                        <th className="p-3 text-center">Saves per match</th>
                         <th className="p-3 text-center">Clean sheets</th>
                         <th className="p-3 text-center">Average match rating / 10</th>
                       </tr>
@@ -514,9 +508,6 @@ function MrIconPage() {
                           </td>
                           <td className="p-3 text-muted-foreground">{player.team_name}</td>
                           <td className="p-3 text-center tabular-nums">{player.saves}</td>
-                          <td className="p-3 text-center tabular-nums">
-                            {(player.saves / player.matches).toFixed(2)}
-                          </td>
                           <td className="p-3 text-center tabular-nums">{player.clean_sheets}</td>
                           <td className="p-3 text-center tabular-nums">
                             {goalkeeperRatings.get(player.player_id) !== undefined
