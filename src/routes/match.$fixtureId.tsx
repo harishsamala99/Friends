@@ -20,6 +20,7 @@ import {
   saveFixtureAppearances,
   saveFixturePlayerRating,
   replaceFixturePlayerGoals,
+  replaceFixturePlayerOwnGoals,
   replaceFixturePlayerSaves,
   updateFixture,
   type FixtureAppearance,
@@ -222,7 +223,13 @@ function MatchEditor({
   awayTeamId: string;
   players: { id: string; name: string; team_id: string | null; position: string }[];
   appearances: FixtureAppearance[];
-  events: { id: string; player_id: string | null; team_id: string | null; event_type: string }[];
+  events: {
+    id: string;
+    player_id: string | null;
+    team_id: string | null;
+    event_type: string;
+    goal_type: string | null;
+  }[];
   playerRatings: FixturePlayerRating[];
   playerRatingsLoading: boolean;
   playerRatingsError: string | null;
@@ -234,6 +241,8 @@ function MatchEditor({
   const [awayPlayerId, setAwayPlayerId] = useState("");
   const [homeGoals, setHomeGoals] = useState("0");
   const [awayGoals, setAwayGoals] = useState("0");
+  const [homeGoalType, setHomeGoalType] = useState<"goal" | "own_goal">("goal");
+  const [awayGoalType, setAwayGoalType] = useState<"goal" | "own_goal">("goal");
   const [homeGKId, setHomeGKId] = useState("");
   const [awayGKId, setAwayGKId] = useState("");
   const [homeSaves, setHomeSaves] = useState("0");
@@ -272,6 +281,15 @@ function MatchEditor({
       (acc, event) => {
         const key = `${event.player_id}-${event.team_id}`;
         acc[key] = (acc[key] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+  const ownGoalsByTeam = events
+    .filter((e) => e.event_type === "own_goal")
+    .reduce(
+      (acc, event) => {
+        if (event.team_id) acc[event.team_id] = (acc[event.team_id] ?? 0) + 1;
         return acc;
       },
       {} as Record<string, number>,
@@ -370,16 +388,22 @@ function MatchEditor({
   }
 
   async function saveHomeScorer(): Promise<void> {
-    const scorer = homeTeamPlayers.find((player) => player.id === homePlayerId);
     const count = Math.max(0, Math.min(20, Math.trunc(Number(homeGoals) || 0)));
-    if (!scorer) {
-      toast.error("Select a home team player");
-      return;
-    }
     setSavingHomeScorer(true);
     try {
-      await replaceFixturePlayerGoals(fixture.id, homeTeamId, scorer.id, count);
-      toast.success(`${scorer.name}'s goals set to ${count}`);
+      if (homeGoalType === "own_goal") {
+        await replaceFixturePlayerOwnGoals(fixture.id, homeTeamId, count);
+        toast.success(`Home team own goals set to ${count}`);
+      } else {
+        const scorer = homeTeamPlayers.find((player) => player.id === homePlayerId);
+        if (!scorer) {
+          toast.error("Select a home team player");
+          setSavingHomeScorer(false);
+          return;
+        }
+        await replaceFixturePlayerGoals(fixture.id, homeTeamId, scorer.id, count);
+        toast.success(`${scorer.name}'s goals set to ${count}`);
+      }
       setHomeGoals(String(count));
       onSaved();
     } catch (error) {
@@ -390,16 +414,22 @@ function MatchEditor({
   }
 
   async function saveAwayScorer(): Promise<void> {
-    const scorer = awayTeamPlayers.find((player) => player.id === awayPlayerId);
     const count = Math.max(0, Math.min(20, Math.trunc(Number(awayGoals) || 0)));
-    if (!scorer) {
-      toast.error("Select an away team player");
-      return;
-    }
     setSavingAwayScorer(true);
     try {
-      await replaceFixturePlayerGoals(fixture.id, awayTeamId, scorer.id, count);
-      toast.success(`${scorer.name}'s goals set to ${count}`);
+      if (awayGoalType === "own_goal") {
+        await replaceFixturePlayerOwnGoals(fixture.id, awayTeamId, count);
+        toast.success(`Away team own goals set to ${count}`);
+      } else {
+        const scorer = awayTeamPlayers.find((player) => player.id === awayPlayerId);
+        if (!scorer) {
+          toast.error("Select an away team player");
+          setSavingAwayScorer(false);
+          return;
+        }
+        await replaceFixturePlayerGoals(fixture.id, awayTeamId, scorer.id, count);
+        toast.success(`${scorer.name}'s goals set to ${count}`);
+      }
       setAwayGoals(String(count));
       onSaved();
     } catch (error) {
@@ -527,25 +557,50 @@ function MatchEditor({
                 Home Team
               </h4>
               <label className="space-y-2 text-sm font-medium">
-                Player
-                <PlayerPicker
-                  className="w-full"
-                  players={homeTeamPlayers}
-                  value={homePlayerId}
-                  onValueChange={(playerId) => {
-                    setHomePlayerId(playerId);
-                    setHomeGoals(String(goalsByPlayerAndTeam[`${playerId}-${homeTeamId}`] ?? 0));
+                Goal type
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={homeGoalType}
+                  onChange={(event) => {
+                    const goalType = event.target.value as "goal" | "own_goal";
+                    setHomeGoalType(goalType);
+                    setHomeGoals(
+                      String(
+                        goalType === "own_goal"
+                          ? (ownGoalsByTeam[homeTeamId] ?? 0)
+                          : (goalsByPlayerAndTeam[`${homePlayerId}-${homeTeamId}`] ?? 0),
+                      ),
+                    );
                   }}
-                  disabled={homeTeamPlayers.length === 0}
-                  placeholder="Search or select home player"
-                />
+                >
+                  <option value="goal">Normal goal</option>
+                  <option value="own_goal">Own goal</option>
+                </select>
               </label>
-              {homeTeamPlayers.length === 0 && (
+              {homeGoalType === "goal" && (
+                <label className="space-y-2 text-sm font-medium">
+                  Player
+                  <PlayerPicker
+                    className="w-full"
+                    players={homeTeamPlayers}
+                    value={homePlayerId}
+                    onValueChange={(playerId) => {
+                      setHomePlayerId(playerId);
+                      setHomeGoals(
+                        String(goalsByPlayerAndTeam[`${playerId}-${homeTeamId}`] ?? 0),
+                      );
+                    }}
+                    disabled={homeTeamPlayers.length === 0}
+                    placeholder="Search or select home player"
+                  />
+                </label>
+              )}
+              {homeGoalType === "goal" && homeTeamPlayers.length === 0 && (
                 <span className="text-xs text-muted-foreground">
                   No players available for home team
                 </span>
               )}
-              {homeTeamPlayers.length > 0 && (
+              {(homeGoalType === "own_goal" || homeTeamPlayers.length > 0) && (
                 <>
                   <label className="space-y-2 text-sm font-medium">
                     Total goals in this fixture
@@ -561,7 +616,10 @@ function MatchEditor({
                     variant="outline"
                     className="w-full"
                     onClick={saveHomeScorer}
-                    disabled={savingHomeScorer || !homePlayerId}
+                    disabled={
+                      savingHomeScorer ||
+                      (homeGoalType === "goal" && !homePlayerId)
+                    }
                   >
                     {savingHomeScorer ? "Saving…" : "Save Total"}
                   </Button>
@@ -575,25 +633,50 @@ function MatchEditor({
                 Away Team
               </h4>
               <label className="space-y-2 text-sm font-medium">
-                Player
-                <PlayerPicker
-                  className="w-full"
-                  players={awayTeamPlayers}
-                  value={awayPlayerId}
-                  onValueChange={(playerId) => {
-                    setAwayPlayerId(playerId);
-                    setAwayGoals(String(goalsByPlayerAndTeam[`${playerId}-${awayTeamId}`] ?? 0));
+                Goal type
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={awayGoalType}
+                  onChange={(event) => {
+                    const goalType = event.target.value as "goal" | "own_goal";
+                    setAwayGoalType(goalType);
+                    setAwayGoals(
+                      String(
+                        goalType === "own_goal"
+                          ? (ownGoalsByTeam[awayTeamId] ?? 0)
+                          : (goalsByPlayerAndTeam[`${awayPlayerId}-${awayTeamId}`] ?? 0),
+                      ),
+                    );
                   }}
-                  disabled={awayTeamPlayers.length === 0}
-                  placeholder="Search or select away player"
-                />
+                >
+                  <option value="goal">Normal goal</option>
+                  <option value="own_goal">Own goal</option>
+                </select>
               </label>
-              {awayTeamPlayers.length === 0 && (
+              {awayGoalType === "goal" && (
+                <label className="space-y-2 text-sm font-medium">
+                  Player
+                  <PlayerPicker
+                    className="w-full"
+                    players={awayTeamPlayers}
+                    value={awayPlayerId}
+                    onValueChange={(playerId) => {
+                      setAwayPlayerId(playerId);
+                      setAwayGoals(
+                        String(goalsByPlayerAndTeam[`${playerId}-${awayTeamId}`] ?? 0),
+                      );
+                    }}
+                    disabled={awayTeamPlayers.length === 0}
+                    placeholder="Search or select away player"
+                  />
+                </label>
+              )}
+              {awayGoalType === "goal" && awayTeamPlayers.length === 0 && (
                 <span className="text-xs text-muted-foreground">
                   No players available for away team
                 </span>
               )}
-              {awayTeamPlayers.length > 0 && (
+              {(awayGoalType === "own_goal" || awayTeamPlayers.length > 0) && (
                 <>
                   <label className="space-y-2 text-sm font-medium">
                     Total goals in this fixture
@@ -609,7 +692,10 @@ function MatchEditor({
                     variant="outline"
                     className="w-full"
                     onClick={saveAwayScorer}
-                    disabled={savingAwayScorer || !awayPlayerId}
+                    disabled={
+                      savingAwayScorer ||
+                      (awayGoalType === "goal" && !awayPlayerId)
+                    }
                   >
                     {savingAwayScorer ? "Saving…" : "Save Total"}
                   </Button>

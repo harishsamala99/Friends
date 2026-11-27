@@ -1337,7 +1337,52 @@ export async function replaceFixturePlayerGoals(
   playerId: string,
   goalCount: number,
 ) {
-  await replaceFixturePlayerEvents(fixtureId, teamId, playerId, "goal", goalCount);
+  const { error: deleteError } = await db
+    .from("match_events")
+    .delete()
+    .eq("fixture_id", fixtureId)
+    .eq("player_id", playerId)
+    .in("event_type", ["goal", "own_goal"]);
+  if (deleteError) throw deleteError;
+
+  const events = Array.from({ length: Math.max(0, Math.trunc(goalCount)) }, (_, index) => ({
+    fixture_id: fixtureId,
+    team_id: teamId,
+    player_id: playerId,
+    minute: index + 1,
+    event_type: "goal",
+  }));
+  if (events.length === 0) return;
+
+  const { error: insertError } = await db.from("match_events").insert(events);
+  if (insertError) throw insertError;
+}
+
+export async function replaceFixturePlayerOwnGoals(
+  fixtureId: string,
+  concedingTeamId: string,
+  ownGoalCount: number,
+) {
+  const { error: deleteError } = await db
+    .from("match_events")
+    .delete()
+    .eq("fixture_id", fixtureId)
+    .eq("team_id", concedingTeamId)
+    .eq("event_type", "own_goal");
+  if (deleteError) throw deleteError;
+
+  const events = Array.from({ length: Math.max(0, Math.trunc(ownGoalCount)) }, (_, index) => ({
+    fixture_id: fixtureId,
+    team_id: concedingTeamId,
+    player_id: null,
+    minute: index + 1,
+    event_type: "own_goal",
+    goal_type: "Own Goal",
+  }));
+  if (events.length === 0) return;
+
+  const { error: insertError } = await db.from("match_events").insert(events);
+  if (insertError) throw insertError;
 }
 
 export async function replaceFixturePlayerSaves(
